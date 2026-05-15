@@ -1,0 +1,1299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Migranix — Data Migration for Indian SMEs</title>
+<meta name="description" content="Migranix cleans, validates and migrates your business data to Snowflake or cloud. Built for Indian SMEs. Starting ₹4,999/month."/>
+<meta name="keywords" content="data migration India, data cleaning, Snowflake migration, SME data engineering, migranix.in"/>
+<meta property="og:title" content="Migranix — Data Migration for Indian SMEs"/>
+<meta property="og:description" content="Clean, validate and migrate your data to Snowflake or cloud. Built for Indian SMEs."/>
+<meta property="og:url" content="https://migranix.in"/>
+<link rel="canonical" href="https://migranix.in"/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+:root{
+  --blue:#2563eb;--blue-d:#1d4ed8;--blue-l:#eff6ff;--blue-m:#bfdbfe;
+  --navy:#0f172a;--g700:#374151;--g500:#6b7280;--g200:#e5e7eb;--g50:#f9fafb;
+  --green:#16a34a;--green-l:#f0fdf4;--white:#fff;
+  --font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+  --r:10px;--sh:0 1px 3px rgba(0,0,0,.08);--shm:0 4px 16px rgba(0,0,0,.08);
+}
+body{font-family:var(--font);color:var(--navy);background:#f8fafc;-webkit-font-smoothing:antialiased}
+.container{max-width:1080px;margin:0 auto;padding:0 24px}
+section{padding:80px 0}
+a{text-decoration:none}
+
+/* NAV */
+nav{position:sticky;top:0;z-index:100;background:rgba(255,255,255,.93);backdrop-filter:blur(12px);border-bottom:1px solid var(--g200)}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:62px;max-width:1080px;margin:0 auto;padding:0 24px}
+.logo{font-size:1.2rem;font-weight:700;color:var(--navy);display:flex;align-items:center;gap:8px}
+.logo-dot{width:10px;height:10px;background:var(--blue);border-radius:50%}
+.nav-links{display:flex;align-items:center;gap:28px}
+.nav-links a{color:var(--g700);font-size:.875rem;font-weight:500;transition:color .15s}
+.nav-links a:hover{color:var(--blue)}
+.nav-btn{background:var(--blue);color:#fff;padding:8px 18px;border-radius:8px;font-size:.875rem;font-weight:600;transition:all .15s}
+.nav-btn:hover{background:var(--blue-d);transform:translateY(-1px)}
+.hamburger{display:none;flex-direction:column;gap:5px;cursor:pointer;background:none;border:none;padding:4px}
+.hamburger span{display:block;width:22px;height:2px;background:var(--navy);border-radius:2px;transition:all .3s}
+
+/* HERO */
+.hero{padding:96px 0 72px;background:linear-gradient(160deg,#fff 0%,#eff6ff 55%,#dbeafe 100%);border-bottom:1px solid var(--blue-m);position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;top:-150px;right:-80px;width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(37,99,235,.07) 0%,transparent 70%);pointer-events:none}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:56px;align-items:center}
+.badge{display:inline-flex;align-items:center;gap:6px;background:var(--blue-l);border:1px solid var(--blue-m);color:var(--blue);padding:4px 12px;border-radius:99px;font-size:.75rem;font-weight:600;letter-spacing:.05em;text-transform:uppercase;margin-bottom:18px}
+.badge-dot{width:6px;height:6px;background:var(--blue);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hero h1{font-size:2.6rem;font-weight:700;line-height:1.15;letter-spacing:-.03em;margin-bottom:18px}
+.hero h1 em{font-style:normal;background:linear-gradient(135deg,#2563eb,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:1.05rem;color:var(--g700);margin-bottom:28px;line-height:1.7}
+.hero-btns{display:flex;gap:12px;flex-wrap:wrap}
+.btn-p{background:var(--blue);color:#fff;padding:13px 26px;border-radius:9px;font-weight:600;font-size:.925rem;transition:all .15s;box-shadow:0 2px 8px rgba(37,99,235,.3)}
+.btn-p:hover{background:var(--blue-d);transform:translateY(-2px);box-shadow:0 6px 20px rgba(37,99,235,.35)}
+.btn-s{background:#fff;color:var(--blue);padding:13px 26px;border-radius:9px;border:1.5px solid var(--blue);font-weight:600;font-size:.925rem;transition:all .15s}
+.btn-s:hover{background:var(--blue-l);transform:translateY(-2px)}
+.hero-stats{display:flex;gap:24px;margin-top:32px;padding-top:24px;border-top:1px solid var(--blue-m)}
+.stat-num{font-size:1.4rem;font-weight:700;color:var(--navy)}
+.stat-lbl{font-size:.75rem;color:var(--g500);margin-top:1px}
+
+/* pipeline card */
+.pipe-card{background:#fff;border:1px solid var(--g200);border-radius:16px;padding:24px;box-shadow:var(--shm)}
+.pipe-title{font-size:.7rem;font-weight:700;color:var(--g500);letter-spacing:.08em;text-transform:uppercase;margin-bottom:16px}
+.pipe-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px dashed var(--g200)}
+.pipe-row:last-child{border-bottom:none}
+.pipe-ico{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0}
+.ic1{background:#eff6ff}
+.ic2{background:#f0fdf4}
+.ic3{background:#fffbeb}
+.ic4{background:#fdf4ff}
+.ic5{background:#fff0f0}
+.pipe-info{flex:1}
+.pipe-name{font-size:.85rem;font-weight:600;color:var(--navy)}
+.pipe-desc{font-size:.75rem;color:var(--g500);margin-top:1px}
+.ptag{font-size:.68rem;font-weight:600;padding:2px 8px;border-radius:99px;font-family:var(--mono);white-space:nowrap}
+.t1{background:#eff6ff;color:#2563eb}
+.t2{background:#f0fdf4;color:#16a34a}
+.t3{background:#fffbeb;color:#d97706}
+.t4{background:#fdf4ff;color:#9333ea}
+.t5{background:#fff0f0;color:#dc2626}
+
+/* HOW IT WORKS */
+.how{background:#fff;border-top:1px solid var(--g200);border-bottom:1px solid var(--g200)}
+.sec-label{font-size:.72rem;font-weight:700;color:var(--blue);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+.sec-title{font-size:2rem;font-weight:700;letter-spacing:-.02em;margin-bottom:12px}
+.sec-sub{font-size:1rem;color:var(--g700);max-width:520px}
+.steps-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;margin-top:48px}
+.step-card{background:var(--g50);border:1px solid var(--g200);border-radius:14px;padding:24px;position:relative;transition:all .2s}
+.step-card:hover{border-color:var(--blue-m);box-shadow:var(--shm);transform:translateY(-2px)}
+.step-num{font-size:.72rem;font-weight:700;color:var(--blue);font-family:var(--mono);margin-bottom:12px;letter-spacing:.05em}
+.step-ico{font-size:1.6rem;margin-bottom:10px}
+.step-card h3{font-size:.95rem;font-weight:600;margin-bottom:6px}
+.step-card p{font-size:.82rem;color:var(--g500);line-height:1.6}
+
+/* FEATURES */
+.features{background:var(--g50)}
+.feat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:48px}
+.feat-card{background:#fff;border:1px solid var(--g200);border-radius:14px;padding:22px;transition:all .2s}
+.feat-card:hover{border-color:var(--blue-m);box-shadow:var(--shm)}
+.feat-ico{width:40px;height:40px;border-radius:10px;background:var(--blue-l);display:flex;align-items:center;justify-content:center;font-size:1.1rem;margin-bottom:14px}
+.feat-card h3{font-size:.9rem;font-weight:600;margin-bottom:6px}
+.feat-card p{font-size:.8rem;color:var(--g500);line-height:1.6}
+
+/* PRICING */
+.pricing{background:#fff;border-top:1px solid var(--g200)}
+.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-top:48px}
+.price-card{border:1px solid var(--g200);border-radius:16px;padding:28px;position:relative;transition:all .2s;background:#fff}
+.price-card.popular{border-color:var(--blue);box-shadow:0 0 0 2px rgba(37,99,235,.15)}
+.popular-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--blue);color:#fff;font-size:.7rem;font-weight:700;padding:3px 14px;border-radius:99px;letter-spacing:.05em;white-space:nowrap}
+.price-name{font-size:.8rem;font-weight:700;color:var(--g500);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.price-amt{font-size:2rem;font-weight:700;color:var(--navy);letter-spacing:-.03em}
+.price-amt sup{font-size:1rem;font-weight:600;vertical-align:top;margin-top:6px;display:inline-block}
+.price-period{font-size:.8rem;color:var(--g500);margin-top:2px;margin-bottom:20px}
+.price-features{list-style:none;margin-bottom:24px}
+.price-features li{font-size:.82rem;color:var(--g700);padding:6px 0;border-bottom:1px solid var(--g200);display:flex;align-items:center;gap:8px}
+.price-features li:last-child{border-bottom:none}
+.price-features li::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0}
+.price-btn{display:block;text-align:center;padding:11px;border-radius:8px;font-weight:600;font-size:.875rem;transition:all .15s}
+.price-btn-primary{background:var(--blue);color:#fff}
+.price-btn-primary:hover{background:var(--blue-d)}
+.price-btn-outline{background:#fff;color:var(--blue);border:1.5px solid var(--blue)}
+.price-btn-outline:hover{background:var(--blue-l)}
+
+/* CONTACT */
+.contact{background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 100%);color:#fff}
+.contact .sec-label{color:var(--blue-m)}
+.contact .sec-title{color:#fff}
+.contact .sec-sub{color:var(--blue-m)}
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center;margin-top:40px}
+.contact-info p{color:var(--blue-m);margin-bottom:24px;line-height:1.7;font-size:.95rem}
+.contact-item{display:flex;align-items:center;gap:10px;color:var(--blue-m);font-size:.875rem;margin-bottom:12px}
+.contact-item strong{color:#fff}
+form{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:14px;padding:28px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:.8rem;font-weight:600;color:var(--blue-m);margin-bottom:6px}
+.form-group input,.form-group textarea,.form-group select{
+  width:100%;padding:10px 14px;border-radius:8px;border:1px solid rgba(255,255,255,.2);
+  background:rgba(255,255,255,.1);color:#fff;font-family:var(--font);font-size:.875rem;outline:none;
+  transition:border-color .15s;
+}
+.form-group input::placeholder,.form-group textarea::placeholder{color:rgba(255,255,255,.4)}
+.form-group input:focus,.form-group textarea:focus{border-color:rgba(255,255,255,.5)}
+.form-group textarea{height:90px;resize:none}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.submit-btn{
+  width:100%;padding:13px;background:#fff;color:var(--blue);
+  border:none;border-radius:9px;font-weight:700;font-size:.925rem;
+  cursor:pointer;font-family:var(--font);transition:all .15s;
+}
+.submit-btn:hover{background:var(--blue-l);transform:translateY(-1px)}
+.form-note{font-size:.72rem;color:rgba(255,255,255,.4);text-align:center;margin-top:10px}
+
+/* FOOTER */
+footer{background:var(--navy);color:rgba(255,255,255,.5);padding:32px 0}
+.foot-inner{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px}
+.foot-logo{font-size:1rem;font-weight:700;color:#fff}
+.foot-links{display:flex;gap:20px}
+.foot-links a{color:rgba(255,255,255,.5);font-size:.8rem;transition:color .15s}
+.foot-links a:hover{color:#fff}
+.foot-copy{font-size:.78rem}
+
+/* TOAST */
+.toast{
+  position:fixed;bottom:24px;right:24px;
+  background:var(--navy);color:#fff;
+  padding:12px 20px;border-radius:10px;
+  font-size:.875rem;font-weight:500;
+  transform:translateY(80px);opacity:0;
+  transition:all .3s;z-index:999;
+  display:flex;align-items:center;gap:8px;
+  box-shadow:0 8px 24px rgba(0,0,0,.2);
+}
+.toast.show{transform:translateY(0);opacity:1}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .nav-links,.nav-btn{display:none}
+  .hamburger{display:flex}
+  .mobile-menu{
+    display:none;position:fixed;top:62px;left:0;right:0;
+    background:#fff;border-bottom:1px solid var(--g200);
+    padding:20px 24px;z-index:99;flex-direction:column;gap:16px;
+    box-shadow:0 4px 20px rgba(0,0,0,.1);
+  }
+  .mobile-menu.open{display:flex}
+  .mobile-menu a{color:var(--g700);font-weight:500;font-size:.95rem;padding:8px 0;border-bottom:1px solid var(--g200)}
+  .mobile-menu a:last-child{border-bottom:none;background:var(--blue);color:#fff;text-align:center;border-radius:8px;padding:12px}
+  .hero-grid,.contact-grid{grid-template-columns:1fr}
+  .pipe-card{display:none}
+  .hero h1{font-size:2rem}
+  .steps-grid,.feat-grid,.price-grid{grid-template-columns:1fr}
+  .form-row{grid-template-columns:1fr}
+  section{padding:56px 0}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-inner">
+    <a class="logo" href="#">
+      <div class="logo-dot"></div>
+      Migranix
+    </a>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#contact">Contact</a>
+    </div>
+    <div class="nav-actions">
+      <button class="nav-login-btn" onclick="openModal('loginModal')">Log In</button>
+      <a class="nav-btn" href="#contact">Book Demo</a>
+    </div>
+    <button class="hamburger" onclick="toggleMenu()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+  <div class="mobile-menu" id="mobileMenu">
+    <a href="#how" onclick="toggleMenu()">How it works</a>
+    <a href="#features" onclick="toggleMenu()">Features</a>
+    <a href="#pricing" onclick="toggleMenu()">Pricing</a>
+    <a href="#contact" onclick="toggleMenu()">Book a Free Demo — migranix.in</a>
+    <button class="mobile-login-btn" onclick="toggleMenu();openModal('loginModal')">Log In to Dashboard</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-grid">
+      <div>
+        <div class="badge"><div class="badge-dot"></div>Migranix · Built for Indian SMEs</div>
+        <h1>Your data, <em>clean and migrated</em> — without the chaos</h1>
+        <p>DataFlow parses, cleans, validates, and migrates your business data to Snowflake or cloud storage. No data team required.</p>
+        <div class="hero-btns">
+          <a class="btn-p" href="#contact">Start Free Trial →</a>
+          <a class="btn-s" href="#how">See How It Works</a>
+        </div>
+        <div class="hero-stats">
+          <div class="stat">
+            <div class="stat-num">9+</div>
+            <div class="stat-lbl">File formats</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">₹4,999</div>
+            <div class="stat-lbl">Starting/month</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">24hr</div>
+            <div class="stat-lbl">Support SLA</div>
+          </div>
+        </div>
+      </div>
+      <div class="pipe-card">
+        <div class="pipe-title">Live pipeline</div>
+        <div class="pipe-row">
+          <div class="pipe-ico ic1">📂</div>
+          <div class="pipe-info">
+            <div class="pipe-name">Upload File</div>
+            <div class="pipe-desc">CSV, Excel, JSON, Parquet, Avro, ORC, XML</div>
+          </div>
+          <div class="ptag t1">Input</div>
+        </div>
+        <div class="pipe-row">
+          <div class="pipe-ico ic2">🔍</div>
+          <div class="pipe-info">
+            <div class="pipe-name">Parse & Flatten</div>
+            <div class="pipe-desc">Lateral flatten · Auto-detect structure</div>
+          </div>
+          <div class="ptag t2">Auto</div>
+        </div>
+        <div class="pipe-row">
+          <div class="pipe-ico ic3">🧹</div>
+          <div class="pipe-info">
+            <div class="pipe-name">Clean & Validate</div>
+            <div class="pipe-desc">Trim · Types · Duplicates · Outliers</div>
+          </div>
+          <div class="ptag t3">Smart</div>
+        </div>
+        <div class="pipe-row">
+          <div class="pipe-ico ic4">❄️</div>
+          <div class="pipe-info">
+            <div class="pipe-name">Load to Snowflake</div>
+            <div class="pipe-desc">Auto DDL · 4 load modes · Audit trail</div>
+          </div>
+          <div class="ptag t4">Instant</div>
+        </div>
+        <div class="pipe-row">
+          <div class="pipe-ico ic5">☁️</div>
+          <div class="pipe-info">
+            <div class="pipe-name">Export Anywhere</div>
+            <div class="pipe-desc">AWS S3 · Azure Blob · Google Cloud</div>
+          </div>
+          <div class="ptag t5">Done</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how" id="how">
+  <div class="container">
+    <div class="sec-label">Process</div>
+    <div class="sec-title">From messy data to clean destination</div>
+    <p class="sec-sub">Three steps. No data team. No custom scripts. Works on any file type.</p>
+    <div class="steps-grid">
+      <div class="step-card">
+        <div class="step-num">STEP 01</div>
+        <div class="step-ico">📤</div>
+        <h3>Upload your file</h3>
+        <p>CSV, Excel, JSON, Parquet, Avro, ORC, XML — drag and drop any format. DataFlow auto-detects the structure.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">STEP 02</div>
+        <div class="step-ico">⚡</div>
+        <h3>We clean it automatically</h3>
+        <p>Trims whitespace, fixes data types, removes duplicates, flags outliers, converts dates — with a full reason trail for every removed row.</p>
+      </div>
+      <div class="step-card">
+        <div class="step-num">STEP 03</div>
+        <div class="step-ico">🚀</div>
+        <h3>Push to your destination</h3>
+        <p>Load directly to Snowflake, AWS S3, Azure Blob, or Google Cloud. Download in 9 formats. Table auto-created if it doesn't exist.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="sec-label">Features</div>
+    <div class="sec-title">Everything your data team needs</div>
+    <p class="sec-sub">Without hiring a data team.</p>
+    <div class="feat-grid">
+      <div class="feat-card">
+        <div class="feat-ico">🔍</div>
+        <h3>Lateral JSON Flattening</h3>
+        <p>Recursive flatten mirrors Snowflake's LATERAL FLATTEN. Any nested JSON becomes a clean flat table automatically.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-ico">🧹</div>
+        <h3>Smart Data Cleaning</h3>
+        <p>Vectorised cleaning engine. Trims, infers types, detects dates, removes nulls and duplicates — all with a reason column explaining every decision.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-ico">❄️</div>
+        <h3>Snowflake Ready</h3>
+        <p>Auto-generates CREATE TABLE DDL from your schema. Supports Append, Overwrite, and Recreate modes. One click to load.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-ico">☁️</div>
+        <h3>Multi-Cloud Delivery</h3>
+        <p>Push cleaned data directly to AWS S3, Azure Blob Storage, or Google Cloud Storage in any of 9 output formats.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-ico">📋</div>
+        <h3>Full Audit Trail</h3>
+        <p>Every removed row gets a detailed reason column — Data missing, Duplicate row, Statistical outlier — downloadable as a separate file.</p>
+      </div>
+      <div class="feat-card">
+        <div class="feat-ico">⚡</div>
+        <h3>150MB+ Files in Seconds</h3>
+        <p>SHA-256 result caching. Vectorised pandas/numpy operations. Zero recomputation on repeated runs. Built for production scale.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <div class="sec-label">Pricing</div>
+    <div class="sec-title">Right-sized for Indian SMEs</div>
+    <p class="sec-sub">All prices in INR. GST extra. Annual plan saves 2 months.</p>
+    <div class="price-grid">
+      <div class="price-card">
+        <div class="price-name">Starter</div>
+        <div class="price-amt"><sup>₹</sup>4,999</div>
+        <div class="price-period">per month · 2 users</div>
+        <ul class="price-features">
+          <li>2 active projects</li>
+          <li>50MB file limit</li>
+          <li>CSV, Excel, JSON</li>
+          <li>Snowflake + S3</li>
+          <li>Email support (48hr)</li>
+          <li>7-day audit trail</li>
+        </ul>
+        <a href="#contact" class="price-btn price-btn-outline">Get Started</a>
+      </div>
+      <div class="price-card popular">
+        <div class="popular-badge">Most Popular</div>
+        <div class="price-name">Growth</div>
+        <div class="price-amt"><sup>₹</sup>14,999</div>
+        <div class="price-period">per month · 10 users</div>
+        <ul class="price-features">
+          <li>10 active projects</li>
+          <li>500MB file limit</li>
+          <li>All 9 file formats</li>
+          <li>MySQL + PostgreSQL</li>
+          <li>All cloud providers</li>
+          <li>Job scheduler</li>
+          <li>90-day audit trail</li>
+          <li>Rollback support</li>
+          <li>Chat + email (24hr)</li>
+        </ul>
+        <a href="#contact" class="price-btn price-btn-primary">Get Started</a>
+      </div>
+      <div class="price-card">
+        <div class="price-name">Enterprise</div>
+        <div class="price-amt" style="font-size:1.5rem;margin-top:8px">Custom</div>
+        <div class="price-period">Unlimited everything</div>
+        <ul class="price-features">
+          <li>Unlimited users</li>
+          <li>Unlimited file size</li>
+          <li>Custom connectors</li>
+          <li>Real-time CDC</li>
+          <li>White-label option</li>
+          <li>Dedicated account manager</li>
+          <li>99.9% SLA with credits</li>
+        </ul>
+        <a href="#contact" class="price-btn price-btn-outline">Contact Us</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section class="contact" id="contact">
+  <div class="container">
+    <div class="sec-label">Get In Touch</div>
+    <div class="sec-title">Book a free 30-minute demo</div>
+    <p class="sec-sub">We'll run a live migration on a sample of your actual data. No commitment.</p>
+    <div class="contact-grid">
+      <div class="contact-info">
+        <p>We work with operations, IT, and finance teams at Indian companies with 50–500 employees who are moving to cloud or cleaning years of legacy data.</p>
+        <div class="contact-item">📧 <div><strong>Email</strong><br>support@migranix.in</div></div>
+        <div class="contact-item">🌐 <div><strong>Website</strong><br>migranix.in</div></div>
+        <div class="contact-item">📍 <div><strong>Location</strong><br>India (IST support hours)</div></div>
+        <div class="contact-item">⏱️ <div><strong>Response time</strong><br>Within 4 business hours</div></div>
+        <div class="contact-item">💰 <div><strong>Migration projects</strong><br>Starting at ₹7,00,000</div></div>
+      </div>
+
+      <!-- ═══════════════════════════════════════════════════════════
+           ZOHO FORMS EMBED
+           After you create your form in Zoho Forms:
+           1. Open your form → Share → Embed
+           2. Copy the iframe src URL
+           3. Replace  YOUR_ZOHO_FORM_EMBED_URL  below with that URL
+           The iframe height can be adjusted — 580px fits most screens.
+           ═══════════════════════════════════════════════════════════ -->
+      <div class="zoho-form-wrapper">
+        <iframe
+          id="zohoForm"
+          aria-label="Book a Demo — Migranix"
+          width="100%"
+          height="580"
+          src="YOUR_ZOHO_FORM_EMBED_URL"
+          style="border:none;border-radius:12px;background:#fff;"
+          loading="lazy"
+        ></iframe>
+
+        <!-- FALLBACK: shown only if Zoho iframe hasn't been connected yet -->
+        <div id="formFallback" class="form-fallback" style="display:none;">
+          <form id="contactForm" onsubmit="handleSubmit(event)">
+            <div class="form-row">
+              <div class="form-group">
+                <label>Your Name *</label>
+                <input type="text" placeholder="Ravi Kumar" required/>
+              </div>
+              <div class="form-group">
+                <label>Company *</label>
+                <input type="text" placeholder="Acme Pvt Ltd" required/>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Work Email *</label>
+              <input type="email" placeholder="ravi@company.com" required/>
+            </div>
+            <div class="form-group">
+              <label>What are you trying to migrate?</label>
+              <select>
+                <option value="">Select...</option>
+                <option>MySQL / SQL Server → Snowflake</option>
+                <option>Excel / CSV files → Cloud storage</option>
+                <option>Legacy ERP data → Modern database</option>
+                <option>On-premise → AWS / Azure / GCP</option>
+                <option>Other / Not sure yet</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Anything else?</label>
+              <textarea placeholder="Rough data size, timeline, current pain points..."></textarea>
+            </div>
+            <button type="submit" class="submit-btn">Book Free Demo →</button>
+            <p class="form-note">No spam. No sales calls without permission. Reply within 4 hours.</p>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="foot-inner">
+      <div class="foot-logo">🔵 Migranix</div>
+      <div class="foot-links">
+        <a href="#how">How it works</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#contact">Contact</a>
+        <a href="mailto:support@migranix.in">support@migranix.in</a>
+      </div>
+      <div class="foot-copy">© 2026 Migranix Technologies Pvt Ltd · migranix.in</div>
+    </div>
+  </div>
+</footer>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     AUTH MODALS — Login · Sign Up · Forgot Password
+     All three modals share one overlay. JS switches between them.
+     ═══════════════════════════════════════════════════════════════════ -->
+
+<!-- OVERLAY -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeAllModals()"></div>
+
+<!-- ── LOGIN MODAL ─────────────────────────────────────────────────── -->
+<div class="modal" id="loginModal" role="dialog" aria-modal="true" aria-labelledby="loginTitle">
+  <button class="modal-close" onclick="closeAllModals()" aria-label="Close">✕</button>
+
+  <div class="modal-logo">
+    <div class="modal-logo-dot"></div>
+    Migranix
+  </div>
+
+  <h2 class="modal-title" id="loginTitle">Welcome back</h2>
+  <p class="modal-sub">Log in to your dashboard</p>
+
+  <form class="auth-form" id="loginForm" onsubmit="handleLogin(event)" novalidate>
+    <div class="auth-field">
+      <label for="loginEmail">Work Email</label>
+      <input id="loginEmail" type="email" placeholder="you@company.com"
+             autocomplete="email" required/>
+      <span class="field-err" id="loginEmailErr"></span>
+    </div>
+    <div class="auth-field">
+      <label for="loginPassword">
+        Password
+        <button type="button" class="forgot-link" onclick="switchModal('loginModal','forgotModal')">
+          Forgot password?
+        </button>
+      </label>
+      <div class="pass-wrap">
+        <input id="loginPassword" type="password" placeholder="••••••••"
+               autocomplete="current-password" required/>
+        <button type="button" class="pass-toggle" onclick="togglePass('loginPassword',this)"
+                aria-label="Show password">👁</button>
+      </div>
+      <span class="field-err" id="loginPassErr"></span>
+    </div>
+
+    <label class="remember-row">
+      <input type="checkbox" id="rememberMe"/> Remember me for 30 days
+    </label>
+
+    <button type="submit" class="auth-submit" id="loginSubmit">
+      <span class="btn-text">Log In →</span>
+      <span class="btn-spinner" style="display:none">⏳</span>
+    </button>
+  </form>
+
+  <div class="auth-divider"><span>or continue with</span></div>
+
+  <div class="social-btns">
+    <button class="social-btn" onclick="handleSocialLogin('google')">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+        <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+        <path d="M3.964 10.707A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.707V4.961H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.039l3.007-2.332z" fill="#FBBC05"/>
+        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.293C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+      </svg>
+      Google
+    </button>
+    <button class="social-btn" onclick="handleSocialLogin('microsoft')">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <rect x="0"  y="0"  width="8.5" height="8.5" fill="#F25022"/>
+        <rect x="9.5" y="0"  width="8.5" height="8.5" fill="#7FBA00"/>
+        <rect x="0"  y="9.5" width="8.5" height="8.5" fill="#00A4EF"/>
+        <rect x="9.5" y="9.5" width="8.5" height="8.5" fill="#FFB900"/>
+      </svg>
+      Microsoft
+    </button>
+  </div>
+
+  <p class="auth-switch">
+    Don't have an account?
+    <button type="button" onclick="switchModal('loginModal','signupModal')">Sign up free</button>
+  </p>
+</div>
+
+<!-- ── SIGN UP MODAL ───────────────────────────────────────────────── -->
+<div class="modal" id="signupModal" role="dialog" aria-modal="true" aria-labelledby="signupTitle">
+  <button class="modal-close" onclick="closeAllModals()" aria-label="Close">✕</button>
+
+  <div class="modal-logo">
+    <div class="modal-logo-dot"></div>
+    Migranix
+  </div>
+
+  <h2 class="modal-title" id="signupTitle">Create your account</h2>
+  <p class="modal-sub">Free 14-day trial · No credit card required</p>
+
+  <form class="auth-form" id="signupForm" onsubmit="handleSignup(event)" novalidate>
+    <div class="form-row-auth">
+      <div class="auth-field">
+        <label for="signupFirst">First Name</label>
+        <input id="signupFirst" type="text" placeholder="Ravi" autocomplete="given-name" required/>
+      </div>
+      <div class="auth-field">
+        <label for="signupLast">Last Name</label>
+        <input id="signupLast" type="text" placeholder="Kumar" autocomplete="family-name" required/>
+      </div>
+    </div>
+    <div class="auth-field">
+      <label for="signupCompany">Company Name</label>
+      <input id="signupCompany" type="text" placeholder="Acme Pvt Ltd"
+             autocomplete="organization" required/>
+    </div>
+    <div class="auth-field">
+      <label for="signupEmail">Work Email</label>
+      <input id="signupEmail" type="email" placeholder="ravi@company.com"
+             autocomplete="email" required/>
+      <span class="field-err" id="signupEmailErr"></span>
+    </div>
+    <div class="auth-field">
+      <label for="signupPassword">Password</label>
+      <div class="pass-wrap">
+        <input id="signupPassword" type="password" placeholder="Min 8 characters"
+               autocomplete="new-password" required minlength="8"/>
+        <button type="button" class="pass-toggle" onclick="togglePass('signupPassword',this)"
+                aria-label="Show password">👁</button>
+      </div>
+      <div class="pass-strength" id="passStrength" style="display:none">
+        <div class="strength-bar"><div class="strength-fill" id="strengthFill"></div></div>
+        <span class="strength-label" id="strengthLabel"></span>
+      </div>
+    </div>
+    <div class="auth-field">
+      <label for="signupPlan">Plan</label>
+      <select id="signupPlan">
+        <option value="starter">Starter — ₹4,999/month</option>
+        <option value="growth" selected>Growth — ₹14,999/month (Most Popular)</option>
+        <option value="enterprise">Enterprise — Custom pricing</option>
+      </select>
+    </div>
+
+    <label class="remember-row">
+      <input type="checkbox" id="signupTerms" required/>
+      I agree to the <a href="#" style="color:var(--blue)">Terms of Service</a>
+      and <a href="#" style="color:var(--blue)">Privacy Policy</a>
+    </label>
+
+    <button type="submit" class="auth-submit" id="signupSubmit">
+      <span class="btn-text">Create Account →</span>
+      <span class="btn-spinner" style="display:none">⏳</span>
+    </button>
+  </form>
+
+  <p class="auth-switch">
+    Already have an account?
+    <button type="button" onclick="switchModal('signupModal','loginModal')">Log in</button>
+  </p>
+</div>
+
+<!-- ── FORGOT PASSWORD MODAL ──────────────────────────────────────── -->
+<div class="modal" id="forgotModal" role="dialog" aria-modal="true" aria-labelledby="forgotTitle">
+  <button class="modal-close" onclick="closeAllModals()" aria-label="Close">✕</button>
+
+  <div class="modal-logo">
+    <div class="modal-logo-dot"></div>
+    Migranix
+  </div>
+
+  <div id="forgotStep1">
+    <h2 class="modal-title" id="forgotTitle">Reset your password</h2>
+    <p class="modal-sub">Enter your email and we'll send a reset link within 2 minutes.</p>
+
+    <form class="auth-form" id="forgotForm" onsubmit="handleForgot(event)" novalidate>
+      <div class="auth-field">
+        <label for="forgotEmail">Work Email</label>
+        <input id="forgotEmail" type="email" placeholder="you@company.com"
+               autocomplete="email" required/>
+        <span class="field-err" id="forgotEmailErr"></span>
+      </div>
+      <button type="submit" class="auth-submit">
+        <span class="btn-text">Send Reset Link →</span>
+        <span class="btn-spinner" style="display:none">⏳</span>
+      </button>
+    </form>
+  </div>
+
+  <div id="forgotStep2" style="display:none;text-align:center;padding:16px 0">
+    <div style="font-size:2.5rem;margin-bottom:16px">📬</div>
+    <h3 style="font-size:1.1rem;font-weight:700;margin-bottom:8px">Check your inbox</h3>
+    <p style="font-size:.875rem;color:var(--g500);line-height:1.6">
+      We've sent a password reset link to<br>
+      <strong id="forgotEmailDisplay" style="color:var(--navy)"></strong>
+    </p>
+    <p style="font-size:.8rem;color:var(--g500);margin-top:12px">
+      Didn't receive it? Check spam or
+      <button type="button" onclick="document.getElementById('forgotStep1').style.display='';document.getElementById('forgotStep2').style.display='none'"
+              style="background:none;border:none;color:var(--blue);font-weight:600;cursor:pointer;font-size:.8rem">
+        try again
+      </button>
+    </p>
+  </div>
+
+  <p class="auth-switch">
+    Remember your password?
+    <button type="button" onclick="switchModal('forgotModal','loginModal')">Back to login</button>
+  </p>
+</div>
+
+<!-- ── AUTH STYLES ─────────────────────────────────────────────────── -->
+<style>
+/* Nav auth buttons */
+.nav-actions{display:flex;align-items:center;gap:10px}
+.nav-login-btn{
+  background:transparent;color:var(--navy);border:1.5px solid var(--g200);
+  padding:7px 16px;border-radius:8px;font-size:.875rem;font-weight:600;
+  cursor:pointer;font-family:var(--font);transition:all .15s;
+}
+.nav-login-btn:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-l)}
+.mobile-login-btn{
+  width:100%;background:var(--g50);color:var(--navy);border:1.5px solid var(--g200);
+  padding:11px;border-radius:8px;font-size:.9rem;font-weight:600;
+  cursor:pointer;font-family:var(--font);text-align:center;transition:all .15s;
+  margin-top:4px;
+}
+.mobile-login-btn:hover{border-color:var(--blue);color:var(--blue)}
+
+/* Overlay */
+.modal-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(15,23,42,.55);backdrop-filter:blur(4px);
+  z-index:200;animation:fadeIn .2s ease;
+}
+.modal-overlay.active{display:block}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes slideUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
+
+/* Modal base */
+.modal{
+  display:none;position:fixed;
+  top:50%;left:50%;transform:translate(-50%,-48%);
+  width:100%;max-width:440px;
+  background:#fff;border-radius:18px;
+  padding:36px 36px 28px;
+  box-shadow:0 24px 64px rgba(15,23,42,.18);
+  z-index:201;
+  max-height:92vh;overflow-y:auto;
+}
+.modal.active{display:block;animation:slideUp .25s ease}
+
+/* Modal header */
+.modal-close{
+  position:absolute;top:16px;right:18px;
+  background:none;border:none;color:var(--g500);
+  font-size:1rem;cursor:pointer;padding:4px 6px;
+  border-radius:6px;transition:all .15s;line-height:1;
+}
+.modal-close:hover{background:var(--g50);color:var(--navy)}
+.modal-logo{
+  display:flex;align-items:center;gap:7px;
+  font-size:1rem;font-weight:700;color:var(--navy);
+  margin-bottom:20px;
+}
+.modal-logo-dot{width:9px;height:9px;background:var(--blue);border-radius:50%}
+.modal-title{font-size:1.3rem;font-weight:700;color:var(--navy);margin-bottom:4px;letter-spacing:-.02em}
+.modal-sub{font-size:.85rem;color:var(--g500);margin-bottom:22px}
+
+/* Form fields */
+.auth-form{display:flex;flex-direction:column;gap:14px}
+.auth-field{display:flex;flex-direction:column;gap:5px}
+.auth-field label{
+  font-size:.8rem;font-weight:600;color:var(--g700);
+  display:flex;justify-content:space-between;align-items:center;
+}
+.auth-field input,.auth-field select{
+  padding:10px 13px;border:1.5px solid var(--g200);border-radius:9px;
+  font-size:.9rem;font-family:var(--font);color:var(--navy);
+  background:#fff;outline:none;transition:border-color .15s,box-shadow .15s;
+}
+.auth-field input:focus,.auth-field select:focus{
+  border-color:var(--blue);
+  box-shadow:0 0 0 3px rgba(37,99,235,.1);
+}
+.auth-field input.error{border-color:#dc2626}
+.field-err{font-size:.75rem;color:#dc2626;font-weight:500;min-height:16px}
+.form-row-auth{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+/* Password field */
+.pass-wrap{position:relative}
+.pass-wrap input{width:100%;padding-right:40px}
+.pass-toggle{
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;font-size:.9rem;
+  color:var(--g500);padding:2px;line-height:1;
+}
+
+/* Password strength */
+.pass-strength{margin-top:6px}
+.strength-bar{height:4px;background:var(--g200);border-radius:99px;overflow:hidden;margin-bottom:4px}
+.strength-fill{height:100%;border-radius:99px;transition:all .3s;width:0}
+.strength-label{font-size:.72rem;font-weight:600}
+
+/* Remember / terms row */
+.remember-row{
+  display:flex;align-items:center;gap:8px;
+  font-size:.82rem;color:var(--g700);cursor:pointer;
+  margin-top:2px;
+}
+.remember-row input{accent-color:var(--blue);width:15px;height:15px}
+
+/* Submit button */
+.auth-submit{
+  width:100%;padding:12px;
+  background:var(--blue);color:#fff;border:none;border-radius:9px;
+  font-weight:700;font-size:.95rem;cursor:pointer;
+  font-family:var(--font);transition:all .15s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  margin-top:4px;
+}
+.auth-submit:hover{background:var(--blue-d);transform:translateY(-1px);box-shadow:0 4px 12px rgba(37,99,235,.3)}
+.auth-submit:disabled{opacity:.6;cursor:not-allowed;transform:none}
+
+/* Forgot link */
+.forgot-link{
+  background:none;border:none;color:var(--blue);
+  font-size:.78rem;font-weight:600;cursor:pointer;
+  padding:0;font-family:var(--font);
+}
+.forgot-link:hover{text-decoration:underline}
+
+/* Divider */
+.auth-divider{
+  display:flex;align-items:center;gap:12px;
+  margin:18px 0 14px;color:var(--g500);font-size:.78rem;
+}
+.auth-divider::before,.auth-divider::after{
+  content:'';flex:1;height:1px;background:var(--g200);
+}
+
+/* Social buttons */
+.social-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px}
+.social-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  padding:10px;border:1.5px solid var(--g200);border-radius:9px;
+  background:#fff;color:var(--navy);font-size:.875rem;font-weight:600;
+  cursor:pointer;font-family:var(--font);transition:all .15s;
+}
+.social-btn:hover{border-color:var(--g500);background:var(--g50);transform:translateY(-1px)}
+
+/* Switch link */
+.auth-switch{
+  text-align:center;font-size:.83rem;color:var(--g500);
+  margin-top:16px;padding-top:16px;border-top:1px solid var(--g200);
+}
+.auth-switch button{
+  background:none;border:none;color:var(--blue);font-weight:700;
+  cursor:pointer;font-family:var(--font);font-size:.83rem;
+}
+.auth-switch button:hover{text-decoration:underline}
+
+/* Success state on submit button */
+.auth-submit.success{background:var(--green)}
+
+/* Responsive */
+@media(max-width:480px){
+  .modal{padding:28px 20px 22px;border-radius:14px;max-width:calc(100vw - 32px)}
+  .form-row-auth{grid-template-columns:1fr}
+  .social-btns{grid-template-columns:1fr}
+}
+@media(max-width:768px){
+  .nav-actions{gap:8px}
+  .nav-login-btn{padding:6px 12px;font-size:.8rem}
+}
+</style>
+
+<!-- ── AUTH JAVASCRIPT ─────────────────────────────────────────────── -->
+<script>
+/* ── Modal open / close / switch ───────────────────────────────── */
+function openModal(id){
+  document.getElementById('modalOverlay').classList.add('active');
+  document.getElementById(id).classList.add('active');
+  document.body.style.overflow='hidden';
+  // Focus first input
+  const first = document.getElementById(id).querySelector('input');
+  if(first) setTimeout(()=>first.focus(),100);
+}
+
+function closeAllModals(){
+  document.getElementById('modalOverlay').classList.remove('active');
+  document.querySelectorAll('.modal').forEach(m=>m.classList.remove('active'));
+  document.body.style.overflow='';
+}
+
+function switchModal(from, to){
+  document.getElementById(from).classList.remove('active');
+  document.getElementById(to).classList.add('active');
+  const first = document.getElementById(to).querySelector('input');
+  if(first) setTimeout(()=>first.focus(),80);
+}
+
+// Close on Escape key
+document.addEventListener('keydown', e=>{
+  if(e.key==='Escape') closeAllModals();
+});
+
+/* ── Show / hide password ──────────────────────────────────────── */
+function togglePass(inputId, btn){
+  const inp = document.getElementById(inputId);
+  const show = inp.type==='password';
+  inp.type = show ? 'text' : 'password';
+  btn.textContent = show ? '🙈' : '👁';
+  btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+}
+
+/* ── Password strength meter ───────────────────────────────────── */
+document.getElementById('signupPassword').addEventListener('input', function(){
+  const v = this.value;
+  const bar = document.getElementById('strengthFill');
+  const lbl = document.getElementById('strengthLabel');
+  const wrap = document.getElementById('passStrength');
+  if(!v){ wrap.style.display='none'; return; }
+  wrap.style.display='block';
+  let score = 0;
+  if(v.length>=8)  score++;
+  if(v.length>=12) score++;
+  if(/[A-Z]/.test(v)) score++;
+  if(/[0-9]/.test(v)) score++;
+  if(/[^A-Za-z0-9]/.test(v)) score++;
+  const levels=[
+    {w:'20%', c:'#ef4444', t:'Very weak'},
+    {w:'40%', c:'#f97316', t:'Weak'},
+    {w:'60%', c:'#eab308', t:'Fair'},
+    {w:'80%', c:'#3b82f6', t:'Good'},
+    {w:'100%',c:'#16a34a', t:'Strong'},
+  ];
+  const lvl = levels[Math.min(score,4)];
+  bar.style.width=lvl.w; bar.style.background=lvl.c;
+  lbl.textContent=lvl.t; lbl.style.color=lvl.c;
+});
+
+/* ── Form validation helpers ───────────────────────────────────── */
+function validateEmail(email){
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function setError(inputId, errId, msg){
+  const inp = document.getElementById(inputId);
+  const err = document.getElementById(errId);
+  if(inp) inp.classList.toggle('error', !!msg);
+  if(err) err.textContent = msg||'';
+}
+
+function setLoading(btnId, loading){
+  const btn = document.getElementById(btnId);
+  if(!btn) return;
+  btn.disabled = loading;
+  btn.querySelector('.btn-text').style.display = loading ? 'none' : '';
+  btn.querySelector('.btn-spinner').style.display = loading ? '' : 'none';
+}
+
+/* ── LOGIN handler ─────────────────────────────────────────────── */
+function handleLogin(e){
+  e.preventDefault();
+  let valid = true;
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPassword').value;
+
+  // Clear previous errors
+  setError('loginEmail','loginEmailErr','');
+  setError('loginPassword','loginPassErr','');
+
+  if(!validateEmail(email)){
+    setError('loginEmail','loginEmailErr','Please enter a valid email address');
+    valid=false;
+  }
+  if(pass.length < 6){
+    setError('loginPassword','loginPassErr','Password must be at least 6 characters');
+    valid=false;
+  }
+  if(!valid) return;
+
+  setLoading('loginSubmit', true);
+
+  /* ── Replace the setTimeout below with your actual auth API call ──
+     Example with Supabase:
+     supabase.auth.signInWithPassword({email, password:pass})
+       .then(({data,error})=>{
+         if(error){ setError('loginEmail','loginEmailErr',error.message); setLoading('loginSubmit',false); }
+         else{ window.location.href='/dashboard'; }
+       });
+  ────────────────────────────────────────────────────────────────── */
+  setTimeout(()=>{
+    setLoading('loginSubmit', false);
+    // Simulate: wrong credentials on first try, success on second
+    const btn = document.getElementById('loginSubmit');
+    if(!btn.dataset.tried){
+      btn.dataset.tried = '1';
+      setError('loginEmail','loginEmailErr','Invalid email or password. Please try again.');
+      setError('loginPassword','loginPassErr',' ');
+    } else {
+      btn.classList.add('success');
+      btn.querySelector('.btn-text').style.display='';
+      btn.querySelector('.btn-text').textContent='✅ Logged in! Redirecting…';
+      btn.querySelector('.btn-spinner').style.display='none';
+      setTimeout(()=>{
+        closeAllModals();
+        btn.classList.remove('success');
+        btn.querySelector('.btn-text').textContent='Log In →';
+        delete btn.dataset.tried;
+      }, 2000);
+    }
+  }, 1200);
+}
+
+/* ── SIGNUP handler ────────────────────────────────────────────── */
+function handleSignup(e){
+  e.preventDefault();
+  const email = document.getElementById('signupEmail').value.trim();
+  const pass  = document.getElementById('signupPassword').value;
+  const terms = document.getElementById('signupTerms').checked;
+  let valid = true;
+
+  setError('signupEmail','signupEmailErr','');
+
+  if(!validateEmail(email)){
+    setError('signupEmail','signupEmailErr','Please enter a valid work email');
+    valid=false;
+  }
+  if(pass.length < 8){
+    setError('signupEmail','signupEmailErr','');
+    alert('Password must be at least 8 characters');
+    valid=false;
+  }
+  if(!terms){
+    alert('Please accept the Terms of Service to continue');
+    valid=false;
+  }
+  if(!valid) return;
+
+  setLoading('signupSubmit', true);
+
+  /* ── Replace with Supabase signup:
+     supabase.auth.signUp({email, password:pass,
+       options:{data:{company:document.getElementById('signupCompany').value}}})
+       .then(({data,error})=>{ ... });
+  ────────────────────────────────────────────────────────────────── */
+  setTimeout(()=>{
+    setLoading('signupSubmit', false);
+    const btn = document.getElementById('signupSubmit');
+    btn.classList.add('success');
+    btn.querySelector('.btn-text').style.display='';
+    btn.querySelector('.btn-text').textContent='✅ Account created! Check your email.';
+    btn.querySelector('.btn-spinner').style.display='none';
+    setTimeout(()=>{
+      closeAllModals();
+      btn.classList.remove('success');
+      btn.querySelector('.btn-text').textContent='Create Account →';
+    }, 3000);
+  }, 1500);
+}
+
+/* ── FORGOT PASSWORD handler ───────────────────────────────────── */
+function handleForgot(e){
+  e.preventDefault();
+  const email = document.getElementById('forgotEmail').value.trim();
+  setError('forgotEmail','forgotEmailErr','');
+
+  if(!validateEmail(email)){
+    setError('forgotEmail','forgotEmailErr','Please enter a valid email address');
+    return;
+  }
+  const btn = e.target.querySelector('.auth-submit');
+  btn.disabled=true;
+  btn.querySelector('.btn-text').style.display='none';
+  btn.querySelector('.btn-spinner').style.display='';
+
+  try {
+    await fetch(`${API_URL}/api/auth/forgot-password`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email}),
+    });
+    document.getElementById('forgotEmailDisplay').textContent = email;
+    document.getElementById('forgotStep1').style.display='none';
+    document.getElementById('forgotStep2').style.display='';
+  } catch(err) {
+    btn.disabled=false;
+    btn.querySelector('.btn-text').style.display='';
+    btn.querySelector('.btn-spinner').style.display='none';
+    setErr('forgotEmail','forgotEmailErr','Network error — try again');
+  }
+}
+
+function handleSocialLogin(provider){
+  alert(`${provider} login coming soon. Use email/password for now.`);
+}
+</script>
+
+<style>
+.zoho-form-wrapper{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:14px;overflow:hidden;padding:4px}
+.form-fallback{padding:24px}
+</style>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════
+   CONFIG — update after Render deploy
+   ══════════════════════════════════════════════════════════════════ */
+const API_URL = 'https://migranix-api.onrender.com';
+
+/* ── Token helpers ─────────────────────────────────────────────── */
+const Auth = {
+  set(t,r){ localStorage.setItem('mx_token',t); if(r) localStorage.setItem('mx_refresh',r); },
+  get(){ return localStorage.getItem('mx_token'); },
+  clear(){ localStorage.removeItem('mx_token'); localStorage.removeItem('mx_refresh'); },
+  isLoggedIn(){ return !!localStorage.getItem('mx_token'); },
+};
+
+function updateNavAuth(){
+  const loggedIn = Auth.isLoggedIn();
+  const lb = document.querySelector('.nav-login-btn');
+  const mb = document.querySelector('.mobile-login-btn');
+  if(!lb) return;
+  if(loggedIn){
+    lb.textContent='Dashboard'; lb.onclick=()=>{ window.location.href='#dashboard'; };
+    if(mb){ mb.textContent='Go to Dashboard'; }
+  } else {
+    lb.textContent='Log In'; lb.onclick=()=>openModal('loginModal');
+    if(mb){ mb.textContent='Log In to Dashboard'; mb.onclick=()=>{ toggleMenu(); openModal('loginModal'); }; }
+  }
+}
+
+/* ── Modal helpers ─────────────────────────────────────────────── */
+function openModal(id){
+  document.getElementById('modalOverlay').classList.add('active');
+  document.getElementById(id).classList.add('active');
+  document.body.style.overflow='hidden';
+  const f=document.getElementById(id).querySelector('input');
+  if(f) setTimeout(()=>f.focus(),100);
+}
+function closeAllModals(){
+  document.getElementById('modalOverlay').classList.remove('active');
+  document.querySelectorAll('.modal').forEach(m=>m.classList.remove('active'));
+  document.body.style.overflow='';
+}
+function switchModal(from,to){
+  document.getElementById(from).classList.remove('active');
+  document.getElementById(to).classList.add('active');
+  const f=document.getElementById(to).querySelector('input');
+  if(f) setTimeout(()=>f.focus(),80);
+}
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeAllModals(); });
+
+function togglePass(id,btn){
+  const inp=document.getElementById(id); const show=inp.type==='password';
+  inp.type=show?'text':'password'; btn.textContent=show?'🙈':'👁';
+}
+function isEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+function setErr(iId,eId,msg){
+  const i=document.getElementById(iId),e=document.getElementById(eId);
+  if(i) i.classList.toggle('error',!!msg); if(e) e.textContent=msg||'';
+}
+function setLoading(bId,on){
+  const b=document.getElementById(bId); if(!b) return;
+  b.disabled=on;
+  b.querySelector('.btn-text').style.display=on?'none':'';
+  b.querySelector('.btn-spinner').style.display=on?'':'none';
+}
+
+/* ── LOGIN ─────────────────────────────────────────────────────── */
+async function handleLogin(e){
+  e.preventDefault();
+  const email=document.getElementById('loginEmail').value.trim();
+  const pass=document.getElementById('loginPassword').value;
+  setErr('loginEmail','loginEmailErr',''); setErr('loginPassword','loginPassErr','');
+  if(!isEmail(email)){ setErr('loginEmail','loginEmailErr','Enter a valid email'); return; }
+  if(pass.length<6){ setErr('loginPassword','loginPassErr','Password too short'); return; }
+  setLoading('loginSubmit',true);
+  try{
+    const res=await fetch(`${API_URL}/api/auth/login`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email,password:pass})
+    });
+    const data=await res.json();
+    if(!res.ok){ setErr('loginEmail','loginEmailErr',data.detail||'Invalid email or password'); setLoading('loginSubmit',false); return; }
+    Auth.set(data.access_token,data.refresh_token);
+    const btn=document.getElementById('loginSubmit');
+    btn.classList.add('success'); btn.disabled=false;
+    btn.querySelector('.btn-spinner').style.display='none';
+    btn.querySelector('.btn-text').style.display='';
+    btn.querySelector('.btn-text').textContent='✅ Logged in!';
+    setTimeout(()=>{ closeAllModals(); updateNavAuth();
+      btn.classList.remove('success'); btn.querySelector('.btn-text').textContent='Log In →'; },1500);
+  } catch(err){ setErr('loginEmail','loginEmailErr','Network error — try again'); setLoading('loginSubmit',false); }
+}
+
+/* ── SIGNUP ────────────────────────────────────────────────────── */
+async function handleSignup(e){
+  e.preventDefault();
+  const first=document.getElementById('signupFirst').value.trim();
+  const last=document.getElementById('signupLast').value.trim();
+  const company=document.getElementById('signupCompany').value.trim();
+  const email=document.getElementById('signupEmail').value.trim();
+  const pass=document.getElementById('signupPassword').value;
+  const plan=document.getElementById('signupPlan').value;
+  const terms=document.getElementById('signupTerms').checked;
+  setErr('signupEmail','signupEmailErr','');
+  if(!isEmail(email)){ setErr('signupEmail','signupEmailErr','Enter a valid email'); return; }
+  if(pass.length<8){ alert('Password must be at least 8 characters'); return; }
+  if(!terms){ alert('Please accept the Terms of Service'); return; }
+  setLoading('signupSubmit',true);
+  try{
+    const res=await fetch(`${API_URL}/api/auth/signup`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email,password:pass,full_name:`${first} ${last}`,company,plan})
+    });
+    const data=await res.json();
+    if(!res.ok){ setErr('signupEmail','signupEmailErr',data.detail||'Signup failed'); setLoading('signupSubmit',false); return; }
+    const btn=document.getElementById('signupSubmit');
+    btn.classList.add('success'); btn.disabled=false;
+    btn.querySelector('.btn-spinner').style.display='none';
+    btn.querySelector('.btn-text').style.display='';
+    btn.querySelector('.btn-text').textContent='✅ Account created! Check your email.';
+    setTimeout(()=>{ closeAllModals(); switchModal('signupModal','loginModal');
+      btn.classList.remove('success'); btn.querySelector('.btn-text').textContent='Create Account →'; },4000);
+  } catch(err){ setErr('signupEmail','signupEmailErr','Network error — try again'); setLoading('signupSubmit',false); }
+}
+
+/* ── CONTACT FORM ──────────────────────────────────────────────── */
+async function handleSubmit(e){
+  e.preventDefault();
+  const btn=e.target.querySelector('.submit-btn');
+  const orig=btn.textContent;
+  btn.textContent='Sending...'; btn.disabled=true;
+  try{
+    const res=await fetch(`${API_URL}/api/contact`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        name:e.target.querySelector('input[placeholder*="Ravi"]')?.value||'',
+        company:e.target.querySelector('input[placeholder*="Acme"]')?.value||'',
+        email:e.target.querySelector('input[type="email"]')?.value||'',
+        migration_type:e.target.querySelector('select')?.value||'',
+        message:e.target.querySelector('textarea')?.value||'',
+      })
+    });
+    const t=document.getElementById('toast');
+    t.classList.add('show'); e.target.reset();
+    setTimeout(()=>t.classList.remove('show'),5000);
+  } catch(err){
+    const t=document.getElementById('toast');
+    t.classList.add('show'); e.target.reset();
+    setTimeout(()=>t.classList.remove('show'),5000);
+  }
+  btn.textContent=orig; btn.disabled=false;
+}
+
+/* ── Zoho iframe fallback ──────────────────────────────────────── */
+(function(){
+  const iframe=document.getElementById('zohoForm');
+  const fallback=document.getElementById('formFallback');
+  if(iframe && iframe.src.includes('YOUR_ZOHO_FORM_EMBED_URL')){
+    iframe.style.display='none'; fallback.style.display='block';
+  }
+})();
+
+/* ── Mobile menu ───────────────────────────────────────────────── */
+function toggleMenu(){ document.getElementById('mobileMenu').classList.toggle('open'); }
+
+/* ── Active nav ────────────────────────────────────────────────── */
+const sections=document.querySelectorAll('section[id]');
+const navLinks=document.querySelectorAll('.nav-links a');
+window.addEventListener('scroll',()=>{
+  let cur='';
+  sections.forEach(s=>{ if(window.scrollY>=s.offsetTop-80) cur=s.getAttribute('id'); });
+  navLinks.forEach(a=>{ a.style.color=a.getAttribute('href')==='#'+cur?'var(--blue)':''; });
+});
+
+/* ── Init ──────────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', updateNavAuth);
+</script>
+</body>
+</html>
