@@ -938,6 +938,10 @@ var secs=document.querySelectorAll('section[id]');var nls=document.querySelector
 window.addEventListener('scroll',function(){var cur='';for(var i=0;i<secs.length;i++){if(window.scrollY>=secs[i].offsetTop-80)cur=secs[i].getAttribute('id');}for(var j=0;j<nls.length;j++){nls[j].style.color=nls[j].getAttribute('href')==='#'+cur?'var(--blue)':'';}});
 
 async function initAuth(){if(!sb)return;try{var s=await sb.auth.getSession();var user=s.data.session?s.data.session.user:null;updateNav(user);if(user){window.location.href='/app';}sb.auth.onAuthStateChange(function(ev,sess){updateNav(sess?sess.user:null);if(ev==='SIGNED_IN'&&sess){window.location.href='/app';}});}catch(e){}}
+
+// Auto-logout when user closes tab or browser
+window.addEventListener('beforeunload',function(){if(sb){navigator.sendBeacon(SUPA_URL+'/auth/v1/logout','');localStorage.clear();sessionStorage.clear();}});
+
 document.addEventListener('DOMContentLoaded',initAuth);
 </script>
 </body>
