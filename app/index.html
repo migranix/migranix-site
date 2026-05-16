@@ -160,6 +160,13 @@ async function handleLogout(){
   window.location.href='https://www.migranix.in';
 }
 
+// Auto-logout when user closes tab or browser
+window.addEventListener('beforeunload', function(){
+  navigator.sendBeacon(SUPA_URL+'/auth/v1/logout', '');
+  localStorage.clear();
+  sessionStorage.clear();
+});
+
 init();
 </script>
 </body>
