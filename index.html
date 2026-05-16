@@ -900,8 +900,17 @@ footer{background:var(--navy);color:rgba(255,255,255,.5);padding:32px 0}
 <script>
 var SUPA_URL='https://yxwlgwaalghvskulhmey.supabase.co';
 var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4d2xnd2FhbGdodnNrdWxobWV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODEwODYsImV4cCI6MjA5NDQ1NzA4Nn0.QOZphIHDIebIkSX23LPjQXtr-iICT9dapzYMw11HBTw';
+
 var sb=null;
-try{sb=window.supabase.createClient(SUPA_URL,SUPA_KEY);}catch(e){console.warn('Supabase SDK not loaded:',e);}
+try{
+  sb=window.supabase.createClient(SUPA_URL,SUPA_KEY,{
+    auth:{
+      persistSession:true,
+      storageKey:'migranix-auth',
+      storage:window.sessionStorage
+    }
+  });
+}catch(e){console.warn('Supabase SDK not loaded:',e);}
 
 function openModal(id){document.getElementById('modalOverlay').classList.add('active');document.getElementById(id).classList.add('active');document.body.style.overflow='hidden';var f=document.getElementById(id).querySelector('input');if(f)setTimeout(function(){f.focus();},100);}
 function closeAllModals(){document.getElementById('modalOverlay').classList.remove('active');var m=document.querySelectorAll('.modal');for(var i=0;i<m.length;i++){m[i].classList.remove('active');}document.body.style.overflow='';}
@@ -937,10 +946,7 @@ function toggleMenu(){document.getElementById('mobileMenu').classList.toggle('op
 var secs=document.querySelectorAll('section[id]');var nls=document.querySelectorAll('.nav-links a');
 window.addEventListener('scroll',function(){var cur='';for(var i=0;i<secs.length;i++){if(window.scrollY>=secs[i].offsetTop-80)cur=secs[i].getAttribute('id');}for(var j=0;j<nls.length;j++){nls[j].style.color=nls[j].getAttribute('href')==='#'+cur?'var(--blue)':'';}});
 
-async function initAuth(){if(!sb)return;try{var s=await sb.auth.getSession();var user=s.data.session?s.data.session.user:null;updateNav(user);if(user){window.location.href='/app';}sb.auth.onAuthStateChange(function(ev,sess){updateNav(sess?sess.user:null);if(ev==='SIGNED_IN'&&sess){window.location.href='/app';}});}catch(e){}}
-
-// Auto-logout when user closes tab or browser
-window.addEventListener('beforeunload',function(){if(sb){navigator.sendBeacon(SUPA_URL+'/auth/v1/logout','');localStorage.clear();sessionStorage.clear();}});
+async function initAuth(){if(!sb)return;try{var s=await sb.auth.getSession();var user=s.data.session?s.data.session.user:null;updateNav(user);if(user){window.location.href='/app';return;}sb.auth.onAuthStateChange(function(ev,sess){updateNav(sess?sess.user:null);if(ev==='SIGNED_IN'&&sess){window.location.href='/app';}});}catch(e){}}
 
 document.addEventListener('DOMContentLoaded',initAuth);
 </script>
