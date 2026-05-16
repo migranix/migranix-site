@@ -1,0 +1,10 @@
+[server]
+maxUploadSize = 500
+enableXsrfProtection = false
+enableCORS = false
+
+[browser]
+gatherUsageStats = false
+
+[runner]
+magicEnabled = false
