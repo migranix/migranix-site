@@ -108,6 +108,21 @@ var SUPA_URL='https://yxwlgwaalghvskulhmey.supabase.co';
 var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4d2xnd2FhbGdodnNrdWxobWV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODEwODYsImV4cCI6MjA5NDQ1NzA4Nn0.QOZphIHDIebIkSX23LPjQXtr-iICT9dapzYMw11HBTw';
 var sb=window.supabase.createClient(SUPA_URL,SUPA_KEY);
 
+var SESSION_TIMEOUT=30*60*1000;
+function resetTimer(){localStorage.setItem('mx_last_active',Date.now().toString());}
+function checkTimeout(){
+  var last=localStorage.getItem('mx_last_active');
+  if(last&&(Date.now()-parseInt(last))>SESSION_TIMEOUT){
+    localStorage.clear();
+    sb.auth.signOut();
+    return true;
+  }
+  return false;
+}
+document.addEventListener('click',resetTimer);
+document.addEventListener('keydown',resetTimer);
+resetTimer();
+
 // Streamlit app URL on Render — update if your Render service name is different
 var STREAMLIT_URL='https://migranix-app.onrender.com';
 
@@ -117,6 +132,13 @@ async function init(){
   var frameEl=document.getElementById('appFrame');
   var userEl=document.getElementById('userDisplay');
   var logoutEl=document.getElementById('logoutBtn');
+
+  // Check if session timed out
+  if(checkTimeout()){
+    loadEl.style.display='none';
+    loginEl.style.display='block';
+    return;
+  }
 
   try{
     var sess=await sb.auth.getSession();
@@ -157,15 +179,9 @@ async function init(){
 
 async function handleLogout(){
   await sb.auth.signOut();
+  localStorage.clear();
   window.location.href='https://www.migranix.in';
 }
-
-// Auto-logout when user closes tab or browser
-window.addEventListener('beforeunload', function(){
-  navigator.sendBeacon(SUPA_URL+'/auth/v1/logout', '');
-  localStorage.clear();
-  sessionStorage.clear();
-});
 
 init();
 </script>
