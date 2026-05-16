@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Migranix — Data Cleaning Platform</title>
+<meta name="robots" content="noindex"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--blue:#2563eb;--navy:#0f172a;--g200:#e5e7eb;--g500:#6b7280;--font:'DM Sans',sans-serif}
+body{font-family:var(--font);background:#f8fafc;color:var(--navy);height:100vh;display:flex;flex-direction:column}
+
+/* NAV BAR — matches main site */
+.app-nav{
+  height:56px;background:#fff;border-bottom:1px solid var(--g200);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 24px;flex-shrink:0;
+  box-shadow:0 1px 4px rgba(0,0,0,.04);
+}
+.app-logo{display:flex;align-items:center;gap:8px;font-size:1.1rem;font-weight:700;color:var(--navy);text-decoration:none}
+.app-logo-dot{width:9px;height:9px;background:var(--blue);border-radius:50%}
+.app-badge{background:#eff6ff;color:var(--blue);font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:99px;letter-spacing:.05em;margin-left:8px}
+.app-nav-right{display:flex;align-items:center;gap:16px}
+.app-user{font-size:.82rem;color:var(--g500)}
+.app-user strong{color:var(--navy)}
+.app-btn{
+  background:#fff;color:var(--blue);border:1.5px solid var(--blue);
+  padding:6px 14px;border-radius:7px;font-size:.8rem;font-weight:600;
+  cursor:pointer;font-family:var(--font);transition:all .15s;text-decoration:none;
+}
+.app-btn:hover{background:#eff6ff}
+.app-btn-danger{border-color:#dc2626;color:#dc2626}
+.app-btn-danger:hover{background:#fef2f2}
+
+/* IFRAME — fills remaining space */
+.app-frame{flex:1;border:none;width:100%}
+
+/* LOADING STATE */
+.app-loading{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+}
+.app-loading .spinner{
+  width:36px;height:36px;border:3px solid var(--g200);border-top-color:var(--blue);
+  border-radius:50%;animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.app-loading p{color:var(--g500);font-size:.9rem}
+
+/* LOGIN REQUIRED */
+.login-box{
+  max-width:420px;margin:60px auto;text-align:center;
+  background:#fff;border-radius:16px;padding:44px 36px;
+  box-shadow:0 4px 24px rgba(0,0,0,.08);border:1px solid var(--g200);
+}
+.login-box h2{font-size:1.35rem;font-weight:700;margin:16px 0 8px}
+.login-box p{color:var(--g500);font-size:.9rem;line-height:1.6;margin-bottom:24px}
+.login-cta{
+  display:inline-block;background:var(--blue);color:#fff;
+  padding:13px 32px;border-radius:9px;font-weight:700;font-size:.95rem;
+  text-decoration:none;transition:all .15s;
+}
+.login-cta:hover{background:#1d4ed8;transform:translateY(-2px);box-shadow:0 6px 20px rgba(37,99,235,.3)}
+.login-note{color:#9ca3af;font-size:.76rem;margin-top:16px}
+
+/* Mobile */
+@media(max-width:640px){
+  .app-nav{padding:0 12px}
+  .app-user{display:none}
+  .app-badge{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="app-nav">
+  <a class="app-logo" href="https://www.migranix.in">
+    <div class="app-logo-dot"></div>
+    Migranix
+    <span class="app-badge">PLATFORM</span>
+  </a>
+  <div class="app-nav-right" id="navRight">
+    <span class="app-user" id="userDisplay"></span>
+    <a href="https://www.migranix.in" class="app-btn">← Back to Site</a>
+    <button class="app-btn app-btn-danger" id="logoutBtn" onclick="handleLogout()" style="display:none">Log Out</button>
+  </div>
+</nav>
+
+<!-- CONTENT — switches between loading / login / app -->
+<div class="app-loading" id="loadingState">
+  <div class="spinner"></div>
+  <p>Verifying your session...</p>
+</div>
+
+<div class="login-box" id="loginState" style="display:none">
+  <div style="font-size:2rem;margin-bottom:8px">🔒</div>
+  <h2>Login Required</h2>
+  <p>You need to sign in to access the Migranix Data Platform.<br>Log in on our website, then come back here.</p>
+  <a class="login-cta" href="https://www.migranix.in">Go to migranix.in →</a>
+  <div class="login-note">Free 14-day trial · No credit card required</div>
+</div>
+
+<iframe class="app-frame" id="appFrame" style="display:none" allow="clipboard-read; clipboard-write"></iframe>
+
+<script>
+var SUPA_URL='https://yxwlgwaalghvskulhmey.supabase.co';
+var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4d2xnd2FhbGdodnNrdWxobWV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODEwODYsImV4cCI6MjA5NDQ1NzA4Nn0.QOZphIHDIebIkSX23LPjQXtr-iICT9dapzYMw11HBTw';
+var sb=window.supabase.createClient(SUPA_URL,SUPA_KEY);
+
+// Streamlit app URL on Render — update if your Render service name is different
+var STREAMLIT_URL='https://migranix-app.onrender.com';
+
+async function init(){
+  var loadEl=document.getElementById('loadingState');
+  var loginEl=document.getElementById('loginState');
+  var frameEl=document.getElementById('appFrame');
+  var userEl=document.getElementById('userDisplay');
+  var logoutEl=document.getElementById('logoutBtn');
+
+  try{
+    var sess=await sb.auth.getSession();
+    var user=sess.data.session?sess.data.session.user:null;
+    var token=sess.data.session?sess.data.session.access_token:'';
+
+    if(!user){
+      // Not logged in — show login screen
+      loadEl.style.display='none';
+      loginEl.style.display='block';
+      return;
+    }
+
+    // Logged in — show the app
+    var name=user.user_metadata?user.user_metadata.full_name||user.email:user.email;
+    userEl.innerHTML='<strong>'+name+'</strong>';
+    logoutEl.style.display='';
+    loadEl.style.display='none';
+    frameEl.style.display='';
+    frameEl.src=STREAMLIT_URL+'/?token='+token;
+
+  }catch(e){
+    console.error('Auth error:',e);
+    loadEl.style.display='none';
+    loginEl.style.display='block';
+  }
+
+  // Listen for auth changes
+  sb.auth.onAuthStateChange(function(event,session){
+    if(event==='SIGNED_OUT'){
+      frameEl.style.display='none';
+      loginEl.style.display='block';
+      logoutEl.style.display='none';
+      userEl.innerHTML='';
+    }
+  });
+}
+
+async function handleLogout(){
+  await sb.auth.signOut();
+  window.location.href='https://www.migranix.in';
+}
+
+init();
+</script>
+</body>
+</html>
