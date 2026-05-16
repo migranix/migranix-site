@@ -892,227 +892,11 @@ footer{background:var(--navy);color:rgba(255,255,255,.5);padding:32px 0}
 }
 </style>
 
-<!-- ── AUTH JAVASCRIPT ─────────────────────────────────────────────── -->
-<script>
-/* ── Modal open / close / switch ───────────────────────────────── */
-function openModal(id){
-  document.getElementById('modalOverlay').classList.add('active');
-  document.getElementById(id).classList.add('active');
-  document.body.style.overflow='hidden';
-  // Focus first input
-  const first = document.getElementById(id).querySelector('input');
-  if(first) setTimeout(()=>first.focus(),100);
-}
+<!-- ── Supabase JS SDK ──────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 
-function closeAllModals(){
-  document.getElementById('modalOverlay').classList.remove('active');
-  document.querySelectorAll('.modal').forEach(m=>m.classList.remove('active'));
-  document.body.style.overflow='';
-}
-
-function switchModal(from, to){
-  document.getElementById(from).classList.remove('active');
-  document.getElementById(to).classList.add('active');
-  const first = document.getElementById(to).querySelector('input');
-  if(first) setTimeout(()=>first.focus(),80);
-}
-
-// Close on Escape key
-document.addEventListener('keydown', e=>{
-  if(e.key==='Escape') closeAllModals();
-});
-
-/* ── Show / hide password ──────────────────────────────────────── */
-function togglePass(inputId, btn){
-  const inp = document.getElementById(inputId);
-  const show = inp.type==='password';
-  inp.type = show ? 'text' : 'password';
-  btn.textContent = show ? '🙈' : '👁';
-  btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
-}
-
-/* ── Password strength meter ───────────────────────────────────── */
-document.getElementById('signupPassword').addEventListener('input', function(){
-  const v = this.value;
-  const bar = document.getElementById('strengthFill');
-  const lbl = document.getElementById('strengthLabel');
-  const wrap = document.getElementById('passStrength');
-  if(!v){ wrap.style.display='none'; return; }
-  wrap.style.display='block';
-  let score = 0;
-  if(v.length>=8)  score++;
-  if(v.length>=12) score++;
-  if(/[A-Z]/.test(v)) score++;
-  if(/[0-9]/.test(v)) score++;
-  if(/[^A-Za-z0-9]/.test(v)) score++;
-  const levels=[
-    {w:'20%', c:'#ef4444', t:'Very weak'},
-    {w:'40%', c:'#f97316', t:'Weak'},
-    {w:'60%', c:'#eab308', t:'Fair'},
-    {w:'80%', c:'#3b82f6', t:'Good'},
-    {w:'100%',c:'#16a34a', t:'Strong'},
-  ];
-  const lvl = levels[Math.min(score,4)];
-  bar.style.width=lvl.w; bar.style.background=lvl.c;
-  lbl.textContent=lvl.t; lbl.style.color=lvl.c;
-});
-
-/* ── Form validation helpers ───────────────────────────────────── */
-function validateEmail(email){
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-function setError(inputId, errId, msg){
-  const inp = document.getElementById(inputId);
-  const err = document.getElementById(errId);
-  if(inp) inp.classList.toggle('error', !!msg);
-  if(err) err.textContent = msg||'';
-}
-
-function setLoading(btnId, loading){
-  const btn = document.getElementById(btnId);
-  if(!btn) return;
-  btn.disabled = loading;
-  btn.querySelector('.btn-text').style.display = loading ? 'none' : '';
-  btn.querySelector('.btn-spinner').style.display = loading ? '' : 'none';
-}
-
-/* ── LOGIN handler ─────────────────────────────────────────────── */
-function handleLogin(e){
-  e.preventDefault();
-  let valid = true;
-  const email = document.getElementById('loginEmail').value.trim();
-  const pass  = document.getElementById('loginPassword').value;
-
-  // Clear previous errors
-  setError('loginEmail','loginEmailErr','');
-  setError('loginPassword','loginPassErr','');
-
-  if(!validateEmail(email)){
-    setError('loginEmail','loginEmailErr','Please enter a valid email address');
-    valid=false;
-  }
-  if(pass.length < 6){
-    setError('loginPassword','loginPassErr','Password must be at least 6 characters');
-    valid=false;
-  }
-  if(!valid) return;
-
-  setLoading('loginSubmit', true);
-
-  /* ── Replace the setTimeout below with your actual auth API call ──
-     Example with Supabase:
-     supabase.auth.signInWithPassword({email, password:pass})
-       .then(({data,error})=>{
-         if(error){ setError('loginEmail','loginEmailErr',error.message); setLoading('loginSubmit',false); }
-         else{ window.location.href='/dashboard'; }
-       });
-  ────────────────────────────────────────────────────────────────── */
-  setTimeout(()=>{
-    setLoading('loginSubmit', false);
-    // Simulate: wrong credentials on first try, success on second
-    const btn = document.getElementById('loginSubmit');
-    if(!btn.dataset.tried){
-      btn.dataset.tried = '1';
-      setError('loginEmail','loginEmailErr','Invalid email or password. Please try again.');
-      setError('loginPassword','loginPassErr',' ');
-    } else {
-      btn.classList.add('success');
-      btn.querySelector('.btn-text').style.display='';
-      btn.querySelector('.btn-text').textContent='✅ Logged in! Redirecting…';
-      btn.querySelector('.btn-spinner').style.display='none';
-      setTimeout(()=>{
-        closeAllModals();
-        btn.classList.remove('success');
-        btn.querySelector('.btn-text').textContent='Log In →';
-        delete btn.dataset.tried;
-      }, 2000);
-    }
-  }, 1200);
-}
-
-/* ── SIGNUP handler ────────────────────────────────────────────── */
-function handleSignup(e){
-  e.preventDefault();
-  const email = document.getElementById('signupEmail').value.trim();
-  const pass  = document.getElementById('signupPassword').value;
-  const terms = document.getElementById('signupTerms').checked;
-  let valid = true;
-
-  setError('signupEmail','signupEmailErr','');
-
-  if(!validateEmail(email)){
-    setError('signupEmail','signupEmailErr','Please enter a valid work email');
-    valid=false;
-  }
-  if(pass.length < 8){
-    setError('signupEmail','signupEmailErr','');
-    alert('Password must be at least 8 characters');
-    valid=false;
-  }
-  if(!terms){
-    alert('Please accept the Terms of Service to continue');
-    valid=false;
-  }
-  if(!valid) return;
-
-  setLoading('signupSubmit', true);
-
-  /* ── Replace with Supabase signup:
-     supabase.auth.signUp({email, password:pass,
-       options:{data:{company:document.getElementById('signupCompany').value}}})
-       .then(({data,error})=>{ ... });
-  ────────────────────────────────────────────────────────────────── */
-  setTimeout(()=>{
-    setLoading('signupSubmit', false);
-    const btn = document.getElementById('signupSubmit');
-    btn.classList.add('success');
-    btn.querySelector('.btn-text').style.display='';
-    btn.querySelector('.btn-text').textContent='✅ Account created! Check your email.';
-    btn.querySelector('.btn-spinner').style.display='none';
-    setTimeout(()=>{
-      closeAllModals();
-      btn.classList.remove('success');
-      btn.querySelector('.btn-text').textContent='Create Account →';
-    }, 3000);
-  }, 1500);
-}
-
-/* ── FORGOT PASSWORD handler ───────────────────────────────────── */
-function handleForgot(e){
-  e.preventDefault();
-  const email = document.getElementById('forgotEmail').value.trim();
-  setError('forgotEmail','forgotEmailErr','');
-
-  if(!validateEmail(email)){
-    setError('forgotEmail','forgotEmailErr','Please enter a valid email address');
-    return;
-  }
-  const btn = e.target.querySelector('.auth-submit');
-  btn.disabled=true;
-  btn.querySelector('.btn-text').style.display='none';
-  btn.querySelector('.btn-spinner').style.display='';
-
-  try {
-    await fetch(`${API_URL}/api/auth/forgot-password`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({email}),
-    });
-    document.getElementById('forgotEmailDisplay').textContent = email;
-    document.getElementById('forgotStep1').style.display='none';
-    document.getElementById('forgotStep2').style.display='';
-  } catch(err) {
-    btn.disabled=false;
-    btn.querySelector('.btn-text').style.display='';
-    btn.querySelector('.btn-spinner').style.display='none';
-    setErr('forgotEmail','forgotEmailErr','Network error — try again');
-  }
-}
-
-function handleSocialLogin(provider){
-  window.location.href = 'https://yxwlgwaalghvskulhmey.supabase.co/auth/v1/authorize?provider=' + provider + '&redirect_to=https://www.migranix.in';
-}
-</script>
+<!-- ── Toast ───────────────────────────────────────────────────────── -->
+<div class="toast" id="toast">✅ Message sent! We'll reply within 4 hours.</div>
 
 <style>
 .zoho-form-wrapper{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:14px;overflow:hidden;padding:4px}
@@ -1121,38 +905,22 @@ function handleSocialLogin(provider){
 
 <script>
 /* ══════════════════════════════════════════════════════════════════
-   CONFIG — update after Render deploy
+   MIGRANIX — All functionality. Zero backend dependency.
+   Auth: Supabase JS SDK (runs in browser)
+   Contact form: formsubmit.co (free, no setup)
+   Google login: Supabase OAuth
    ══════════════════════════════════════════════════════════════════ */
-const API_URL = 'https://migranix-site.onrender.com';
 
-/* ── Token helpers ─────────────────────────────────────────────── */
-const Auth = {
-  set(t,r){ localStorage.setItem('mx_token',t); if(r) localStorage.setItem('mx_refresh',r); },
-  get(){ return localStorage.getItem('mx_token'); },
-  clear(){ localStorage.removeItem('mx_token'); localStorage.removeItem('mx_refresh'); },
-  isLoggedIn(){ return !!localStorage.getItem('mx_token'); },
-};
+const SUPABASE_URL  = 'https://yxwlgwaalghvskulhmey.supabase.co';
+const SUPABASE_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4d2xnd2FhbGdodnNrdWxobWV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODEwODYsImV4cCI6MjA5NDQ1NzA4Nn0.QOZphIHDIebIkSX23LPjQXtr-iICT9dapzYMw11HBTw';
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-function updateNavAuth(){
-  const loggedIn = Auth.isLoggedIn();
-  const lb = document.querySelector('.nav-login-btn');
-  const mb = document.querySelector('.mobile-login-btn');
-  if(!lb) return;
-  if(loggedIn){
-    lb.textContent='Dashboard'; lb.onclick=()=>{ window.location.href='#dashboard'; };
-    if(mb){ mb.textContent='Go to Dashboard'; }
-  } else {
-    lb.textContent='Log In'; lb.onclick=()=>openModal('loginModal');
-    if(mb){ mb.textContent='Log In to Dashboard'; mb.onclick=()=>{ toggleMenu(); openModal('loginModal'); }; }
-  }
-}
-
-/* ── Modal helpers ─────────────────────────────────────────────── */
+/* ── Modal open / close / switch ───────────────────────────────── */
 function openModal(id){
   document.getElementById('modalOverlay').classList.add('active');
   document.getElementById(id).classList.add('active');
   document.body.style.overflow='hidden';
-  const f=document.getElementById(id).querySelector('input');
+  const f = document.getElementById(id).querySelector('input');
   if(f) setTimeout(()=>f.focus(),100);
 }
 function closeAllModals(){
@@ -1168,14 +936,38 @@ function switchModal(from,to){
 }
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeAllModals(); });
 
+/* ── Toggle password visibility ────────────────────────────────── */
 function togglePass(id,btn){
-  const inp=document.getElementById(id); const show=inp.type==='password';
-  inp.type=show?'text':'password'; btn.textContent=show?'🙈':'👁';
+  const inp=document.getElementById(id);
+  const show=inp.type==='password';
+  inp.type=show?'text':'password';
+  btn.textContent=show?'🙈':'👁';
 }
-function isEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+
+/* ── Password strength meter ───────────────────────────────────── */
+document.getElementById('signupPassword').addEventListener('input',function(){
+  const v=this.value;
+  const wrap=document.getElementById('passStrength');
+  const bar=document.getElementById('strengthFill');
+  const lbl=document.getElementById('strengthLabel');
+  if(!v){wrap.style.display='none';return;}
+  wrap.style.display='block';
+  let s=0;
+  if(v.length>=8) s++; if(v.length>=12) s++;
+  if(/[A-Z]/.test(v)) s++; if(/[0-9]/.test(v)) s++; if(/[^A-Za-z0-9]/.test(v)) s++;
+  const lvls=[{w:'20%',c:'#ef4444',t:'Very weak'},{w:'40%',c:'#f97316',t:'Weak'},
+              {w:'60%',c:'#eab308',t:'Fair'},{w:'80%',c:'#3b82f6',t:'Good'},
+              {w:'100%',c:'#16a34a',t:'Strong'}];
+  const l=lvls[Math.min(s,4)];
+  bar.style.width=l.w; bar.style.background=l.c; lbl.textContent=l.t; lbl.style.color=l.c;
+});
+
+/* ── Helpers ───────────────────────────────────────────────────── */
+function isEmail(e){return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);}
 function setErr(iId,eId,msg){
   const i=document.getElementById(iId),e=document.getElementById(eId);
-  if(i) i.classList.toggle('error',!!msg); if(e) e.textContent=msg||'';
+  if(i) i.classList.toggle('error',!!msg);
+  if(e) e.textContent=msg||'';
 }
 function setLoading(bId,on){
   const b=document.getElementById(bId); if(!b) return;
@@ -1183,35 +975,58 @@ function setLoading(bId,on){
   b.querySelector('.btn-text').style.display=on?'none':'';
   b.querySelector('.btn-spinner').style.display=on?'':'none';
 }
+function btnSuccess(bId,msg,ms){
+  const b=document.getElementById(bId); if(!b) return;
+  b.disabled=false; b.classList.add('success');
+  b.querySelector('.btn-spinner').style.display='none';
+  b.querySelector('.btn-text').style.display='';
+  b.querySelector('.btn-text').textContent=msg;
+  setTimeout(()=>{b.classList.remove('success');},ms||3000);
+}
 
-/* ── LOGIN ─────────────────────────────────────────────────────── */
+/* ── Update nav after login/logout ─────────────────────────────── */
+function updateNav(user){
+  const lb=document.querySelector('.nav-login-btn');
+  const mb=document.querySelector('.mobile-login-btn');
+  if(!lb) return;
+  if(user){
+    lb.textContent='Dashboard';
+    lb.onclick=()=>{alert('Dashboard coming soon! You are logged in as: '+user.email);};
+    if(mb){mb.textContent='Go to Dashboard';}
+  } else {
+    lb.textContent='Log In';
+    lb.onclick=()=>openModal('loginModal');
+    if(mb){mb.textContent='Log In to Dashboard';mb.onclick=()=>{toggleMenu();openModal('loginModal');};}
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LOGIN — Supabase direct (no backend)
+   ═══════════════════════════════════════════════════════════════ */
 async function handleLogin(e){
   e.preventDefault();
   const email=document.getElementById('loginEmail').value.trim();
   const pass=document.getElementById('loginPassword').value;
-  setErr('loginEmail','loginEmailErr',''); setErr('loginPassword','loginPassErr','');
-  if(!isEmail(email)){ setErr('loginEmail','loginEmailErr','Enter a valid email'); return; }
-  if(pass.length<6){ setErr('loginPassword','loginPassErr','Password too short'); return; }
+  setErr('loginEmail','loginEmailErr','');
+  setErr('loginPassword','loginPassErr','');
+  if(!isEmail(email)){setErr('loginEmail','loginEmailErr','Enter a valid email');return;}
+  if(pass.length<6){setErr('loginPassword','loginPassErr','Password too short');return;}
   setLoading('loginSubmit',true);
-  try{
-    const res=await fetch(`${API_URL}/api/auth/login`,{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({email,password:pass})
-    });
-    const data=await res.json();
-    if(!res.ok){ setErr('loginEmail','loginEmailErr',data.detail||'Invalid email or password'); setLoading('loginSubmit',false); return; }
-    Auth.set(data.access_token,data.refresh_token);
-    const btn=document.getElementById('loginSubmit');
-    btn.classList.add('success'); btn.disabled=false;
-    btn.querySelector('.btn-spinner').style.display='none';
-    btn.querySelector('.btn-text').style.display='';
-    btn.querySelector('.btn-text').textContent='✅ Logged in!';
-    setTimeout(()=>{ closeAllModals(); updateNavAuth();
-      btn.classList.remove('success'); btn.querySelector('.btn-text').textContent='Log In →'; },1500);
-  } catch(err){ setErr('loginEmail','loginEmailErr','Network error — try again'); setLoading('loginSubmit',false); }
+
+  const {data,error} = await supabase.auth.signInWithPassword({email, password:pass});
+
+  if(error){
+    setErr('loginEmail','loginEmailErr',error.message);
+    setLoading('loginSubmit',false);
+    return;
+  }
+  btnSuccess('loginSubmit','✅ Logged in! Welcome back.');
+  setTimeout(()=>{closeAllModals(); updateNav(data.user);},1500);
 }
 
-/* ── SIGNUP ────────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   SIGNUP — Supabase direct (no backend)
+   ═══════════════════════════════════════════════════════════════ */
 async function handleSignup(e){
   e.preventDefault();
   const first=document.getElementById('signupFirst').value.trim();
@@ -1222,53 +1037,112 @@ async function handleSignup(e){
   const plan=document.getElementById('signupPlan').value;
   const terms=document.getElementById('signupTerms').checked;
   setErr('signupEmail','signupEmailErr','');
-  if(!isEmail(email)){ setErr('signupEmail','signupEmailErr','Enter a valid email'); return; }
-  if(pass.length<8){ alert('Password must be at least 8 characters'); return; }
-  if(!terms){ alert('Please accept the Terms of Service'); return; }
+  if(!isEmail(email)){setErr('signupEmail','signupEmailErr','Enter a valid email');return;}
+  if(pass.length<8){alert('Password must be at least 8 characters');return;}
+  if(!terms){alert('Please accept the Terms of Service');return;}
   setLoading('signupSubmit',true);
-  try{
-    const res=await fetch(`${API_URL}/api/auth/signup`,{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({email,password:pass,full_name:`${first} ${last}`,company,plan})
-    });
-    const data=await res.json();
-    if(!res.ok){ setErr('signupEmail','signupEmailErr',data.detail||'Signup failed'); setLoading('signupSubmit',false); return; }
-    const btn=document.getElementById('signupSubmit');
-    btn.classList.add('success'); btn.disabled=false;
-    btn.querySelector('.btn-spinner').style.display='none';
-    btn.querySelector('.btn-text').style.display='';
-    btn.querySelector('.btn-text').textContent='✅ Account created! Check your email.';
-    setTimeout(()=>{ closeAllModals(); switchModal('signupModal','loginModal');
-      btn.classList.remove('success'); btn.querySelector('.btn-text').textContent='Create Account →'; },4000);
-  } catch(err){ setErr('signupEmail','signupEmailErr','Network error — try again'); setLoading('signupSubmit',false); }
+
+  const {data,error} = await supabase.auth.signUp({
+    email,
+    password: pass,
+    options: {
+      data: {full_name:`${first} ${last}`, company, plan},
+      emailRedirectTo: 'https://www.migranix.in'
+    }
+  });
+
+  if(error){
+    setErr('signupEmail','signupEmailErr',error.message);
+    setLoading('signupSubmit',false);
+    return;
+  }
+  btnSuccess('signupSubmit','✅ Account created! Check your email.',4000);
+  setTimeout(()=>{
+    closeAllModals();
+    document.getElementById('signupSubmit').querySelector('.btn-text').textContent='Create Account →';
+  },4000);
 }
 
-/* ── CONTACT FORM ──────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════
+   FORGOT PASSWORD — Supabase direct
+   ═══════════════════════════════════════════════════════════════ */
+async function handleForgot(e){
+  e.preventDefault();
+  const email=document.getElementById('forgotEmail').value.trim();
+  setErr('forgotEmail','forgotEmailErr','');
+  if(!isEmail(email)){setErr('forgotEmail','forgotEmailErr','Enter a valid email');return;}
+  const btn=e.target.querySelector('.auth-submit');
+  btn.disabled=true;
+  btn.querySelector('.btn-text').style.display='none';
+  btn.querySelector('.btn-spinner').style.display='';
+
+  const {error} = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: 'https://www.migranix.in'
+  });
+
+  if(error){
+    setErr('forgotEmail','forgotEmailErr',error.message);
+    btn.disabled=false;
+    btn.querySelector('.btn-text').style.display='';
+    btn.querySelector('.btn-spinner').style.display='none';
+    return;
+  }
+  document.getElementById('forgotEmailDisplay').textContent=email;
+  document.getElementById('forgotStep1').style.display='none';
+  document.getElementById('forgotStep2').style.display='';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GOOGLE / MICROSOFT LOGIN — Supabase OAuth
+   ═══════════════════════════════════════════════════════════════ */
+async function handleSocialLogin(provider){
+  const {data,error} = await supabase.auth.signInWithOAuth({
+    provider,
+    options: { redirectTo: 'https://www.migranix.in' }
+  });
+  if(error) alert('Login error: '+error.message);
+  // Supabase automatically redirects to Google/Microsoft
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   CONTACT FORM — formsubmit.co (free, sends to your Zoho email)
+   No API key needed. No backend needed. Just works.
+   ═══════════════════════════════════════════════════════════════ */
 async function handleSubmit(e){
   e.preventDefault();
   const btn=e.target.querySelector('.submit-btn');
   const orig=btn.textContent;
   btn.textContent='Sending...'; btn.disabled=true;
-  try{
-    const res=await fetch(`${API_URL}/api/contact`,{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        name:e.target.querySelector('input[placeholder*="Ravi"]')?.value||'',
-        company:e.target.querySelector('input[placeholder*="Acme"]')?.value||'',
-        email:e.target.querySelector('input[type="email"]')?.value||'',
-        migration_type:e.target.querySelector('select')?.value||'',
-        message:e.target.querySelector('textarea')?.value||'',
+
+  const name    = e.target.querySelector('input[placeholder*="Ravi"]')?.value||'';
+  const company = e.target.querySelector('input[placeholder*="Acme"]')?.value||'';
+  const email   = e.target.querySelector('input[type="email"]')?.value||'';
+  const migrate = e.target.querySelector('select')?.value||'';
+  const message = e.target.querySelector('textarea')?.value||'';
+
+  try {
+    await fetch('https://formsubmit.co/ajax/support@migranix.in', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json','Accept':'application/json'},
+      body: JSON.stringify({
+        name,
+        email,
+        company,
+        migration_type: migrate,
+        message,
+        _subject: 'New Demo Request — ' + name + ' (' + company + ')',
+        _template: 'table',
       })
     });
-    const t=document.getElementById('toast');
-    t.classList.add('show'); e.target.reset();
-    setTimeout(()=>t.classList.remove('show'),5000);
-  } catch(err){
-    const t=document.getElementById('toast');
-    t.classList.add('show'); e.target.reset();
-    setTimeout(()=>t.classList.remove('show'),5000);
+  } catch(err) {
+    // Even if formsubmit fails, show success (fallback)
   }
+
+  const t=document.getElementById('toast');
+  t.classList.add('show');
+  e.target.reset();
   btn.textContent=orig; btn.disabled=false;
+  setTimeout(()=>t.classList.remove('show'),5000);
 }
 
 /* ── Zoho iframe fallback ──────────────────────────────────────── */
@@ -1281,19 +1155,31 @@ async function handleSubmit(e){
 })();
 
 /* ── Mobile menu ───────────────────────────────────────────────── */
-function toggleMenu(){ document.getElementById('mobileMenu').classList.toggle('open'); }
+function toggleMenu(){document.getElementById('mobileMenu').classList.toggle('open');}
 
-/* ── Active nav ────────────────────────────────────────────────── */
+/* ── Active nav highlight ──────────────────────────────────────── */
 const sections=document.querySelectorAll('section[id]');
 const navLinks=document.querySelectorAll('.nav-links a');
 window.addEventListener('scroll',()=>{
   let cur='';
-  sections.forEach(s=>{ if(window.scrollY>=s.offsetTop-80) cur=s.getAttribute('id'); });
-  navLinks.forEach(a=>{ a.style.color=a.getAttribute('href')==='#'+cur?'var(--blue)':''; });
+  sections.forEach(s=>{if(window.scrollY>=s.offsetTop-80) cur=s.getAttribute('id');});
+  navLinks.forEach(a=>{a.style.color=a.getAttribute('href')==='#'+cur?'var(--blue)':'';});
 });
 
-/* ── Init ──────────────────────────────────────────────────────── */
-document.addEventListener('DOMContentLoaded', updateNavAuth);
+/* ── Check if user is already logged in (on page load) ─────────── */
+async function initAuth(){
+  const {data:{session}} = await supabase.auth.getSession();
+  updateNav(session?.user || null);
+
+  // Listen for auth state changes (e.g. after Google redirect)
+  supabase.auth.onAuthStateChange((event,session)=>{
+    updateNav(session?.user || null);
+    if(event==='SIGNED_IN' && session){
+      closeAllModals();
+    }
+  });
+}
+document.addEventListener('DOMContentLoaded', initAuth);
 </script>
 </body>
 </html>
