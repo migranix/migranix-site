@@ -1110,7 +1110,7 @@ function handleForgot(e){
 }
 
 function handleSocialLogin(provider){
-  alert(`${provider} login coming soon. Use email/password for now.`);
+  window.location.href = 'https://yxwlgwaalghvskulhmey.supabase.co/auth/v1/authorize?provider=' + provider + '&redirect_to=https://www.migranix.in';
 }
 </script>
 
@@ -1123,7 +1123,7 @@ function handleSocialLogin(provider){
 /* ══════════════════════════════════════════════════════════════════
    CONFIG — update after Render deploy
    ══════════════════════════════════════════════════════════════════ */
-const API_URL = 'https://migranix-api.onrender.com';
+const API_URL = 'https://migranix-site.onrender.com';
 
 /* ── Token helpers ─────────────────────────────────────────────── */
 const Auth = {
