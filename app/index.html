@@ -5,185 +5,840 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Migranix — Data Cleaning Platform</title>
 <meta name="robots" content="noindex"/>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-:root{--blue:#2563eb;--navy:#0f172a;--g200:#e5e7eb;--g500:#6b7280;--font:'DM Sans',sans-serif}
-body{font-family:var(--font);background:#f8fafc;color:var(--navy);height:100vh;display:flex;flex-direction:column}
+:root{
+  --primary:#2563eb;
+  --primary-dark:#1d4ed8;
+  --primary-light:#eff6ff;
+  --navy:#0f172a;
+  --g50:#f8fafc;
+  --g100:#f1f5f9;
+  --g200:#e2e8f0;
+  --g300:#cbd5e1;
+  --g400:#94a3b8;
+  --g500:#64748b;
+  --g600:#475569;
+  --success:#10b981;
+  --danger:#ef4444;
+  --danger-light:#fef2f2;
+  --font:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  --shadow-sm:0 1px 2px 0 rgba(0,0,0,.05);
+  --shadow:0 1px 3px 0 rgba(0,0,0,.1),0 1px 2px -1px rgba(0,0,0,.1);
+  --shadow-md:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);
+  --shadow-lg:0 10px 15px -3px rgba(0,0,0,.1),0 4px 6px -4px rgba(0,0,0,.1);
+  --shadow-xl:0 20px 25px -5px rgba(0,0,0,.1),0 8px 10px -6px rgba(0,0,0,.1);
+  --radius-sm:6px;
+  --radius:8px;
+  --radius-md:12px;
+  --radius-lg:16px;
+  --radius-xl:24px;
+}
 
-/* NAV BAR — matches main site */
+html,body{font-family:var(--font);background:var(--g50);color:var(--navy);height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+
+/* ========== NAVIGATION ========== */
 .app-nav{
-  height:56px;background:#fff;border-bottom:1px solid var(--g200);
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 24px;flex-shrink:0;
-  box-shadow:0 1px 4px rgba(0,0,0,.04);
+  height:64px;
+  background:#fff;
+  border-bottom:1px solid var(--g200);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 32px;
+  flex-shrink:0;
+  position:relative;
+  z-index:100;
 }
-.app-logo{display:flex;align-items:center;gap:8px;font-size:1.1rem;font-weight:700;color:var(--navy);text-decoration:none}
-.app-logo-dot{width:9px;height:9px;background:var(--blue);border-radius:50%}
-.app-badge{background:#eff6ff;color:var(--blue);font-size:.7rem;font-weight:700;padding:2px 8px;border-radius:99px;letter-spacing:.05em;margin-left:8px}
-.app-nav-right{display:flex;align-items:center;gap:16px}
-.app-user{font-size:.82rem;color:var(--g500)}
-.app-user strong{color:var(--navy)}
+.app-nav::after{
+  content:'';
+  position:absolute;
+  bottom:-1px;
+  left:0;
+  right:0;
+  height:1px;
+  background:linear-gradient(90deg,transparent,var(--g300),transparent);
+  opacity:.5;
+}
+
+.app-logo{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:1.15rem;
+  font-weight:800;
+  color:var(--navy);
+  text-decoration:none;
+  letter-spacing:-.02em;
+  transition:opacity .2s;
+}
+.app-logo:hover{opacity:.8}
+.app-logo-icon{
+  width:32px;
+  height:32px;
+  background:linear-gradient(135deg,var(--primary),#3b82f6);
+  border-radius:var(--radius);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-size:.9rem;
+  font-weight:700;
+  box-shadow:0 2px 8px rgba(37,99,235,.25);
+}
+.app-badge{
+  background:var(--primary-light);
+  color:var(--primary);
+  font-size:.68rem;
+  font-weight:700;
+  padding:3px 10px;
+  border-radius:99px;
+  letter-spacing:.06em;
+  text-transform:uppercase;
+  margin-left:4px;
+}
+
+.app-nav-right{
+  display:flex;
+  align-items:center;
+  gap:20px;
+}
+
+.app-user{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  font-size:.85rem;
+  color:var(--g500);
+  padding:6px 14px;
+  background:var(--g100);
+  border-radius:99px;
+  border:1px solid var(--g200);
+}
+.app-user-avatar{
+  width:28px;
+  height:28px;
+  border-radius:50%;
+  background:linear-gradient(135deg,var(--primary),#06b6d4);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-size:.75rem;
+  font-weight:700;
+}
+.app-user strong{color:var(--navy);font-weight:600}
+
 .app-btn{
-  background:#fff;color:var(--blue);border:1.5px solid var(--blue);
-  padding:6px 14px;border-radius:7px;font-size:.8rem;font-weight:600;
-  cursor:pointer;font-family:var(--font);transition:all .15s;text-decoration:none;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  background:#fff;
+  color:var(--g600);
+  border:1.5px solid var(--g300);
+  padding:8px 16px;
+  border-radius:var(--radius);
+  font-size:.82rem;
+  font-weight:600;
+  cursor:pointer;
+  font-family:var(--font);
+  transition:all .2s;
+  text-decoration:none;
 }
-.app-btn:hover{background:#eff6ff}
-.app-btn-danger{border-color:#dc2626;color:#dc2626}
-.app-btn-danger:hover{background:#fef2f2}
+.app-btn:hover{
+  background:var(--g50);
+  border-color:var(--g400);
+  color:var(--navy);
+  transform:translateY(-1px);
+  box-shadow:var(--shadow-sm);
+}
+.app-btn:active{transform:translateY(0)}
+.app-btn svg{width:16px;height:16px;opacity:.7}
 
-/* IFRAME — fills remaining space */
-.app-frame{flex:1;border:none;width:100%}
+.app-btn-primary{
+  background:var(--primary);
+  color:#fff;
+  border-color:var(--primary);
+}
+.app-btn-primary:hover{
+  background:var(--primary-dark);
+  border-color:var(--primary-dark);
+  color:#fff;
+  box-shadow:0 4px 12px rgba(37,99,235,.3);
+}
 
-/* LOADING STATE */
+.app-btn-danger{
+  background:#fff;
+  border-color:var(--danger);
+  color:var(--danger);
+}
+.app-btn-danger:hover{
+  background:var(--danger-light);
+  color:#dc2626;
+  border-color:#dc2626;
+  box-shadow:0 4px 12px rgba(239,68,68,.15);
+}
+
+/* ========== MAIN CONTENT AREA ========== */
+.app-main{
+  flex:1;
+  position:relative;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+
+/* ========== LOADING STATE ========== */
 .app-loading{
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:24px;
+  background:linear-gradient(180deg,var(--g50) 0%,#fff 100%);
+}
+.app-loading .spinner-wrap{
+  position:relative;
+  width:64px;
+  height:64px;
 }
 .app-loading .spinner{
-  width:36px;height:36px;border:3px solid var(--g200);border-top-color:var(--blue);
-  border-radius:50%;animation:spin .7s linear infinite;
+  width:64px;
+  height:64px;
+  border:3px solid var(--g200);
+  border-top-color:var(--primary);
+  border-right-color:var(--primary);
+  border-radius:50%;
+  animation:spin .9s cubic-bezier(.4,.15,.6,.85) infinite;
+}
+.app-loading .spinner-inner{
+  position:absolute;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%);
+  width:24px;
+  height:24px;
+  background:linear-gradient(135deg,var(--primary),#06b6d4);
+  border-radius:50%;
+  opacity:.2;
+  animation:pulse 2s ease-in-out infinite;
 }
 @keyframes spin{to{transform:rotate(360deg)}}
-.app-loading p{color:var(--g500);font-size:.9rem}
+@keyframes pulse{
+  0%,100%{transform:translate(-50%,-50%) scale(1);opacity:.2}
+  50%{transform:translate(-50%,-50%) scale(1.3);opacity:.1}
+}
+.app-loading h3{
+  font-size:1.1rem;
+  font-weight:600;
+  color:var(--navy);
+  letter-spacing:-.01em;
+}
+.app-loading p{
+  color:var(--g400);
+  font-size:.9rem;
+  max-width:280px;
+  text-align:center;
+  line-height:1.5;
+}
 
-/* LOGIN REQUIRED */
+/* ========== LOGIN STATE ========== */
+.login-container{
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%,rgba(37,99,235,.08),transparent),
+    radial-gradient(ellipse 60% 40% at 80% 80%,rgba(6,182,212,.06),transparent),
+    linear-gradient(180deg,var(--g50) 0%,#fff 100%);
+  position:relative;
+  overflow:hidden;
+}
+.login-container::before{
+  content:'';
+  position:absolute;
+  top:-50%;
+  left:-20%;
+  width:600px;
+  height:600px;
+  background:radial-gradient(circle,rgba(37,99,235,.04) 0%,transparent 70%);
+  animation:float 8s ease-in-out infinite;
+}
+@keyframes float{
+  0%,100%{transform:translate(0,0)}
+  50%{transform:translate(30px,-30px)}
+}
+
 .login-box{
-  max-width:420px;margin:60px auto;text-align:center;
-  background:#fff;border-radius:16px;padding:44px 36px;
-  box-shadow:0 4px 24px rgba(0,0,0,.08);border:1px solid var(--g200);
+  position:relative;
+  z-index:1;
+  max-width:440px;
+  width:100%;
+  text-align:center;
+  background:#fff;
+  border-radius:var(--radius-xl);
+  padding:52px 44px;
+  box-shadow:var(--shadow-xl);
+  border:1px solid var(--g200);
+  animation:slideUp .6s cubic-bezier(.16,1,.3,1);
 }
-.login-box h2{font-size:1.35rem;font-weight:700;margin:16px 0 8px}
-.login-box p{color:var(--g500);font-size:.9rem;line-height:1.6;margin-bottom:24px}
-.login-cta{
-  display:inline-block;background:var(--blue);color:#fff;
-  padding:13px 32px;border-radius:9px;font-weight:700;font-size:.95rem;
-  text-decoration:none;transition:all .15s;
+@keyframes slideUp{
+  from{opacity:0;transform:translateY(30px)}
+  to{opacity:1;transform:translateY(0)}
 }
-.login-cta:hover{background:#1d4ed8;transform:translateY(-2px);box-shadow:0 6px 20px rgba(37,99,235,.3)}
-.login-note{color:#9ca3af;font-size:.76rem;margin-top:16px}
 
-/* Mobile */
+.login-icon-wrap{
+  width:72px;
+  height:72px;
+  margin:0 auto 24px;
+  background:linear-gradient(135deg,var(--primary-light),#dbeafe);
+  border-radius:var(--radius-lg);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:2rem;
+  box-shadow:0 4px 16px rgba(37,99,235,.12);
+}
+.login-box h2{
+  font-size:1.5rem;
+  font-weight:800;
+  margin-bottom:12px;
+  letter-spacing:-.02em;
+  color:var(--navy);
+}
+.login-box > p{
+  color:var(--g500);
+  font-size:.95rem;
+  line-height:1.65;
+  margin-bottom:32px;
+}
+
+/* Social login buttons */
+.social-login{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-bottom:24px;
+}
+.btn-social{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  width:100%;
+  padding:11px 16px;
+  border-radius:var(--radius);
+  border:1.5px solid var(--g200);
+  background:#fff;
+  color:var(--g600);
+  font-family:var(--font);
+  font-size:.88rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:all .2s;
+  text-decoration:none;
+}
+.btn-social:hover{
+  background:var(--g50);
+  border-color:var(--g300);
+  transform:translateY(-1px);
+  box-shadow:var(--shadow-sm);
+}
+.btn-social svg{
+  width:20px;
+  height:20px;
+  flex-shrink:0;
+}
+.btn-social.google:hover{border-color:#ea4335}
+.btn-social.microsoft{
+  background:#2f2f2f;
+  color:#fff;
+  border-color:#2f2f2f;
+}
+.btn-social.microsoft:hover{
+  background:#1f1f1f;
+  border-color:#1f1f1f;
+}
+.btn-social.github{
+  background:#24292f;
+  color:#fff;
+  border-color:#24292f;
+}
+.btn-social.github:hover{
+  background:#1a1f24;
+  border-color:#1a1f24;
+}
+
+.login-divider{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  margin:24px 0;
+  color:var(--g400);
+  font-size:.82rem;
+  font-weight:500;
+}
+.login-divider::before,.login-divider::after{
+  content:'';
+  flex:1;
+  height:1px;
+  background:var(--g200);
+}
+
+.login-cta{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  width:100%;
+  background:var(--primary);
+  color:#fff;
+  padding:14px 28px;
+  border-radius:var(--radius);
+  font-weight:700;
+  font-size:.95rem;
+  text-decoration:none;
+  transition:all .2s;
+  border:none;
+  cursor:pointer;
+  font-family:var(--font);
+  box-shadow:0 4px 14px rgba(37,99,235,.25);
+}
+.login-cta:hover{
+  background:var(--primary-dark);
+  transform:translateY(-2px);
+  box-shadow:0 8px 25px rgba(37,99,235,.35);
+}
+.login-cta:active{transform:translateY(0)}
+.login-cta svg{width:18px;height:18px}
+
+.login-note{
+  color:var(--g400);
+  font-size:.78rem;
+  margin-top:20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+.login-note::before{
+  content:'';
+  display:inline-block;
+  width:6px;
+  height:6px;
+  background:var(--success);
+  border-radius:50%;
+}
+
+.login-features{
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr;
+  gap:12px;
+  margin-top:28px;
+  padding-top:28px;
+  border-top:1px solid var(--g200);
+}
+.login-feature{
+  text-align:center;
+}
+.login-feature .num{
+  display:block;
+  font-size:1.3rem;
+  font-weight:800;
+  color:var(--primary);
+  line-height:1;
+  margin-bottom:4px;
+}
+.login-feature .lbl{
+  font-size:.72rem;
+  color:var(--g400);
+  font-weight:500;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+
+/* ========== IFRAME ========== */
+.app-frame{
+  flex:1;
+  border:none;
+  width:100%;
+  background:#fff;
+}
+
+/* ========== TOAST NOTIFICATIONS ========== */
+.toast-container{
+  position:fixed;
+  top:80px;
+  right:24px;
+  z-index:3000;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  pointer-events:none;
+}
+.toast{
+  background:#fff;
+  border-radius:var(--radius-md);
+  padding:14px 18px;
+  box-shadow:var(--shadow-xl);
+  display:flex;
+  align-items:center;
+  gap:12px;
+  border-left:4px solid var(--primary);
+  animation:toastIn .4s cubic-bezier(.16,1,.3,1);
+  max-width:380px;
+  pointer-events:auto;
+}
+.toast.error{border-left-color:var(--danger)}
+.toast.success{border-left-color:var(--success)}
+@keyframes toastIn{
+  from{transform:translateX(120%);opacity:0}
+  to{transform:translateX(0);opacity:1}
+}
+.toast-icon{
+  width:36px;
+  height:36px;
+  border-radius:50%;
+  background:var(--primary-light);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:1.1rem;
+  flex-shrink:0;
+}
+.toast.error .toast-icon{background:var(--danger-light)}
+.toast.success .toast-icon{background:#d1fae5}
+.toast-content{flex:1}
+.toast-title{
+  font-weight:700;
+  font-size:.9rem;
+  color:var(--navy);
+  margin-bottom:2px;
+}
+.toast-message{
+  font-size:.82rem;
+  color:var(--g500);
+  line-height:1.4;
+}
+
+/* ========== ANIMATIONS ========== */
+@keyframes fadeIn{
+  from{opacity:0}
+  to{opacity:1}
+}
+.fade-in{animation:fadeIn .5s ease}
+
+/* ========== RESPONSIVE ========== */
 @media(max-width:640px){
-  .app-nav{padding:0 12px}
-  .app-user{display:none}
+  .app-nav{padding:0 16px;height:56px}
   .app-badge{display:none}
+  .app-user{display:none}
+  .login-box{padding:36px 24px;border-radius:var(--radius-lg)}
+  .login-features{grid-template-columns:1fr;gap:8px}
+  .login-feature{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    text-align:left;
+  }
+  .login-feature .num{margin-bottom:0}
+  .toast-container{right:12px;left:12px}
+  .toast{max-width:100%}
 }
 </style>
 </head>
 <body>
 
-<!-- NAV -->
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- NAVIGATION -->
 <nav class="app-nav">
   <a class="app-logo" href="https://www.migranix.in">
-    <div class="app-logo-dot"></div>
+    <div class="app-logo-icon">M</div>
     Migranix
-    <span class="app-badge">PLATFORM</span>
+    <span class="app-badge">Platform</span>
   </a>
   <div class="app-nav-right" id="navRight">
-    <span class="app-user" id="userDisplay"></span>
-    <button class="app-btn app-btn-danger" id="logoutBtn" onclick="handleLogout()" style="display:none">Log Out</button>
+    <div class="app-user" id="userDisplay" style="display:none">
+      <div class="app-user-avatar" id="userAvatar">?</div>
+      <span id="userName"></span>
+    </div>
+    <a href="https://www.migranix.in" class="app-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Back to Site
+    </a>
+    <button class="app-btn app-btn-danger" id="logoutBtn" onclick="handleLogout()" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      Log Out
+    </button>
   </div>
 </nav>
 
-<!-- CONTENT — switches between loading / login / app -->
-<div class="app-loading" id="loadingState">
-  <div class="spinner"></div>
-  <p>Verifying your session...</p>
-</div>
+<!-- MAIN CONTENT -->
+<div class="app-main" id="appMain">
 
-<div class="login-box" id="loginState" style="display:none">
-  <div style="font-size:2rem;margin-bottom:8px">🔒</div>
-  <h2>Login Required</h2>
-  <p>You need to sign in to access the Migranix Data Platform.<br>Log in on our website, then come back here.</p>
-  <a class="login-cta" href="https://www.migranix.in">Go to migranix.in →</a>
-  <div class="login-note">Free 14-day trial · No credit card required</div>
-</div>
+  <!-- Loading State -->
+  <div class="app-loading" id="loadingState">
+    <div class="spinner-wrap">
+      <div class="spinner"></div>
+      <div class="spinner-inner"></div>
+    </div>
+    <div style="text-align:center">
+      <h3>Verifying your session</h3>
+      <p>Please wait while we authenticate your credentials...</p>
+    </div>
+  </div>
 
-<iframe class="app-frame" id="appFrame" style="display:none" allow="clipboard-read; clipboard-write; cross-origin-isolated" sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals allow-downloads allow-top-navigation"></iframe>
+  <!-- Login Required State -->
+  <div class="login-container" id="loginState" style="display:none">
+    <div class="login-box">
+      <div class="login-icon-wrap">🔐</div>
+      <h2>Welcome to Migranix</h2>
+      <p>Sign in to access your Data Cleaning Platform dashboard and manage your migrations.</p>
+
+      <!-- Social Login -->
+      <div class="social-login">
+        <button class="btn-social google" onclick="handleSocialAuth('google')">
+          <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+          Continue with Google
+        </button>
+        <button class="btn-social microsoft" onclick="handleSocialAuth('azure')">
+          <svg viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+          Continue with Microsoft
+        </button>
+        <button class="btn-social github" onclick="handleSocialAuth('github')">
+          <svg viewBox="0 0 24 24" fill="white"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+          Continue with GitHub
+        </button>
+      </div>
+
+      <div class="login-divider">or</div>
+
+      <a class="login-cta" href="https://www.migranix.in">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M13.8 12H3"/></svg>
+        Go to migranix.in
+      </a>
+
+      <div class="login-note">Free 14-day trial · No credit card required</div>
+
+      <div class="login-features">
+        <div class="login-feature">
+          <span class="num">500+</span>
+          <span class="lbl">Migrations</span>
+        </div>
+        <div class="login-feature">
+          <span class="num">99.9%</span>
+          <span class="lbl">Accuracy</span>
+        </div>
+        <div class="login-feature">
+          <span class="num">24/7</span>
+          <span class="lbl">Support</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- App Frame -->
+  <iframe class="app-frame" id="appFrame" style="display:none" allow="clipboard-read; clipboard-write" title="Migranix Platform"></iframe>
+
+</div>
 
 <script>
-var SUPA_URL='https://yxwlgwaalghvskulhmey.supabase.co';
-var SUPA_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4d2xnd2FhbGdodnNrdWxobWV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODEwODYsImV4cCI6MjA5NDQ1NzA4Nn0.QOZphIHDIebIkSX23LPjQXtr-iICT9dapzYMw11HBTw';
-var sb=window.supabase.createClient(SUPA_URL,SUPA_KEY);
+// ========== CONFIGURATION ==========
+var SUPA_URL = 'https://yxwlgwaalghvskulhmey.supabase.co';
+var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4d2xnd2FhbGdodnNrdWxobWV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODEwODYsImV4cCI6MjA5NDQ1NzA4Nn0.QOZphIHDIebIkSX23LPjQXtr-iICT9dapzYMw11HBTw';
+var STREAMLIT_URL = 'https://migranix-app.onrender.com';
 
-var SESSION_TIMEOUT=30*60*1000;
-function resetTimer(){localStorage.setItem('mx_last_active',Date.now().toString());}
-function checkTimeout(){
-  var last=localStorage.getItem('mx_last_active');
-  if(last&&(Date.now()-parseInt(last))>SESSION_TIMEOUT){
-    localStorage.clear();
-    sb.auth.signOut();
-    return true;
-  }
-  return false;
+// ========== INITIALIZE SUPABASE ==========
+var sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// ========== DOM REFERENCES ==========
+var els = {
+  loading: document.getElementById('loadingState'),
+  login: document.getElementById('loginState'),
+  frame: document.getElementById('appFrame'),
+  userDisplay: document.getElementById('userDisplay'),
+  userName: document.getElementById('userName'),
+  userAvatar: document.getElementById('userAvatar'),
+  logoutBtn: document.getElementById('logoutBtn'),
+  toastContainer: document.getElementById('toastContainer')
+};
+
+// ========== TOAST SYSTEM ==========
+function showToast(title, message, type) {
+  type = type || 'info';
+  var icons = {
+    info: 'ℹ️',
+    success: '✅',
+    error: '❌'
+  };
+  var toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  toast.innerHTML =
+    '<div class="toast-icon">' + icons[type] + '</div>' +
+    '<div class="toast-content">' +
+      '<div class="toast-title">' + title + '</div>' +
+      '<div class="toast-message">' + message + '</div>' +
+    '</div>';
+  els.toastContainer.appendChild(toast);
+  setTimeout(function() {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(120%)';
+    toast.style.transition = 'all .4s ease';
+    setTimeout(function() { toast.remove(); }, 400);
+  }, 5000);
 }
-document.addEventListener('click',resetTimer);
-document.addEventListener('keydown',resetTimer);
-resetTimer();
 
-// Streamlit app URL on Render — update if your Render service name is different
-var STREAMLIT_URL='https://migranix-app.onrender.com';
-
-async function init(){
-  var loadEl=document.getElementById('loadingState');
-  var loginEl=document.getElementById('loginState');
-  var frameEl=document.getElementById('appFrame');
-  var userEl=document.getElementById('userDisplay');
-  var logoutEl=document.getElementById('logoutBtn');
-
-  // Check if session timed out
-  if(checkTimeout()){
-    loadEl.style.display='none';
-    loginEl.style.display='block';
-    return;
+// ========== SOCIAL AUTH ==========
+async function handleSocialAuth(provider) {
+  try {
+    var redirectTo = window.location.origin + window.location.pathname;
+    var { data, error } = await sb.auth.signInWithOAuth({
+      provider: provider,
+      options: {
+        redirectTo: redirectTo
+      }
+    });
+    if (error) throw error;
+  } catch (err) {
+    showToast('Authentication Failed', err.message || 'Unable to connect to ' + provider, 'error');
+    console.error('Social auth error:', err);
   }
+}
 
-  try{
-    var sess=await sb.auth.getSession();
-    var user=sess.data.session?sess.data.session.user:null;
-    var token=sess.data.session?sess.data.session.access_token:'';
+// ========== LOGOUT ==========
+async function handleLogout() {
+  try {
+    els.logoutBtn.disabled = true;
+    els.logoutBtn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px"></span> Logging out...';
+    
+    await sb.auth.signOut();
+    
+    showToast('Logged Out', 'You have been successfully signed out.', 'success');
+    
+    setTimeout(function() {
+      window.location.reload();
+    }, 800);
+    
+  } catch (err) {
+    showToast('Error', 'Failed to log out. Please try again.', 'error');
+    console.error('Logout error:', err);
+    els.logoutBtn.disabled = false;
+    els.logoutBtn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg> Log Out';
+  }
+}
 
-    if(!user){
-      // Not logged in — show login screen
-      loadEl.style.display='none';
-      loginEl.style.display='block';
-      return;
+// ========== UPDATE UI FOR LOGGED IN USER ==========
+function showLoggedInUI(user, token) {
+  var name = (user.user_metadata && user.user_metadata.full_name) ? user.user_metadata.full_name : user.email;
+  var initials = name.split(' ').map(function(n) { return n[0]; }).join('').substring(0, 2).toUpperCase();
+  
+  els.userName.innerHTML = '<strong>' + name + '</strong>';
+  els.userAvatar.textContent = initials;
+  els.userDisplay.style.display = 'flex';
+  els.logoutBtn.style.display = 'inline-flex';
+  
+  els.loading.style.display = 'none';
+  els.login.style.display = 'none';
+  els.frame.style.display = '';
+  els.frame.src = STREAMLIT_URL + '/?token=' + encodeURIComponent(token);
+}
+
+// ========== UPDATE UI FOR LOGGED OUT USER ==========
+function showLoggedOutUI() {
+  els.loading.style.display = 'none';
+  els.login.style.display = 'flex';
+  els.frame.style.display = 'none';
+  els.userDisplay.style.display = 'none';
+  els.logoutBtn.style.display = 'none';
+}
+
+// ========== MAIN INITIALIZATION ==========
+async function init() {
+  try {
+    // Check for active session
+    var sess = await sb.auth.getSession();
+    var user = sess.data.session ? sess.data.session.user : null;
+    var token = sess.data.session ? sess.data.session.access_token : '';
+
+    if (!user) {
+      showLoggedOutUI();
+    } else {
+      showLoggedInUI(user, token);
     }
 
-    // Logged in — show the app
-    var name=user.user_metadata?user.user_metadata.full_name||user.email:user.email;
-    userEl.innerHTML='<strong>'+name+'</strong>';
-    logoutEl.style.display='';
-    loadEl.style.display='none';
-    frameEl.style.display='';
-    frameEl.src=STREAMLIT_URL+'/?token='+token;
+    // Listen for auth state changes
+    sb.auth.onAuthStateChange(function(event, session) {
+      if (event === 'SIGNED_OUT') {
+        showLoggedOutUI();
+        els.frame.src = '';
+      } else if (event === 'SIGNED_IN' && session) {
+        showLoggedInUI(session.user, session.access_token);
+      }
+    });
 
-  }catch(e){
-    console.error('Auth error:',e);
-    loadEl.style.display='none';
-    loginEl.style.display='block';
+  } catch (err) {
+    console.error('Auth initialization error:', err);
+    showToast('Error', 'Failed to initialize authentication. Please refresh the page.', 'error');
+    showLoggedOutUI();
   }
+}
 
-  // Listen for auth changes
-  sb.auth.onAuthStateChange(function(event,session){
-    if(event==='SIGNED_OUT'){
-      frameEl.style.display='none';
-      loginEl.style.display='block';
-      logoutEl.style.display='none';
-      userEl.innerHTML='';
+// ========== HANDLE OAUTH CALLBACK ==========
+async function handleOAuthCallback() {
+  var hash = window.location.hash;
+  var query = window.location.search;
+  
+  if (hash.includes('access_token') || query.includes('code=')) {
+    els.loading.querySelector('h3').textContent = 'Completing sign in...';
+    els.loading.querySelector('p').textContent = 'Please wait while we finalize your authentication.';
+    
+    try {
+      var { data, error } = await sb.auth.getSession();
+      if (error) throw error;
+      
+      // Clean URL
+      if (window.history.replaceState) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+      
+      if (data.session) {
+        showLoggedInUI(data.session.user, data.session.access_token);
+        showToast('Welcome Back!', 'You have successfully signed in.', 'success');
+      } else {
+        showLoggedOutUI();
+      }
+    } catch (err) {
+      console.error('OAuth callback error:', err);
+      showToast('Sign In Failed', 'Unable to complete authentication. Please try again.', 'error');
+      showLoggedOutUI();
     }
-  });
+  }
 }
 
-async function handleLogout(){
-  await sb.auth.signOut();
-  localStorage.clear();
-  window.location.href='https://www.migranix.in';
-}
+// ========== CLOSE DROPDOWN ON CLICK OUTSIDE ==========
+document.addEventListener('click', function(e) {
+  var dropdown = document.getElementById('dropdownMenu');
+  var avatar = document.getElementById('userAvatar');
+  if (dropdown && dropdown.classList.contains('active')) {
+    if (!dropdown.contains(e.target) && e.target !== avatar) {
+      dropdown.classList.remove('active');
+    }
+  }
+});
 
+// ========== START ==========
 init();
+handleOAuthCallback();
 </script>
 </body>
 </html>
