@@ -7,291 +7,882 @@
 <meta name="robots" content="noindex"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --primary:#2563eb;
-  --primary-dark:#1d4ed8;
-  --primary-light:#eff6ff;
+  --primary:#4f46e5;
+  --primary-light:#818cf8;
+  --primary-dark:#4338ca;
+  --accent:#06b6d4;
+  --accent-warm:#f59e0b;
   --navy:#0f172a;
-  --g50:#f8fafc;
-  --g100:#f1f5f9;
-  --g200:#e2e8f0;
-  --g300:#cbd5e1;
-  --g400:#94a3b8;
-  --g500:#64748b;
-  --g600:#475569;
+  --slate-50:#f8fafc;
+  --slate-100:#f1f5f9;
+  --slate-200:#e2e8f0;
+  --slate-300:#cbd5e1;
+  --slate-400:#94a3b8;
+  --slate-500:#64748b;
+  --slate-600:#475569;
+  --slate-700:#334155;
+  --slate-800:#1e293b;
+  --slate-900:#0f172a;
   --success:#10b981;
   --danger:#ef4444;
-  --danger-light:#fef2f2;
-  --font:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+  --warning:#f59e0b;
+  --font-display:'Plus Jakarta Sans', sans-serif;
+  --font-body:'Inter', sans-serif;
+  --radius-sm:8px;
+  --radius:12px;
+  --radius-lg:16px;
+  --radius-xl:24px;
+  --shadow-sm:0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow:0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md:0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg:0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl:0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-glow:0 0 40px -10px rgba(79, 70, 229, 0.3);
 }
-html,body{font-family:var(--font);background:var(--g50);color:var(--navy);height:100vh;display:flex;flex-direction:column;-webkit-font-smoothing:antialiased}
 
-/* NAV */
+html,body{
+  font-family:var(--font-body);
+  background:var(--slate-50);
+  color:var(--navy);
+  height:100vh;
+  display:flex;
+  flex-direction:column;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  overflow:hidden;
+}
+
+/* ========== ANIMATED BACKGROUND ========== */
+.animated-bg{
+  position:fixed;
+  inset:0;
+  z-index:0;
+  overflow:hidden;
+  pointer-events:none;
+}
+.animated-bg .orb{
+  position:absolute;
+  border-radius:50%;
+  filter:blur(80px);
+  opacity:0.5;
+  animation:float 20s ease-in-out infinite;
+}
+.animated-bg .orb-1{
+  width:600px;height:600px;
+  background:linear-gradient(135deg, rgba(79,70,229,0.15), rgba(6,182,212,0.1));
+  top:-200px;left:-100px;
+  animation-delay:0s;
+}
+.animated-bg .orb-2{
+  width:500px;height:500px;
+  background:linear-gradient(135deg, rgba(245,158,11,0.1), rgba(239,68,68,0.08));
+  bottom:-150px;right:-100px;
+  animation-delay:-7s;
+  animation-duration:25s;
+}
+.animated-bg .orb-3{
+  width:400px;height:400px;
+  background:linear-gradient(135deg, rgba(6,182,212,0.12), rgba(79,70,229,0.08));
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  animation-delay:-14s;
+  animation-duration:30s;
+}
+@keyframes float{
+  0%,100%{transform:translate(0,0) scale(1)}
+  33%{transform:translate(30px,-30px) scale(1.05)}
+  66%{transform:translate(-20px,20px) scale(0.95)}
+}
+
+/* Grid pattern overlay */
+.grid-pattern{
+  position:fixed;
+  inset:0;
+  z-index:1;
+  background-image:
+    linear-gradient(rgba(148,163,184,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148,163,184,0.05) 1px, transparent 1px);
+  background-size:60px 60px;
+  pointer-events:none;
+  mask-image:radial-gradient(ellipse at center, black 40%, transparent 80%);
+  -webkit-mask-image:radial-gradient(ellipse at center, black 40%, transparent 80%);
+}
+
+/* ========== NAVIGATION ========== */
 .app-nav{
-  height:64px;background:#fff;border-bottom:1px solid var(--g200);
-  display:flex;align-items:center;justify-content:space-between;
-  padding:0 32px;flex-shrink:0;position:relative;z-index:100;
+  height:72px;
+  background:rgba(255,255,255,0.8);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid rgba(226,232,240,0.6);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:0 32px;
+  flex-shrink:0;
+  position:relative;
+  z-index:100;
 }
 .app-logo{
-  display:flex;align-items:center;gap:10px;
-  font-size:1.15rem;font-weight:800;color:var(--navy);
-  text-decoration:none;letter-spacing:-.02em;
+  display:flex;
+  align-items:center;
+  gap:12px;
+  font-family:var(--font-display);
+  font-size:1.25rem;
+  font-weight:800;
+  color:var(--navy);
+  text-decoration:none;
+  letter-spacing:-0.03em;
 }
-.app-logo:hover{opacity:.8}
-.app-logo-icon{
-  width:32px;height:32px;
-  background:linear-gradient(135deg,var(--primary),#3b82f6);
-  border-radius:8px;display:flex;align-items:center;justify-content:center;
-  color:#fff;font-size:.9rem;font-weight:700;
-  box-shadow:0 2px 8px rgba(37,99,235,.25);
+.app-logo:hover{opacity:0.85}
+.logo-mark{
+  width:36px;height:36px;
+  background:linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-size:1rem;
+  font-weight:800;
+  box-shadow:0 4px 14px rgba(79,70,229,0.35);
+  position:relative;
+  overflow:hidden;
+}
+.logo-mark::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.2) 50%, transparent 60%);
+  animation:shimmer 3s infinite;
+}
+@keyframes shimmer{
+  0%{transform:translateX(-100%)}
+  100%{transform:translateX(100%)}
 }
 .app-badge{
-  background:var(--primary-light);color:var(--primary);
-  font-size:.68rem;font-weight:700;padding:3px 10px;
-  border-radius:99px;letter-spacing:.06em;text-transform:uppercase;
+  background:linear-gradient(135deg, var(--primary-light), rgba(129,140,248,0.2));
+  color:var(--primary);
+  font-size:0.65rem;
+  font-weight:800;
+  padding:4px 10px;
+  border-radius:99px;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
   margin-left:4px;
+  border:1px solid rgba(79,70,229,0.15);
 }
-.app-nav-right{display:flex;align-items:center;gap:16px}
-.app-user{
-  display:none;align-items:center;gap:10px;font-size:.85rem;
-  color:var(--g500);padding:6px 14px;background:var(--g100);
-  border-radius:99px;border:1px solid var(--g200);
-}
-.app-user-avatar{
-  width:28px;height:28px;border-radius:50%;
-  background:linear-gradient(135deg,var(--primary),#06b6d4);
-  display:flex;align-items:center;justify-content:center;
-  color:#fff;font-size:.75rem;font-weight:700;
-}
-.app-user strong{color:var(--navy);font-weight:600}
-.app-btn{
-  display:inline-flex;align-items:center;gap:6px;
-  background:#fff;color:var(--g600);border:1.5px solid var(--g300);
-  padding:8px 16px;border-radius:8px;font-size:.82rem;
-  font-weight:600;cursor:pointer;font-family:var(--font);
-  transition:all .2s;text-decoration:none;
-}
-.app-btn:hover{background:var(--g50);border-color:var(--g400);color:var(--navy)}
-.app-btn-danger{border-color:var(--danger);color:var(--danger)}
-.app-btn-danger:hover{background:var(--danger-light);color:#dc2626}
 
-/* MAIN */
-.app-main{flex:1;position:relative;overflow:hidden;display:flex;flex-direction:column}
+.app-nav-right{
+  display:flex;
+  align-items:center;
+  gap:16px;
+}
 
-/* LOADING */
+/* User pill */
+.user-pill{
+  display:none;
+  align-items:center;
+  gap:10px;
+  padding:6px 16px 6px 6px;
+  background:rgba(241,245,249,0.8);
+  border:1px solid var(--slate-200);
+  border-radius:99px;
+  font-size:0.85rem;
+  color:var(--slate-600);
+  transition:all 0.2s;
+}
+.user-pill:hover{
+  background:rgba(241,245,249,1);
+  border-color:var(--slate-300);
+  box-shadow:var(--shadow-sm);
+}
+.user-pill-avatar{
+  width:32px;height:32px;
+  border-radius:50%;
+  background:linear-gradient(135deg, var(--primary), var(--accent));
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color:#fff;
+  font-family:var(--font-display);
+  font-size:0.8rem;
+  font-weight:700;
+  border:2px solid #fff;
+  box-shadow:var(--shadow-sm);
+}
+.user-pill-name{
+  font-weight:600;
+  color:var(--slate-800);
+}
+
+/* Buttons */
+.btn{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 20px;
+  border-radius:10px;
+  font-family:var(--font-body);
+  font-size:0.875rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  text-decoration:none;
+  border:none;
+  outline:none;
+  position:relative;
+  overflow:hidden;
+}
+.btn::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
+  opacity:0;
+  transition:opacity 0.2s;
+}
+.btn:hover::before{opacity:1}
+.btn:active{transform:scale(0.97)}
+
+.btn-secondary{
+  background:#fff;
+  color:var(--slate-700);
+  border:1.5px solid var(--slate-200);
+  box-shadow:var(--shadow-sm);
+}
+.btn-secondary:hover{
+  border-color:var(--slate-300);
+  box-shadow:var(--shadow);
+  transform:translateY(-1px);
+}
+
+.btn-danger{
+  background:rgba(239,68,68,0.08);
+  color:var(--danger);
+  border:1.5px solid rgba(239,68,68,0.2);
+}
+.btn-danger:hover{
+  background:rgba(239,68,68,0.12);
+  border-color:rgba(239,68,68,0.3);
+  transform:translateY(-1px);
+}
+
+/* ========== MAIN CONTENT ========== */
+.app-main{
+  flex:1;
+  position:relative;
+  z-index:2;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+}
+
+/* ========== LOADING STATE ========== */
 .app-loading{
-  flex:1;display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:24px;
-  background:linear-gradient(180deg,var(--g50) 0%,#fff 100%);
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:32px;
 }
-.spinner-wrap{position:relative;width:64px;height:64px}
-.spinner{
-  width:64px;height:64px;border:3px solid var(--g200);
-  border-top-color:var(--primary);border-right-color:var(--primary);
-  border-radius:50%;animation:spin .9s linear infinite;
+.loading-card{
+  background:rgba(255,255,255,0.9);
+  backdrop-filter:blur(20px);
+  border:1px solid rgba(226,232,240,0.8);
+  border-radius:var(--radius-xl);
+  padding:48px 56px;
+  box-shadow:var(--shadow-xl), var(--shadow-glow);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:24px;
+  max-width:400px;
+  width:90%;
 }
-@keyframes spin{to{transform:rotate(360deg)}}
-.app-loading h3{font-size:1.1rem;font-weight:600;color:var(--navy)}
-.app-loading p{color:var(--g400);font-size:.9rem;text-align:center;max-width:280px}
+.loader-ring{
+  position:relative;
+  width:80px;height:80px;
+}
+.loader-ring svg{
+  width:80px;height:80px;
+  transform:rotate(-90deg);
+}
+.loader-ring circle{
+  fill:none;
+  stroke-width:4;
+  stroke-linecap:round;
+}
+.loader-track{
+  stroke:var(--slate-200);
+}
+.loader-progress{
+  stroke:url(#loaderGradient);
+  stroke-dasharray:220;
+  stroke-dashoffset:220;
+  animation:loadProgress 2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+@keyframes loadProgress{
+  to{stroke-dashoffset:0}
+}
+.loader-center{
+  position:absolute;
+  top:50%;left:50%;
+  transform:translate(-50%,-50%);
+  width:16px;height:16px;
+  background:linear-gradient(135deg, var(--primary), var(--accent));
+  border-radius:50%;
+  animation:pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot{
+  0%,100%{transform:translate(-50%,-50%) scale(1);opacity:1}
+  50%{transform:translate(-50%,-50%) scale(1.3);opacity:0.6}
+}
+.loading-card h3{
+  font-family:var(--font-display);
+  font-size:1.25rem;
+  font-weight:700;
+  color:var(--slate-800);
+}
+.loading-card p{
+  font-size:0.9rem;
+  color:var(--slate-500);
+  text-align:center;
+  line-height:1.6;
+}
+.loading-steps{
+  display:flex;
+  gap:8px;
+  align-items:center;
+}
+.loading-step{
+  width:8px;height:8px;
+  border-radius:50%;
+  background:var(--slate-200);
+  transition:all 0.3s;
+}
+.loading-step.active{
+  background:var(--primary);
+  box-shadow:0 0 8px rgba(79,70,229,0.4);
+  transform:scale(1.2);
+}
+.loading-step.done{
+  background:var(--success);
+}
 
-/* LOGIN */
+/* ========== LOGIN STATE ========== */
 .login-container{
-  flex:1;display:flex;align-items:center;justify-content:center;
-  padding:24px;background:linear-gradient(180deg,var(--g50) 0%,#fff 100%);
+  flex:1;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px;
 }
-.login-box{
-  max-width:440px;width:100%;text-align:center;background:#fff;
-  border-radius:16px;padding:48px 40px;
-  box-shadow:0 20px 25px -5px rgba(0,0,0,.1),0 8px 10px -6px rgba(0,0,0,.1);
-  border:1px solid var(--g200);
+.login-wrapper{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:0;
+  max-width:1000px;
+  width:100%;
+  background:rgba(255,255,255,0.95);
+  backdrop-filter:blur(20px);
+  border:1px solid rgba(226,232,240,0.8);
+  border-radius:var(--radius-xl);
+  box-shadow:var(--shadow-xl), var(--shadow-glow);
+  overflow:hidden;
+  min-height:560px;
 }
-.login-icon-wrap{
-  width:72px;height:72px;margin:0 auto 24px;
-  background:linear-gradient(135deg,var(--primary-light),#dbeafe);
-  border-radius:12px;display:flex;align-items:center;justify-content:center;
-  font-size:2rem;box-shadow:0 4px 16px rgba(37,99,235,.12);
+.login-visual{
+  background:linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 50%, var(--accent) 100%);
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  padding:48px;
+  color:#fff;
+  overflow:hidden;
 }
-.login-box h2{font-size:1.5rem;font-weight:800;margin-bottom:12px;color:var(--navy)}
-.login-box>p{color:var(--g500);font-size:.95rem;line-height:1.65;margin-bottom:32px}
+.login-visual::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:
+    radial-gradient(circle at 20% 80%, rgba(255,255,255,0.1) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(255,255,255,0.08) 0%, transparent 40%);
+}
+.login-visual::after{
+  content:'';
+  position:absolute;
+  top:-50%;right:-50%;
+  width:200%;height:200%;
+  background:repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 10px,
+    rgba(255,255,255,0.03) 10px,
+    rgba(255,255,255,0.03) 20px
+  );
+  animation:slidePattern 30s linear infinite;
+}
+@keyframes slidePattern{
+  to{transform:translate(50px,50px)}
+}
+.visual-content{
+  position:relative;
+  z-index:1;
+}
+.visual-logo{
+  width:48px;height:48px;
+  background:rgba(255,255,255,0.15);
+  backdrop-filter:blur(10px);
+  border:1px solid rgba(255,255,255,0.2);
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:1.5rem;
+  margin-bottom:24px;
+}
+.visual-content h2{
+  font-family:var(--font-display);
+  font-size:1.75rem;
+  font-weight:800;
+  margin-bottom:12px;
+  line-height:1.2;
+}
+.visual-content p{
+  font-size:0.95rem;
+  opacity:0.85;
+  line-height:1.6;
+  margin-bottom:32px;
+}
+.visual-stats{
+  display:flex;
+  gap:24px;
+}
+.visual-stat{
+  text-align:left;
+}
+.visual-stat .num{
+  font-family:var(--font-display);
+  font-size:1.5rem;
+  font-weight:800;
+  display:block;
+}
+.visual-stat .lbl{
+  font-size:0.75rem;
+  opacity:0.7;
+  text-transform:uppercase;
+  letter-spacing:0.05em;
+}
+.visual-dots{
+  position:absolute;
+  top:32px;right:32px;
+  display:flex;
+  gap:6px;
+}
+.visual-dot{
+  width:8px;height:8px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.3);
+}
+.visual-dot.active{
+  background:#fff;
+  box-shadow:0 0 10px rgba(255,255,255,0.5);
+}
 
-/* Social Login */
-.social-login{display:flex;flex-direction:column;gap:10px;margin-bottom:24px}
+.login-form-area{
+  padding:48px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+.login-header{
+  margin-bottom:32px;
+}
+.login-header h2{
+  font-family:var(--font-display);
+  font-size:1.5rem;
+  font-weight:800;
+  color:var(--slate-900);
+  margin-bottom:8px;
+}
+.login-header p{
+  font-size:0.9rem;
+  color:var(--slate-500);
+  line-height:1.5;
+}
+
+/* Social buttons */
+.social-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-bottom:24px;
+}
 .btn-social{
-  display:flex;align-items:center;justify-content:center;gap:10px;
-  width:100%;padding:11px 16px;border-radius:8px;
-  border:1.5px solid var(--g200);background:#fff;color:var(--g600);
-  font-family:var(--font);font-size:.88rem;font-weight:600;
-  cursor:pointer;transition:all .2s;text-decoration:none;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  padding:12px 16px;
+  border-radius:10px;
+  border:1.5px solid var(--slate-200);
+  background:#fff;
+  color:var(--slate-700);
+  font-family:var(--font-body);
+  font-size:0.85rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:all 0.2s;
 }
-.btn-social:hover{background:var(--g50);border-color:var(--g300);transform:translateY(-1px)}
-.btn-social svg{width:20px;height:20px;flex-shrink:0}
-.btn-microsoft{background:#2f2f2f;color:#fff;border-color:#2f2f2f}
-.btn-microsoft:hover{background:#1f1f1f;border-color:#1f1f1f}
-.btn-github{background:#24292f;color:#fff;border-color:#24292f}
-.btn-github:hover{background:#1a1f24;border-color:#1a1f24}
+.btn-social:hover{
+  border-color:var(--slate-300);
+  background:var(--slate-50);
+  transform:translateY(-2px);
+  box-shadow:var(--shadow-md);
+}
+.btn-social:active{transform:translateY(0)}
+.btn-social svg{
+  width:20px;height:20px;
+  flex-shrink:0;
+}
+.btn-social.full{
+  grid-column:1/-1;
+}
 
-.login-divider{
-  display:flex;align-items:center;gap:16px;margin:24px 0;
-  color:var(--g400);font-size:.82rem;font-weight:500;
+.btn-google:hover{border-color:#ea4335;color:#ea4335}
+.btn-microsoft{
+  background:linear-gradient(135deg, #2f2f2f, #1f1f1f);
+  color:#fff;
+  border-color:transparent;
 }
-.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:var(--g200)}
+.btn-microsoft:hover{
+  background:linear-gradient(135deg, #1f1f1f, #0f0f0f);
+  transform:translateY(-2px);
+}
+.btn-github{
+  background:linear-gradient(135deg, #24292f, #1a1f24);
+  color:#fff;
+  border-color:transparent;
+}
+.btn-github:hover{
+  background:linear-gradient(135deg, #1a1f24, #0d1117);
+  transform:translateY(-2px);
+}
+
+.divider{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  margin:24px 0;
+  color:var(--slate-400);
+  font-size:0.8rem;
+  font-weight:500;
+}
+.divider::before,.divider::after{
+  content:'';
+  flex:1;
+  height:1px;
+  background:linear-gradient(90deg, var(--slate-200), transparent);
+}
+.divider::after{
+  background:linear-gradient(90deg, transparent, var(--slate-200));
+}
 
 .login-cta{
-  display:inline-flex;align-items:center;justify-content:center;gap:8px;
-  width:100%;background:var(--primary);color:#fff;padding:14px 28px;
-  border-radius:8px;font-weight:700;font-size:.95rem;text-decoration:none;
-  transition:all .2s;border:none;cursor:pointer;font-family:var(--font);
-  box-shadow:0 4px 14px rgba(37,99,235,.25);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:10px;
+  width:100%;
+  padding:14px 28px;
+  background:linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+  color:#fff;
+  border-radius:10px;
+  font-family:var(--font-display);
+  font-size:0.95rem;
+  font-weight:700;
+  text-decoration:none;
+  transition:all 0.3s;
+  border:none;
+  cursor:pointer;
+  box-shadow:0 4px 14px rgba(79,70,229,0.3), 0 0 0 0 rgba(79,70,229,0.4);
+  position:relative;
+  overflow:hidden;
 }
-.login-cta:hover{background:var(--primary-dark);transform:translateY(-2px)}
-.login-note{
-  color:var(--g400);font-size:.78rem;margin-top:20px;
-  display:flex;align-items:center;justify-content:center;gap:6px;
+.login-cta::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(135deg, transparent 40%, rgba(255,255,255,0.15) 50%, transparent 60%);
+  transform:translateX(-100%);
+  transition:transform 0.6s;
 }
-.login-note::before{
-  content:'';display:inline-block;width:6px;height:6px;
-  background:var(--success);border-radius:50%;
+.login-cta:hover{
+  transform:translateY(-2px);
+  box-shadow:0 8px 25px rgba(79,70,229,0.4), 0 0 0 4px rgba(79,70,229,0.1);
 }
-.login-features{
-  display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;
-  margin-top:28px;padding-top:28px;border-top:1px solid var(--g200);
+.login-cta:hover::after{
+  transform:translateX(100%);
 }
-.login-feature{text-align:center}
-.login-feature .num{display:block;font-size:1.3rem;font-weight:800;color:var(--primary);line-height:1;margin-bottom:4px}
-.login-feature .lbl{font-size:.72rem;color:var(--g400);font-weight:500;text-transform:uppercase;letter-spacing:.04em}
+.login-cta:active{transform:translateY(0)}
 
-/* IFRAME */
-.app-frame{flex:1;border:none;width:100%;background:#fff}
+.security-note{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  margin-top:20px;
+  font-size:0.78rem;
+  color:var(--slate-400);
+}
+.security-note .dot{
+  width:6px;height:6px;
+  background:var(--success);
+  border-radius:50%;
+  box-shadow:0 0 6px rgba(16,185,129,0.4);
+  animation:pulse-green 2s infinite;
+}
+@keyframes pulse-green{
+  0%,100%{opacity:1;transform:scale(1)}
+  50%{opacity:0.6;transform:scale(1.2)}
+}
 
-/* TOAST */
+/* ========== IFRAME ========== */
+.app-frame{
+  flex:1;
+  border:none;
+  width:100%;
+  background:#fff;
+}
+
+/* ========== TOAST ========== */
 .toast-container{
-  position:fixed;top:80px;right:24px;z-index:3000;
-  display:flex;flex-direction:column;gap:10px;pointer-events:none;
+  position:fixed;
+  top:88px;
+  right:24px;
+  z-index:3000;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  pointer-events:none;
 }
 .toast{
-  background:#fff;border-radius:12px;padding:14px 18px;
-  box-shadow:0 20px 25px -5px rgba(0,0,0,.1);
-  display:flex;align-items:center;gap:12px;
-  border-left:4px solid var(--primary);max-width:380px;pointer-events:auto;
-  animation:toastIn .4s ease;
+  background:rgba(255,255,255,0.95);
+  backdrop-filter:blur(20px);
+  border:1px solid var(--slate-200);
+  border-radius:var(--radius);
+  padding:16px 20px;
+  box-shadow:var(--shadow-xl);
+  display:flex;
+  align-items:center;
+  gap:14px;
+  max-width:400px;
+  pointer-events:auto;
+  animation:toastSlide 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  position:relative;
+  overflow:hidden;
 }
-.toast.error{border-left-color:var(--danger)}
-@keyframes toastIn{
-  from{transform:translateX(120%);opacity:0}
-  to{transform:translateX(0);opacity:1}
+.toast::before{
+  content:'';
+  position:absolute;
+  left:0;top:0;bottom:0;
+  width:4px;
+}
+.toast.success::before{background:var(--success)}
+.toast.error::before{background:var(--danger)}
+.toast.info::before{background:var(--primary)}
+@keyframes toastSlide{
+  from{transform:translateX(120%) scale(0.9);opacity:0}
+  to{transform:translateX(0) scale(1);opacity:1}
 }
 .toast-icon{
-  width:36px;height:36px;border-radius:50%;background:var(--primary-light);
-  display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0;
+  width:40px;height:40px;
+  border-radius:10px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:1.25rem;
+  flex-shrink:0;
 }
-.toast.error .toast-icon{background:var(--danger-light)}
+.toast.success .toast-icon{background:rgba(16,185,129,0.1)}
+.toast.error .toast-icon{background:rgba(239,68,68,0.1)}
+.toast.info .toast-icon{background:rgba(79,70,229,0.1)}
 .toast-content{flex:1}
-.toast-title{font-weight:700;font-size:.9rem;color:var(--navy);margin-bottom:2px}
-.toast-message{font-size:.82rem;color:var(--g500);line-height:1.4}
+.toast-title{
+  font-family:var(--font-display);
+  font-weight:700;
+  font-size:0.9rem;
+  color:var(--slate-800);
+  margin-bottom:2px;
+}
+.toast-message{
+  font-size:0.82rem;
+  color:var(--slate-500);
+  line-height:1.4;
+}
 
-/* RESPONSIVE */
+/* ========== RESPONSIVE ========== */
+@media(max-width:900px){
+  .login-wrapper{
+    grid-template-columns:1fr;
+    max-width:480px;
+  }
+  .login-visual{display:none}
+}
 @media(max-width:640px){
-  .app-nav{padding:0 16px;height:56px}
+  .app-nav{padding:0 20px;height:64px}
   .app-badge{display:none}
-  .login-box{padding:32px 24px}
-  .login-features{grid-template-columns:1fr;gap:8px}
-  .login-feature{display:flex;align-items:center;justify-content:center;gap:8px;text-align:left}
-  .login-feature .num{margin-bottom:0}
+  .login-form-area{padding:32px 24px}
+  .social-grid{grid-template-columns:1fr}
+  .btn-social.full{grid-column:auto}
   .toast-container{right:12px;left:12px}
   .toast{max-width:100%}
+  .loading-card{padding:36px 28px}
 }
 </style>
 </head>
 <body>
 
+<!-- SVG Definitions -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <linearGradient id="loaderGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4f46e5"/>
+      <stop offset="100%" style="stop-color:#06b6d4"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<!-- Animated Background -->
+<div class="animated-bg">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+<div class="grid-pattern"></div>
+
 <!-- Toast Container -->
 <div class="toast-container" id="toastContainer"></div>
 
-<!-- NAV -->
-<<nav class="app-nav">
+<!-- Navigation -->
+<nav class="app-nav">
   <a class="app-logo" href="https://www.migranix.in">
-    <div class="app-logo-icon">M</div>
+    <div class="logo-mark">M</div>
     Migranix
     <span class="app-badge">Platform</span>
   </a>
   <div class="app-nav-right" id="navRight">
-    <div class="app-user" id="userDisplay">
-      <div class="app-user-avatar" id="userAvatar">?</div>
-      <span id="userName"></span>
+    <div class="user-pill" id="userDisplay">
+      <div class="user-pill-avatar" id="userAvatar">?</div>
+      <span class="user-pill-name" id="userName"></span>
     </div>
-    <a href="https://www.migranix.in" class="app-btn">
+    <a href="https://www.migranix.in" class="btn btn-secondary">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
       Back to Site
     </a>
-    <button class="app-btn app-btn-danger" id="logoutBtn" onclick="handleLogout()" style="display:none">
+    <button class="btn btn-danger" id="logoutBtn" onclick="handleLogout()" style="display:none">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
       Log Out
     </button>
   </div>
 </nav>
 
-<!-- MAIN CONTENT -->
+<!-- Main Content -->
 <div class="app-main" id="appMain">
 
   <!-- Loading State -->
   <div class="app-loading" id="loadingState">
-    <div class="spinner-wrap">
-      <div class="spinner"></div>
-    </div>
-    <div style="text-align:center">
-      <h3>Verifying your session</h3>
-      <p>Please wait while we authenticate your credentials...</p>
+    <div class="loading-card">
+      <div class="loader-ring">
+        <svg viewBox="0 0 80 80">
+          <circle class="loader-track" cx="40" cy="40" r="35"/>
+          <circle class="loader-progress" cx="40" cy="40" r="35"/>
+        </svg>
+        <div class="loader-center"></div>
+      </div>
+      <div style="text-align:center">
+        <h3>Verifying your session</h3>
+        <p>Please wait while we authenticate your credentials and prepare your dashboard.</p>
+      </div>
+      <div class="loading-steps" id="loadingSteps">
+        <div class="loading-step active"></div>
+        <div class="loading-step"></div>
+        <div class="loading-step"></div>
+      </div>
     </div>
   </div>
 
   <!-- Login Required State -->
   <div class="login-container" id="loginState" style="display:none">
-    <div class="login-box">
-      <div class="login-icon-wrap">&#128274;</div>
-      <h2>Welcome to Migranix</h2>
-      <p>Sign in to access your Data Cleaning Platform dashboard and manage your migrations.</p>
-
-      <!-- Social Login -->
-      <div class="social-login">
-        <button class="btn-social" onclick="handleSocialAuth('google')">
-          <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-          Continue with Google
-        </button>
-        <button class="btn-social btn-microsoft" onclick="handleSocialAuth('azure')">
-          <svg viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
-          Continue with Microsoft
-        </button>
-        <button class="btn-social btn-github" onclick="handleSocialAuth('github')">
-          <svg viewBox="0 0 24 24" fill="white"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-          Continue with GitHub
-        </button>
+    <div class="login-wrapper">
+      <!-- Left Visual Panel -->
+      <div class="login-visual">
+        <div class="visual-dots">
+          <div class="visual-dot active"></div>
+          <div class="visual-dot"></div>
+          <div class="visual-dot"></div>
+        </div>
+        <div class="visual-content">
+          <div class="visual-logo">&#128274;</div>
+          <h2>Enterprise Data Migration, Simplified</h2>
+          <p>Join 500+ Indian SMEs who trust Migranix for secure, zero-downtime data cleaning and migration to modern cloud warehouses.</p>
+          <div class="visual-stats">
+            <div class="visual-stat">
+              <span class="num">500+</span>
+              <span class="lbl">Migrations</span>
+            </div>
+            <div class="visual-stat">
+              <span class="num">99.9%</span>
+              <span class="lbl">Accuracy</span>
+            </div>
+            <div class="visual-stat">
+              <span class="num">24/7</span>
+              <span class="lbl">Support</span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div class="login-divider">or</div>
-
-      <a class="login-cta" href="https://www.migranix.in">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M13.8 12H3"/></svg>
-        Go to migranix.in
-      </a>
-
-      <div class="login-note">Free 14-day trial &middot; No credit card required</div>
-
-      <div class="login-features">
-        <div class="login-feature">
-          <span class="num">500+</span>
-          <span class="lbl">Migrations</span>
+      <!-- Right Form Panel -->
+      <div class="login-form-area">
+        <div class="login-header">
+          <h2>Welcome back</h2>
+          <p>Sign in to access your Data Cleaning Platform dashboard.</p>
         </div>
-        <div class="login-feature">
-          <span class="num">99.9%</span>
-          <span class="lbl">Accuracy</span>
+
+        <div class="social-grid">
+          <button class="btn-social btn-google" onclick="handleSocialAuth('google')">
+            <svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+            Google
+          </button>
+          <button class="btn-social btn-microsoft" onclick="handleSocialAuth('azure')">
+            <svg viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+            Microsoft
+          </button>
+          <button class="btn-social btn-github full" onclick="handleSocialAuth('github')">
+            <svg viewBox="0 0 24 24" fill="white"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+            Continue with GitHub
+          </button>
         </div>
-        <div class="login-feature">
-          <span class="num">24/7</span>
-          <span class="lbl">Support</span>
+
+        <div class="divider">or continue with</div>
+
+        <a class="login-cta" href="https://www.migranix.in">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M13.8 12H3"/></svg>
+          Go to migranix.in
+        </a>
+
+        <div class="security-note">
+          <span class="dot"></span>
+          <span>Free 14-day trial &middot; No credit card required &middot; SOC 2 Compliant</span>
         </div>
       </div>
     </div>
@@ -320,13 +911,33 @@ var els = {
   userName: document.getElementById('userName'),
   userAvatar: document.getElementById('userAvatar'),
   logoutBtn: document.getElementById('logoutBtn'),
-  toastContainer: document.getElementById('toastContainer')
+  toastContainer: document.getElementById('toastContainer'),
+  loadingSteps: document.getElementById('loadingSteps')
 };
+
+// Animate loading steps
+var stepInterval;
+function animateSteps() {
+  var steps = els.loadingSteps.querySelectorAll('.loading-step');
+  var current = 0;
+  stepInterval = setInterval(function() {
+    steps.forEach(function(s, i) {
+      s.classList.remove('active', 'done');
+      if (i < current) s.classList.add('done');
+      if (i === current) s.classList.add('active');
+    });
+    current = (current + 1) % steps.length;
+  }, 800);
+}
 
 // ========== TOAST SYSTEM ==========
 function showToast(title, message, type) {
   type = type || 'info';
-  var icons = {info: '&#8505;&#65039;', success: '&#9989;', error: '&#10060;'};
+  var icons = {
+    info: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
+    success: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    error: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+  };
   var toast = document.createElement('div');
   toast.className = 'toast ' + type;
   toast.innerHTML =
@@ -338,8 +949,8 @@ function showToast(title, message, type) {
   els.toastContainer.appendChild(toast);
   setTimeout(function() {
     toast.style.opacity = '0';
-    toast.style.transform = 'translateX(120%)';
-    toast.style.transition = 'all .4s ease';
+    toast.style.transform = 'translateX(120%) scale(0.9)';
+    toast.style.transition = 'all 0.4s ease';
     setTimeout(function() { toast.remove(); }, 400);
   }, 5000);
 }
@@ -363,7 +974,7 @@ async function handleSocialAuth(provider) {
 async function handleLogout() {
   try {
     els.logoutBtn.disabled = true;
-    els.logoutBtn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px"></span> Logging out...';
+    els.logoutBtn.innerHTML = '<span style="display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:6px"></span> Logging out...';
     await sb.auth.signOut();
     showToast('Logged Out', 'You have been successfully signed out.', 'success');
     setTimeout(function() { window.location.reload(); }, 800);
@@ -377,9 +988,10 @@ async function handleLogout() {
 
 // ========== UPDATE UI FOR LOGGED IN USER ==========
 function showLoggedInUI(user, token) {
+  clearInterval(stepInterval);
   var name = (user.user_metadata && user.user_metadata.full_name) ? user.user_metadata.full_name : user.email;
   var initials = name.split(' ').map(function(n) { return n[0]; }).join('').substring(0, 2).toUpperCase();
-  els.userName.innerHTML = '<strong>' + name + '</strong>';
+  els.userName.textContent = name;
   els.userAvatar.textContent = initials;
   els.userDisplay.style.display = 'flex';
   els.logoutBtn.style.display = 'inline-flex';
@@ -391,6 +1003,7 @@ function showLoggedInUI(user, token) {
 
 // ========== UPDATE UI FOR LOGGED OUT USER ==========
 function showLoggedOutUI() {
+  clearInterval(stepInterval);
   els.loading.style.display = 'none';
   els.login.style.display = 'flex';
   els.frame.style.display = 'none';
@@ -400,6 +1013,7 @@ function showLoggedOutUI() {
 
 // ========== MAIN INITIALIZATION ==========
 async function init() {
+  animateSteps();
   try {
     var sess = await sb.auth.getSession();
     var user = sess.data.session ? sess.data.session.user : null;
@@ -429,8 +1043,6 @@ async function handleOAuthCallback() {
   var hash = window.location.hash;
   var query = window.location.search;
   if (hash.includes('access_token') || query.includes('code=')) {
-    els.loading.querySelector('h3').textContent = 'Completing sign in...';
-    els.loading.querySelector('p').textContent = 'Please wait while we finalize your authentication.';
     try {
       var result = await sb.auth.getSession();
       if (result.error) throw result.error;
