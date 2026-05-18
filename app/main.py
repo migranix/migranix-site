@@ -1,7 +1,14 @@
 """
 Migranix Data Platform — FastAPI Backend
 Handles: DB connections, query execution, AI SQL generation, exports, credential encryption
+
+OPTIONAL DRIVERS (install separately if needed):
+  pip install pyodbc oracledb snowflake-connector-python google-cloud-bigquery 
+  pip install redshift-connector databricks-sql-connector cassandra-driver ibm-db
+
+Core drivers included: psycopg2, pymysql, pymongo
 """
+
 
 import os
 import json
@@ -90,18 +97,86 @@ try:
 except ImportError:
     CRYPTO_AVAILABLE = False
 
-# Supabase
-from supabase import create_client, Client
+# Supabase REST API client (lightweight, no heavy dependencies)
+import asyncio
+
+class SupabaseClient:
+    def __init__(self, url, key):
+        self.url = url.rstrip('/')
+        self.key = key
+        self.headers = {
+            'apikey': key,
+            'Authorization': f'Bearer {key}',
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        }
+
+    def _sync_request(self, method, path, json_data=None, params=None):
+        import httpx
+        url = f"{self.url}/rest/v1/{path}"
+        kwargs = {'headers': self.headers}
+        if json_data:
+            kwargs['json'] = json_data
+        if params:
+            kwargs['params'] = params
+        resp = httpx.request(method, url, **kwargs)
+        if resp.status_code >= 400:
+            raise Exception(f"Supabase error {resp.status_code}: {resp.text}")
+        return resp.json() if resp.text else []
+
+    def table(self, name):
+        return TableQuery(self, name)
+
+class TableQuery:
+    def __init__(self, client, table_name):
+        self.client = client
+        self.table_name = table_name
+        self._select = '*'
+        self._filters = {}
+        self._order = None
+        self._single = False
+
+    def select(self, cols):
+        self._select = cols
+        return self
+
+    def eq(self, col, val):
+        self._filters[col] = f'eq.{val}'
+        return self
+
+    def order(self, col, desc=False):
+        self._order = f'{col}.{"desc" if desc else "asc"}'
+        return self
+
+    def single(self):
+        self._single = True
+        return self
+
+    def insert(self, data):
+        result = self.client._sync_request('POST', self.table_name, json_data=data)
+        return {'data': result if isinstance(result, list) else [result]}
+
+    def update(self, data):
+        result = self.client._sync_request('PATCH', self.table_name, json_data=data, params=self._filters)
+        return {'data': result if isinstance(result, list) else [result]}
+
+    def delete(self):
+        result = self.client._sync_request('DELETE', self.table_name, params=self._filters)
+        return {'data': result if isinstance(result, list) else [result]}
+
+    def execute(self):
+        params = dict(self._filters)
+        params['select'] = self._select
+        if self._order:
+            params['order'] = self._order
+        if self._single:
+            self.client.headers['Accept'] = 'application/vnd.pgrst.object+json'
+        result = self.client._sync_request('GET', self.table_name, params=params)
+        if self._single:
+            self.client.headers.pop('Accept', None)
+        return {'data': result if isinstance(result, list) else [result]}
 
 # Load env
-SUPABASE_URL = os.getenv("SUPABASE_URL", "https://yxwlgwaalghvskulhmey.supabase.co")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4d2xnd2FhbGdodnNrdWxobWV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODEwODYsImV4cCI6MjA5NDQ1NzA4Nn0.QOZphIHDIebIkSX23LPjQXtr-iICT9dapzYMw11HBTw")
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "")
-
-# Initialize Supabase
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-
 # Encryption setup
 _fernet = None
 if CRYPTO_AVAILABLE and ENCRYPTION_KEY:
