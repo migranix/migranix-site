@@ -13,11 +13,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgssapi-krb5-2 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Microsoft ODBC Driver 18 for SQL Server on Debian 12
-# CRITICAL FIX: Microsoft's prod.list references /usr/share/keyrings/ but we install to /etc/apt/keyrings/
-# The sed command fixes this path mismatch so apt-get can find the repository
-RUN curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/keyrings/microsoft-prod.gpg \
-    && curl -fsSL https://packages.microsoft.com/config/debian/12/prod.list | sed 's;signed-by=/usr/share/;signed-by=/etc/apt/;' | tee /etc/apt/sources.list.d/mssql-release.list \
+# Install Microsoft ODBC Driver 18 for SQL Server
+# OFFICIAL Microsoft method: download packages-microsoft-prod.deb and install with dpkg
+# This properly configures the repository, key, and sources automatically
+RUN curl -sSL -O https://packages.microsoft.com/config/debian/12/packages-microsoft-prod.deb \
+    && dpkg -i packages-microsoft-prod.deb \
+    && rm packages-microsoft-prod.deb \
     && apt-get update \
     && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
