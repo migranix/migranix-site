@@ -10,6 +10,7 @@ PyMySQL==1.1.0
 pyodbc==5.0.1
 SQLAlchemy==2.0.23
 msodbcsql18
+
 # Cloud & warehouse
 snowflake-connector-python==3.6.0
 google-cloud-bigquery==3.13.0
