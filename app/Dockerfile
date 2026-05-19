@@ -27,7 +27,7 @@ RUN curl -sSL -O https://packages.microsoft.com/config/debian/12/packages-micros
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --no-warn-script-location -r requirements.txt
 
 # Copy application code
 COPY main.py .
