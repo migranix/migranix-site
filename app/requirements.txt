@@ -1,0 +1,30 @@
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+python-multipart==0.0.6
+httpx==0.25.2
+
+# Database drivers
+psycopg2-binary==2.9.9
+PyMySQL==1.1.0
+pyodbc==5.0.1
+SQLAlchemy==2.0.23
+
+# Cloud & warehouse
+snowflake-connector-python==3.6.0
+google-cloud-bigquery==3.13.0
+google-cloud-storage==2.10.0
+azure-storage-blob==12.19.0
+boto3==1.34.0
+
+# NoSQL
+pymongo==4.6.0
+cassandra-driver==3.29.0
+
+# Data processing
+pandas==2.1.3
+openpyxl==3.1.2
+pyarrow==14.0.1
+
+# Databricks
+databricks-sql-connector==3.0.1
