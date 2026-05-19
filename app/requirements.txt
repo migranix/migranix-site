@@ -7,7 +7,7 @@ httpx==0.25.2
 # Database drivers
 psycopg2-binary==2.9.9
 PyMySQL==1.1.0
-pyodbc==5.0.1
+pyodbc==5.0.1        ← Python ODBC wrapper (correct)
 SQLAlchemy==2.0.23
 
 # Cloud & warehouse
