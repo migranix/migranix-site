@@ -235,116 +235,6 @@
 
     <!-- Dashboard -->
     <div class="dashboard-section" id="dashboardSection"><div class="dashboard-container"><div class="dashboard-header"><h1>Welcome back, <span id="dashboardUserName">User</span>!</h1><p>Here is your migration dashboard overview.</p></div><div class="dashboard-grid"><div class="dashboard-card"><div class="card-label">Active Migrations</div><div class="card-value">3</div><div class="card-change positive">+1 this week</div></div><div class="dashboard-card"><div class="card-label">Records Processed</div><div class="card-value">2.4M</div><div class="card-change positive">+450K this month</div></div><div class="dashboard-card"><div class="card-label">Data Accuracy</div><div class="card-value">99.9%</div><div class="card-change positive">Consistently high</div></div><div class="dashboard-card"><div class="card-label">Plan</div><div class="card-value" id="userPlan" style="font-size:1.25rem">Professional</div><div class="card-change positive">Active</div></div></div><div style="background:white;border-radius:16px;padding:2rem;border:1px solid var(--border);margin-bottom:2rem"><h3 style="font-size:1.25rem;font-weight:700;margin-bottom:1.5rem;color:var(--secondary)">Recent Migrations</h3><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse"><thead><tr style="border-bottom:2px solid var(--border)"><th style="text-align:left;padding:0.75rem;font-size:0.875rem;color:var(--text-light);font-weight:600">Project</th><th style="text-align:left;padding:0.75rem;font-size:0.875rem;color:var(--text-light);font-weight:600">Source</th><th style="text-align:left;padding:0.75rem;font-size:0.875rem;color:var(--text-light);font-weight:600">Destination</th><th style="text-align:left;padding:0.75rem;font-size:0.875rem;color:var(--text-light);font-weight:600">Status</th><th style="text-align:left;padding:0.75rem;font-size:0.875rem;color:var(--text-light);font-weight:600">Progress</th></tr></thead><tbody><tr style="border-bottom:1px solid var(--border)"><td style="padding:0.75rem">ERP Migration Q2</td><td style="padding:0.75rem">MySQL</td><td style="padding:0.75rem">Snowflake</td><td style="padding:0.75rem"><span style="background:#dcfce7;color:#166534;padding:0.25rem 0.75rem;border-radius:20px;font-size:0.8rem;font-weight:600">Completed</span></td><td style="padding:0.75rem;font-weight:600;color:var(--success)">100%</td></tr><tr style="border-bottom:1px solid var(--border)"><td style="padding:0.75rem">Sales Data Sync</td><td style="padding:0.75rem">Oracle</td><td style="padding:0.75rem">Snowflake</td><td style="padding:0.75rem"><span style="background:#dbeafe;color:#1e40af;padding:0.25rem 0.75rem;border-radius:20px;font-size:0.8rem;font-weight:600">In Progress</span></td><td style="padding:0.75rem;font-weight:600;color:var(--primary)">72%</td></tr><tr><td style="padding:0.75rem">Inventory Export</td><td style="padding:0.75rem">Excel</td><td style="padding:0.75rem">Cloud</td><td style="padding:0.75rem"><span style="background:#fef3c7;color:#92400e;padding:0.25rem 0.75rem;border-radius:20px;font-size:0.8rem;font-weight:600">Queued</span></td><td style="padding:0.75rem;font-weight:600;color:var(--text-light)">0%</td></tr></tbody></table></div></div><div style="background:white;border-radius:16px;padding:2rem;border:1px solid var(--border)"><h3 style="font-size:1.25rem;font-weight:700;margin-bottom:1.5rem;color:var(--secondary)">Account Information</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem"><div><div style="font-size:0.875rem;color:var(--text-light);margin-bottom:0.25rem">Full Name</div><div style="font-weight:600" id="accountName">--</div></div><div><div style="font-size:0.875rem;color:var(--text-light);margin-bottom:0.25rem">Email</div><div style="font-weight:600" id="accountEmail">--</div></div><div><div style="font-size:0.875rem;color:var(--text-light);margin-bottom:0.25rem">Company</div><div style="font-weight:600" id="accountCompany">--</div></div><div><div style="font-size:0.875rem;color:var(--text-light);margin-bottom:0.25rem">Member Since</div><div style="font-weight:600" id="accountDate">--</div></div></div></div></div></div>
-        // ==================== SUPABASE AUTHENTICATION SYSTEM ====================
-        // Replaces localStorage auth with real Supabase auth
-        // Both root index.html and app/index.html now share the same session
-
-        var SUPA_URL = 'https://yxwlgwaalghvskulhmey.supabase.co';
-        var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4d2xnd2FhbGdodnNrdWxobWV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODEwODYsImV4cCI6MjA5NDQ1NzA4Nn0.QOZphIHDIebIkSX23LPjQXtr-iICT9dapzYMw11HBTw';
-        var sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
-
-        /* ── 10-SECOND WINDOW-CLOSE TIMEOUT ── */
-        var CLOSE_TIMEOUT = 10 * 1000;
-        document.addEventListener('visibilitychange', function(){
-            if(document.visibilityState === 'hidden') localStorage.setItem('mx_left_at', Date.now().toString());
-            if(document.visibilityState === 'visible'){
-                var left = localStorage.getItem('mx_left_at');
-                if(left && (Date.now() - parseInt(left)) > CLOSE_TIMEOUT){
-                    localStorage.removeItem('mx_left_at');
-                    sb.auth.signOut();
-                    window.location.reload();
-                }
-                localStorage.removeItem('mx_left_at');
-            }
-        });
-
-        // ==================== GET CURRENT USER FROM SUPABASE ====================
-
-        async function getCurrentUser() {
-            try {
-                var sess = await sb.auth.getSession();
-                if (!sess.data.session) return null;
-                var user = sess.data.session.user;
-                var meta = user.user_metadata || {};
-                return {
-                    id: user.id,
-                    email: user.email,
-                    firstName: meta.full_name ? meta.full_name.split(' ')[0] : (meta.firstName || user.email.split('@')[0]),
-                    lastName: meta.full_name ? meta.full_name.split(' ').slice(1).join(' ') : (meta.lastName || ''),
-                    company: meta.company || '',
-                    plan: meta.plan || 'starter',
-                    createdAt: user.created_at,
-                    lastLogin: new Date().toISOString()
-                };
-            } catch(e) {
-                console.error('Auth error:', e);
-                return null;
-            }
-        }
-
-        // ==================== UI STATE MANAGEMENT ====================
-
-        async function updateNavForAuth() {
-            var user = await getCurrentUser();
-            var navLinks = document.getElementById('navLinks');
-            var mobileMenu = document.getElementById('mobileMenu');
-
-            if (user) {
-                var initials = ((user.firstName || '?')[0] + (user.lastName || '?')[0]).toUpperCase();
-                var navHTML = '<a href="#dashboard" onclick="showDashboard(event)">Dashboard</a>' +
-                    '<a href="/app" class="btn btn-primary" style="padding: 0.5rem 1.25rem; font-size: 0.875rem;" onclick="localStorage.removeItem(\'mx_left_at\')">Connect to App</a>' +
-                    '<div class="user-profile">' +
-                    '<div class="user-avatar">' + initials + '</div>' +
-                    '<span class="user-name">' + user.firstName + '</span>' +
-                    '</div>' +
-                    '<a href="#" class="btn btn-danger" onclick="handleLogout(event)">Log Out</a>';
-                navLinks.innerHTML = navHTML;
-
-                mobileMenu.innerHTML = '<a href="#dashboard" onclick="showDashboard(event); toggleMenu();">Dashboard</a>' +
-                    '<a href="/app" class="btn btn-primary" style="width:100%;text-align:center;" onclick="localStorage.removeItem(\'mx_left_at\'); toggleMenu();">Connect to App</a>' +
-                    '<div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0;">' +
-                    '<div class="user-avatar">' + initials + '</div>' +
-                    '<span style="font-weight: 600;">' + user.firstName + ' ' + user.lastName + '</span>' +
-                    '</div>' +
-                    '<a href="#" class="btn btn-danger" style="text-align: center;" onclick="handleLogout(event); toggleMenu();">Log Out</a>';
-            } else {
-                navLinks.innerHTML = '<a href="#features">Features</a>' +
-                    '<a href="#how-it-works">How It Works</a>' +
-                    '<a href="#pricing">Pricing</a>' +
-                    '<a href="#testimonials">Testimonials</a>' +
-                    '<a href="#" onclick="openAuthModal(\'login\', event)">Log In</a>' +
-                    '<a href="#" class="btn btn-primary" onclick="openAuthModal(\'signup\', event)">Get Started</a>';
-
-                mobileMenu.innerHTML = '<a href="#features" onclick="toggleMenu()">Features</a>' +
-                    '<a href="#how-it-works" onclick="toggleMenu()">How It Works</a>' +
-                    '<a href="#pricing" onclick="toggleMenu()">Pricing</a>' +
-                    '<a href="#testimonials" onclick="toggleMenu()">Testimonials</a>' +
-                    '<a href="#" onclick="openAuthModal(\'login\', event); toggleMenu();">Log In</a>' +
-                    '<a href="#" class="btn btn-primary" onclick="openAuthModal(\'signup\', event); toggleMenu();">Get Started</a>';
-            }
-        }
-
-        async function showDashboard(event) {
-            if (event) event.preventDefault();
-            var user = await getCurrentUser();
-            if (!user) {
-                showToast('Please log in to access the dashboard', 'error');
-                openAuthModal('login');
-                return;
-            }
-
-            document.getElementById('mainContent').style.display = 'none';
-            document.getElementById('dashboardSection').classList.add('active');
-
-            document.getElementById('dashboardUserName').textContent = user.firstName;
-            document.getElementById('accountName').textContent = user.firstName + ' ' + user.lastName;
-            document.getElementById('accountEmail').textContent = user.email;
-            document.getElementById('accountCompany').textContent = user.company || 'Not set';
-            document.getElementById('accountDate').textContent = new Date(user.createdAt).toLocaleDateString('en-IN', {
-                year: 'numeric', month: 'long', day: 'numeric'
-            });
-            document.getElementById('userPlan').textContent = (user.plan || 'starter').charAt(0).toUpperCase() + (user.plan || 'starter').slice(1);
-
 
     <script>
         // ==================== SUPABASE AUTHENTICATION SYSTEM ====================
@@ -833,6 +723,7 @@
                 }
             });
         })();
+
     </script>
 </body>
 </html>
