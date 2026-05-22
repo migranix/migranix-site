@@ -558,10 +558,15 @@ document.addEventListener('visibilitychange', function(){
 });
 
 /* ── AUTH GATE — redirect to main site if not logged in ── */
-async function (async function(){ await checkAuthGate(); })();{
+async function checkAuthGate(){
   // Check timeout first
-  // Clear any stale timeout from page navigation (not a real window close)
-  localStorage.removeItem('mx_left_at');}
+  var left = localStorage.getItem('mx_left_at');
+  if(left && (Date.now() - parseInt(left)) > CLOSE_TIMEOUT){
+    localStorage.clear();
+    await sb.auth.signOut();
+    window.location.href = 'https://www.migranix.in';
+    return;
+  }
   try {
     var sess = await sb.auth.getSession();
     var user = sess.data.session ? sess.data.session.user : null;
@@ -582,20 +587,8 @@ async function (async function(){ await checkAuthGate(); })();{
     window.location.href = 'https://www.migranix.in';
   }
 }
-checkAuthGate();
+(async function(){ await checkAuthGate(); })();
 
-/* 10-second window-close timeout */
-var CLOSE_TIMEOUT=10*1000;
-document.addEventListener("visibilitychange",function(){
-  if(document.visibilityState==="hidden") localStorage.setItem("mx_left_at",Date.now().toString());
-  if(document.visibilityState==="visible"){
-    var left=localStorage.getItem("mx_left_at");
-    if(left&&(Date.now()-parseInt(left))>CLOSE_TIMEOUT){
-      localStorage.clear(); sb.auth.signOut(); window.location.href="https://www.migranix.in";
-    }
-    localStorage.removeItem("mx_left_at");
-  }
-});
 var currentConnection = null;
 var currentQuery = '';
 var queryResults = [];
