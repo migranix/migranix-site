@@ -558,7 +558,7 @@ document.addEventListener('visibilitychange', function(){
 });
 
 /* ── AUTH GATE — redirect to main site if not logged in ── */
-async function checkAuthGate(){
+async function (async function(){ await checkAuthGate(); })();{
   // Check timeout first
   // Clear any stale timeout from page navigation (not a real window close)
   localStorage.removeItem('mx_left_at');}
