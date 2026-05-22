@@ -72,7 +72,7 @@ class QueryRequest(BaseModel):
     query: str
 
 class ExportRequest(BaseModel):
-    format: str = Field(..., regex="^(csv|json|excel|parquet)$")
+    format: str = Field(..., pattern="^(csv|json|excel|parquet)$")
     results: List[Dict[str, Any]]
     query: Optional[str] = None
 
