@@ -542,6 +542,53 @@ var GROQ_API_KEY = 'your-groq-api-key-here'; // Get from console.groq.com
 
 var sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 
+/* ── 10-SECOND WINDOW-CLOSE TIMEOUT ── */
+var CLOSE_TIMEOUT = 10 * 1000;
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState === 'hidden') localStorage.setItem('mx_left_at', Date.now().toString());
+  if(document.visibilityState === 'visible'){
+    var left = localStorage.getItem('mx_left_at');
+    if(left && (Date.now() - parseInt(left)) > CLOSE_TIMEOUT){
+      localStorage.clear();
+      sb.auth.signOut();
+      window.location.href = 'https://www.migranix.in';
+    }
+    localStorage.removeItem('mx_left_at');
+  }
+});
+
+/* ── AUTH GATE — redirect to main site if not logged in ── */
+async function checkAuthGate(){
+  // Check timeout first
+  var left = localStorage.getItem('mx_left_at');
+  if(left && (Date.now() - parseInt(left)) > CLOSE_TIMEOUT){
+    localStorage.clear();
+    await sb.auth.signOut();
+    window.location.href = 'https://www.migranix.in';
+    return;
+  }
+  try {
+    var sess = await sb.auth.getSession();
+    var user = sess.data.session ? sess.data.session.user : null;
+    if(!user){
+      // Not logged in — redirect to main site
+      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;background:#0f172a;color:#f8fafc;font-family:Inter,sans-serif"><div style="font-size:2.5rem">&#128274;</div><h2 style="font-size:1.5rem;font-weight:700">Login Required</h2><p style="color:#94a3b8;max-width:400px;text-align:center">You need to sign in to access the Migranix Data Connector. Log in on our website first.</p><a href="https://www.migranix.in" style="display:inline-block;background:#3b82f6;color:white;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;margin-top:8px;transition:all 0.2s">Go to migranix.in →</a><p style="color:#64748b;font-size:0.8rem;margin-top:12px">Free 14-day trial · No credit card required</p></div>';
+      return;
+    }
+    // User is logged in — show their info in nav
+    var name = user.user_metadata && user.user_metadata.full_name ? user.user_metadata.full_name : user.email;
+    var initials = name.split(' ').map(function(n){return n[0]}).join('').substring(0,2).toUpperCase();
+    document.getElementById('userName').textContent = name;
+    document.getElementById('userAvatar').textContent = initials;
+    document.getElementById('userPill').style.display = 'flex';
+    document.getElementById('logoutBtn').style.display = 'inline-flex';
+  } catch(e) {
+    console.error('Auth error:', e);
+    window.location.href = 'https://www.migranix.in';
+  }
+}
+checkAuthGate();
+
 /* 10-second window-close timeout */
 var CLOSE_TIMEOUT=10*1000;
 document.addEventListener("visibilitychange",function(){
@@ -601,26 +648,11 @@ require(['vs/editor/editor.main'],function(){
 });
 
 // ========== AUTH ==========
-async function initAuth(){
-  try{
-    var sess = await sb.auth.getSession();
-    var user = sess.data.session ? sess.data.session.user : null;
-    if(user){
-      var name = user.user_metadata && user.user_metadata.full_name ? user.user_metadata.full_name : user.email;
-      var initials = name.split(' ').map(function(n){return n[0]}).join('').substring(0,2).toUpperCase();
-      document.getElementById('userName').textContent = name;
-      document.getElementById('userAvatar').textContent = initials;
-      document.getElementById('userPill').style.display = 'flex';
-      document.getElementById('logoutBtn').style.display = 'inline-flex';
-    }
-    sb.auth.onAuthStateChange(function(event, session){
-      if(event === 'SIGNED_OUT') window.location.reload();
-    });
-  }catch(err){console.error('Auth error:',err)}
-}
+// Auth is handled by checkAuthGate() above
 async function handleLogout(){
   await sb.auth.signOut();
-  window.location.reload();
+  localStorage.clear();
+  window.location.href = 'https://www.migranix.in';
 }
 
 // ========== UI FUNCTIONS ==========
@@ -1250,7 +1282,6 @@ function changePage(dir){
 }
 
 document.addEventListener('DOMContentLoaded',function(){
-  initAuth();
   document.getElementById('aiInput').addEventListener('keypress',function(e){if(e.key==='Enter')sendAIQuery()});
 });
 </script>
