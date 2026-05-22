@@ -560,13 +560,8 @@ document.addEventListener('visibilitychange', function(){
 /* ── AUTH GATE — redirect to main site if not logged in ── */
 async function checkAuthGate(){
   // Check timeout first
-  var left = localStorage.getItem('mx_left_at');
-  if(left && (Date.now() - parseInt(left)) > CLOSE_TIMEOUT){
-    localStorage.clear();
-    await sb.auth.signOut();
-    window.location.href = 'https://www.migranix.in';
-    return;
-  }
+  // Clear any stale timeout from page navigation (not a real window close)
+  localStorage.removeItem('mx_left_at');}
   try {
     var sess = await sb.auth.getSession();
     var user = sess.data.session ? sess.data.session.user : null;
