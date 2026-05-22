@@ -2047,8 +2047,6 @@
                 const initials = (user.firstName[0] + user.lastName[0]).toUpperCase();
                 const navHTML = `
                     <a href="#dashboard" onclick="showDashboard(event)">Dashboard</a>
-                    <a href="#features">Features</a>
-                    <a href="#pricing">Pricing</a>
                     <div class="user-profile">
                         <div class="user-avatar">${initials}</div>
                         <span class="user-name">${user.firstName}</span>
@@ -2060,8 +2058,6 @@
                 // Update mobile menu too
                 mobileMenu.innerHTML = `
                     <a href="#dashboard" onclick="showDashboard(event); toggleMenu();">Dashboard</a>
-                    <a href="#features" onclick="toggleMenu()">Features</a>
-                    <a href="#pricing" onclick="toggleMenu()">Pricing</a>
                     <div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0;">
                         <div class="user-avatar">${initials}</div>
                         <span style="font-weight: 600;">${user.firstName} ${user.lastName}</span>
