@@ -543,7 +543,7 @@ var GROQ_API_KEY = 'your-groq-api-key-here'; // Get from console.groq.com
 var sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 
 /* ── 10-SECOND WINDOW-CLOSE TIMEOUT ── */
-var CLOSE_TIMEOUT = 10 * 1000;
+var CLOSE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 document.addEventListener('visibilitychange', function(){
   if(document.visibilityState === 'hidden') localStorage.setItem('mx_left_at', Date.now().toString());
   if(document.visibilityState === 'visible'){
