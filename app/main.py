@@ -17,13 +17,30 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from pydantic import BaseModel, Field
 
-# Database drivers
-import psycopg2
-import pymysql
-import pyodbc
+# Database drivers — all optional, checked at connection time
+try:
+    import psycopg2
+except ImportError:
+    psycopg2 = None
+
+try:
+    import pymysql
+except ImportError:
+    pymysql = None
+
+try:
+    import pyodbc
+except ImportError:
+    pyodbc = None
+
 import sqlite3
-from sqlalchemy import create_engine, text, inspect, MetaData
-from sqlalchemy.pool import NullPool
+
+try:
+    from sqlalchemy import create_engine, text, inspect, MetaData
+    from sqlalchemy.pool import NullPool
+except ImportError:
+    create_engine = None
+    NullPool = None
 
 # Optional cloud drivers
 try:
@@ -388,13 +405,37 @@ async def upload_file(file: UploadFile = File(...), type: str = Form(...)):
         content = await file.read()
 
         if type == 'csv':
-            df = pd.read_csv(io.BytesIO(content))
+            df = pd.read_csv(io.BytesIO(content), low_memory=False, encoding_errors='replace')
         elif type == 'excel':
-            df = pd.read_excel(io.BytesIO(content))
+            df = pd.read_excel(io.BytesIO(content), engine='openpyxl')
         elif type == 'json':
-            df = pd.read_json(io.BytesIO(content))
+            try:
+                df = pd.read_json(io.BytesIO(content))
+            except:
+                raw = json.loads(content)
+                if isinstance(raw, list):
+                    df = pd.json_normalize(raw, sep='_')
+                elif isinstance(raw, dict):
+                    for v in raw.values():
+                        if isinstance(v, list):
+                            df = pd.json_normalize(v, sep='_')
+                            break
+                    else:
+                        df = pd.json_normalize([raw], sep='_')
+                else:
+                    df = pd.DataFrame([raw])
         elif type == 'parquet':
             df = pd.read_parquet(io.BytesIO(content))
+        elif type == 'xml':
+            df = pd.read_xml(io.BytesIO(content))
+        elif type == 'avro':
+            try:
+                import fastavro
+                reader = fastavro.reader(io.BytesIO(content))
+                records = [r for r in reader]
+                df = pd.DataFrame(records)
+            except ImportError:
+                raise HTTPException(400, "Avro support not installed")
         else:
             raise HTTPException(400, f"Unsupported file type: {type}")
 
