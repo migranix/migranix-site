@@ -256,7 +256,7 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       Connect to Data
     </button>
-    <button class="btn btn-danger" id="logoutBtn" onclick="handleLogout()" style="display:none">
+    <button class="btn btn-danger" id="logoutBtn" onclick="handleLogout()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
       Logout
     </button>
@@ -425,7 +425,7 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
           <div class="source-info"><span class="source-name">IBM DB2</span><span class="source-desc">DB2 connection host</span></div>
         </div>
         <div class="source-card" onclick="showCredForm('sqlite')">
-          <div class="source-icon" style="background:rgba(16,185,129,0.1);color:#10b981">&#128230;</div>
+          <div class="source-icon" style="background:rgba(16,185,129,0.1);color:#10b981">&#127811;</div>
           <div class="source-info"><span class="source-name">SQLite</span><span class="source-desc">Local database file</span></div>
         </div>
       </div>
@@ -756,7 +756,6 @@ function backToSources(){
   document.querySelectorAll('.tab-content').forEach(function(t){t.style.display=''});
   document.querySelector('.connect-tab.active').click();
 }
-// Keeps structural widgets accessible via state hooks
 function toggleAI(){
   document.getElementById('aiWidget').classList.toggle('active');
   document.getElementById('aiToggle').classList.toggle('hidden');
@@ -768,7 +767,7 @@ function saveQueryPrompt(){
   document.getElementById('saveModal').classList.add('active');
   document.getElementById('queryFileName').value = 'query_' + new Date().toISOString().slice(0,10) + '.sql';
 }
-closeSaveModal = function(){
+function closeSaveModal(){
   document.getElementById('saveModal').classList.remove('active');
 }
 function downloadQuery(){
@@ -949,7 +948,7 @@ async function connectSaved(id){
     var res = await fetch(API_BASE+'/api/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:data.type,credentials:data.credentials})});
     var result2 = await res.json();
     if(result2.success){
-      currentConnection = {type:data.type,name:data.name,id:data.id,session:result2.session_id,session_id:result2.session_id,tables:result2.schema||[]};
+      currentConnection = {type:'data.type',name:data.name,id:data.id,session:result2.session_id,session_id:result2.session_id,tables:result2.schema||[]};
       updateConnectionStatus(true,data.name,data.type);
       closeConnectPanel();
       loadSchema();
@@ -1064,7 +1063,7 @@ async function saveCloudConnection(provider){
   var creds = collectCloudCreds(provider);
   if(!creds) return;
   try{
-    var res = await fetch(API_BASE+'/api/connect-cloud',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(creds)});
+    var res = await fetch(API_BASE+'/api/connect-cloud',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({creds})});
     var data = await res.json();
     if(data.success){
       currentConnection = {type:'cloud',provider:provider,name:creds.bucket||creds.account||creds.stage,tables:data.tables,session:data.session_id,session_id:data.session_id,table_name:data.tables[0]?data.tables[0].name:''};
@@ -1339,6 +1338,17 @@ function applyAISQL(btn){
   if(textarea){
     safeSetValue(textarea.value);
     showToast('Applied','SQL injection string loaded inside code block','success');
+  }
+}
+
+async function handleLogout(){
+  try {
+    localStorage.clear();
+    sb.auth.signOut().catch(function(e){ console.log("Signout sync delayed", e); });
+  } catch(err) {
+    console.error(err);
+  } finally {
+    window.location.href = 'https://www.migranix.in';
   }
 }
 
