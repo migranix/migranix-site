@@ -236,6 +236,7 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+<base target="_blank">
 </head>
 <body>
 
@@ -1306,32 +1307,45 @@ async function sendAIQuery(){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({prompt:text, schema_context:schemaContext})
     });
-    
+
+    // Handle non-JSON responses (e.g., error HTML pages from proxy/API gateway)
+    var contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      var rawText = await res.text();
+      // Check if response contains GROQ_API_KEY error indication
+      if (rawText.includes('GROQ_API_KEY') || rawText.includes('console.groq.com')) {
+        messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#9888;</div><div class="ai-bubble"><strong>GROQ_API_KEY not configured.</strong><br><br>The AI backend requires a Groq API key to process natural language queries.<br><br>Get your free API key at <a href="https://console.groq.com" target="_blank" style="color:var(--accent-cyan)">console.groq.com</a> and configure it in your environment variables.</div></div>';
+      } else {
+        messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#9888;</div><div class="ai-bubble">The AI service returned an unexpected response. Please check that the GROQ_API_KEY is configured on the backend server.</div></div>';
+      }
+      messages.scrollTop = messages.scrollHeight;
+      return;
+    }
+
     if (res.status === 429 || res.status === 403 || res.status === 503) {
       showToast('AI Quota Limit', 'Free text-to-SQL layer processing constraints hit. Please retry in a moment.', 'warning');
-      messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">❄️</div><div class="ai-bubble">⚠️ Free processing tier capacity constraints met. Please try executing your prompt again in a moment.</div></div>';
+      messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#9888;</div><div class="ai-bubble">Free processing tier capacity constraints met. Please try executing your prompt again in a moment.</div></div>';
       messages.scrollTop = messages.scrollHeight;
       return;
     }
 
     var data = await res.json();
     if(data.success && data.sql){
-      var html = '<div class="ai-message"><div class="ai-avatar">❄️</div><div class="ai-bubble">';
+      var html = '<div class="ai-message"><div class="ai-avatar">&#9888;</div><div class="ai-bubble">';
       html += '<div class="sql-label">Generated SQL</div><pre>'+escapeHtml(data.sql)+'</pre>';
       html += '<button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="applyAISQL(this)">Use This Query</button>';
       html += '<textarea style="display:none">'+escapeHtml(data.sql)+'</textarea>';
       html += '</div></div>';
       messages.innerHTML += html;
     } else {
-      messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">❄️</div><div class="ai-bubble">'+escapeHtml(data.detail || data.error || 'Could not generate SQL')+'</div></div>';
+      messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#9888;</div><div class="ai-bubble">'+escapeHtml(data.detail || data.error || 'Could not generate SQL')+'</div></div>';
     }
     messages.scrollTop = messages.scrollHeight;
   }catch(err){
-    messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">❄️</div><div class="ai-bubble">Error: '+escapeHtml(err.message)+'</div></div>';
+    messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#9888;</div><div class="ai-bubble">Error: '+escapeHtml(err.message)+'</div></div>';
     messages.scrollTop = messages.scrollHeight;
   }
 }
-
 function applyAISQL(btn){
   var containerBubble = btn.closest('.ai-bubble');
   var textarea = containerBubble ? containerBubble.querySelector('textarea') : null;
