@@ -280,6 +280,11 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
       <button class="btn btn-ghost btn-sm" onclick="exportResults('json')">Export JSON</button>
       <button class="btn btn-ghost btn-sm" onclick="exportResults('excel')">Export Excel</button>
       <div class="toolbar-sep"></div>
+      <button class="btn btn-ghost btn-sm" onclick="aiExplainQuery()" title="AI explains your query in plain English">🧠 Explain</button>
+      <button class="btn btn-ghost btn-sm" onclick="aiOptimizeQuery()" title="AI suggests performance improvements">⚡ Optimize</button>
+      <button class="btn btn-ghost btn-sm" onclick="aiCleanData()" title="Auto-clean uploaded data">🧹 Auto-Clean</button>
+      <button class="btn btn-ghost btn-sm" onclick="aiProfileData()" title="AI data quality analysis">📊 Profile</button>
+      <div class="toolbar-sep"></div>
       <button class="btn btn-ghost btn-sm" onclick="saveQueryPrompt()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2zM17 21v-8H7v8"/></svg>
         Save Query
@@ -538,7 +543,7 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
 var API_BASE = 'https://migranix-app.onrender.com';
 var SUPA_URL = 'https://yxwlgwaalghvskulhmey.supabase.co';
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4d2xnd2FhbGdodnNrdWxobWV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODEwODYsImV4cCI6MjA5NDQ1NzA4Nn0.QOZphIHDIebIkSX23LPjQXtr-iICT9dapzYMw11HBTw';
-var GROQ_API_KEY = 'your-groq-api-key-here'; // Get from console.groq.com
+// AI features powered by Google Gemini (via backend)
 
 var sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 
@@ -1206,10 +1211,6 @@ async function sendAIQuery(){
   var input = document.getElementById('aiInput');
   var text = input.value.trim();
   if(!text) return;
-  if(!GROQ_API_KEY || GROQ_API_KEY === 'your-groq-api-key-here'){
-    showToast('AI Setup','Please add your Groq API key in the code','error');
-    return;
-  }
   var messages = document.getElementById('aiMessages');
   messages.innerHTML += '<div class="ai-message"><div class="ai-avatar user">&#128100;</div><div class="ai-bubble user">'+escapeHtml(text)+'</div></div>';
   input.value = '';
@@ -1217,42 +1218,30 @@ async function sendAIQuery(){
 
   var schemaContext = '';
   if(currentConnection){
-    schemaContext = 'Currently connected to: '+currentConnection.name+' ('+currentConnection.type+'). ';
+    schemaContext = 'Connected to: '+currentConnection.name+' ('+currentConnection.type+'). ';
   }
 
   try{
-    var res = await fetch('https://api.groq.com/openai/v1/chat/completions',{
+    var res = await fetch(API_BASE+'/api/ai-sql',{
       method:'POST',
-      headers:{'Authorization':'Bearer '+GROQ_API_KEY,'Content-Type':'application/json'},
-      body:JSON.stringify({
-        model:'llama3-70b-8192',
-        messages:[
-          {role:'system',content:'You are an expert SQL assistant. Convert natural language to SQL. Respond with ONLY the SQL query inside a code block, plus a brief explanation. '+schemaContext+'Use standard SQL syntax. If the user asks about specific tables, assume common table names.'},
-          {role:'user',content:text}
-        ],
-        temperature:0.1,
-        max_tokens:1024
-      })
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({prompt:text, schema_context:schemaContext})
     });
     var data = await res.json();
-    var reply = data.choices && data.choices[0] ? data.choices[0].message.content : 'Sorry, I could not generate a query.';
-
-    var sqlMatch = reply.match(/```sql?[ \t]*([\s\S]*?)```/i) || reply.match(/```([\s\S]*?)```/);
-    var sql = sqlMatch ? sqlMatch[1].trim() : '';
-    var explanation = reply.replace(/```[\s\S]*?```/g,'').trim();
-
-    var html = '<div class="ai-message"><div class="ai-avatar">&#129302;</div><div class="ai-bubble">';
-    if(explanation) html += '<div>'+escapeHtml(explanation)+'</div>';
-    if(sql){
-      html += '<div class="sql-label">Generated SQL</div><pre>'+escapeHtml(sql)+'</pre>';
+    
+    if(data.success && data.sql){
+      var html = '<div class="ai-message"><div class="ai-avatar">&#129302;</div><div class="ai-bubble">';
+      html += '<div class="sql-label">Generated SQL</div><pre>'+escapeHtml(data.sql)+'</pre>';
       html += '<button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="applyAISQL(this)">Use This Query</button>';
-      html += '<textarea style="display:none">'+escapeHtml(sql)+'</textarea>';
+      html += '<textarea style="display:none">'+escapeHtml(data.sql)+'</textarea>';
+      html += '</div></div>';
+      messages.innerHTML += html;
+    } else {
+      messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#129302;</div><div class="ai-bubble">'+escapeHtml(data.detail || data.error || 'Could not generate SQL')+'</div></div>';
     }
-    html += '</div></div>';
-    messages.innerHTML += html;
     messages.scrollTop = messages.scrollHeight;
   }catch(err){
-    messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#129302;</div><div class="ai-bubble">Sorry, I encountered an error: '+escapeHtml(err.message)+'</div></div>';
+    messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#129302;</div><div class="ai-bubble">Error: '+escapeHtml(err.message)+'</div></div>';
     messages.scrollTop = messages.scrollHeight;
   }
 }
@@ -1265,9 +1254,117 @@ function applyAISQL(btn){
   }
 }
 
-function changePage(dir){
-  // Not used in no-limit mode, but kept for compatibility
+/* ── AI EXPLAIN QUERY ──────────────────────────────── */
+async function aiExplainQuery(){
+  if(!monacoEditor) return;
+  var sql = monacoEditor.getValue().trim();
+  if(!sql || sql.startsWith('--')){showToast('No Query','Write a SQL query first','error');return;}
+  showToast('AI','Analyzing your query...','info');
+  try{
+    var res = await fetch(API_BASE+'/api/ai-explain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sql:sql})});
+    var data = await res.json();
+    if(data.success){
+      var messages = document.getElementById('aiMessages');
+      messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#129302;</div><div class="ai-bubble"><div class="sql-label">Query Explanation</div><div style="white-space:pre-wrap">'+escapeHtml(data.explanation)+'</div></div></div>';
+      document.getElementById('aiWidget').classList.add('active');
+      document.getElementById('aiToggle').classList.add('hidden');
+      messages.scrollTop = messages.scrollHeight;
+    } else {showToast('Error',data.detail||'Failed','error');}
+  }catch(e){showToast('Error',e.message,'error');}
 }
+
+/* ── AI OPTIMIZE QUERY ─────────────────────────────── */
+async function aiOptimizeQuery(){
+  if(!monacoEditor) return;
+  var sql = monacoEditor.getValue().trim();
+  if(!sql || sql.startsWith('--')){showToast('No Query','Write a SQL query first','error');return;}
+  showToast('AI','Optimizing your query...','info');
+  try{
+    var res = await fetch(API_BASE+'/api/ai-optimize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sql:sql})});
+    var data = await res.json();
+    if(data.success){
+      var messages = document.getElementById('aiMessages');
+      messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#129302;</div><div class="ai-bubble"><div class="sql-label">Optimization Suggestions</div><div style="white-space:pre-wrap">'+escapeHtml(data.optimization)+'</div></div></div>';
+      document.getElementById('aiWidget').classList.add('active');
+      document.getElementById('aiToggle').classList.add('hidden');
+      messages.scrollTop = messages.scrollHeight;
+    } else {showToast('Error',data.detail||'Failed','error');}
+  }catch(e){showToast('Error',e.message,'error');}
+}
+
+/* ── AI AUTO-CLEAN DATA ────────────────────────────── */
+async function aiCleanData(){
+  if(!currentConnection || !currentConnection.session_id){showToast('No Data','Upload a file first','error');return;}
+  var tableName = currentConnection.table_name || currentConnection.name || '';
+  if(!tableName){showToast('No Table','No table available for cleaning','error');return;}
+  showToast('AI','Cleaning your data...','info');
+  try{
+    var res = await fetch(API_BASE+'/api/ai-clean',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:currentConnection.session_id,table_name:tableName})});
+    var data = await res.json();
+    if(data.success){
+      var msg = '✅ Data Cleaned!\n\n';
+      msg += 'Original: '+data.original_rows+' rows\n';
+      msg += 'Cleaned: '+data.cleaned_rows+' rows\n';
+      msg += 'Removed: '+data.removed_rows+' rows\n\n';
+      msg += 'Changes:\n'+data.changes.join('\n');
+      msg += '\n\nCleaned table: '+data.cleaned_table;
+      var messages = document.getElementById('aiMessages');
+      messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#129302;</div><div class="ai-bubble"><div class="sql-label">Data Cleaning Report</div><pre style="white-space:pre-wrap">'+escapeHtml(msg)+'</pre><button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="if(monacoEditor)monacoEditor.setValue(\'SELECT * FROM \\\''+data.cleaned_table+'\\\'\')">Query Cleaned Data</button></div></div>';
+      document.getElementById('aiWidget').classList.add('active');
+      document.getElementById('aiToggle').classList.add('hidden');
+      messages.scrollTop = messages.scrollHeight;
+      showToast('Cleaned',data.changes.length+' improvements made','success');
+    } else {showToast('Error',data.detail||'Cleaning failed','error');}
+  }catch(e){showToast('Error',e.message,'error');}
+}
+
+/* ── AI DATA PROFILING ─────────────────────────────── */
+async function aiProfileData(){
+  if(!currentConnection || !currentConnection.session_id){showToast('No Data','Upload a file first','error');return;}
+  var tableName = currentConnection.table_name || currentConnection.name || '';
+  if(!tableName){showToast('No Table','No table to profile','error');return;}
+  showToast('AI','Profiling your data with AI...','info');
+  try{
+    var res = await fetch(API_BASE+'/api/ai-profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:currentConnection.session_id,table_name:tableName})});
+    var data = await res.json();
+    if(data.success){
+      var p = data.profile;
+      var msg = '📊 DATA QUALITY REPORT\n';
+      msg += '═══════════════════════\n\n';
+      msg += '🏆 Quality Score: '+p.quality_score+'/100\n';
+      msg += '📋 '+p.total_rows+' rows × '+p.total_columns+' columns\n\n';
+      msg += '📝 Summary: '+p.summary+'\n\n';
+      if(p.column_analysis && p.column_analysis.length>0){
+        msg += '📊 Column Analysis:\n';
+        p.column_analysis.forEach(function(c){
+          msg += '  • '+c.column+' ('+c.detected_type+')\n';
+          if(c.issues && c.issues.length>0) msg += '    Issues: '+c.issues.join(', ')+'\n';
+          if(c.suggestion) msg += '    Fix: '+c.suggestion+'\n';
+        });
+        msg += '\n';
+      }
+      if(p.data_issues && p.data_issues.length>0){
+        msg += '⚠️ Data Issues:\n';
+        p.data_issues.forEach(function(i){
+          msg += '  ['+i.severity.toUpperCase()+'] '+i.issue+' (~'+i.affected_rows+' rows)\n';
+          msg += '    → '+i.fix+'\n';
+        });
+        msg += '\n';
+      }
+      if(p.cleaning_sql && p.cleaning_sql.length>0){
+        msg += '🔧 Suggested SQL Fixes:\n';
+        p.cleaning_sql.forEach(function(s){msg += '  '+s+'\n';});
+      }
+      var messages = document.getElementById('aiMessages');
+      messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#129302;</div><div class="ai-bubble"><pre style="white-space:pre-wrap;font-size:0.8rem">'+escapeHtml(msg)+'</pre><button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="aiCleanData()">🧹 Auto-Clean This Data</button></div></div>';
+      document.getElementById('aiWidget').classList.add('active');
+      document.getElementById('aiToggle').classList.add('hidden');
+      messages.scrollTop = messages.scrollHeight;
+    } else {showToast('Error',data.detail||'Profiling failed','error');}
+  }catch(e){showToast('Error',e.message,'error');}
+}
+
+function changePage(dir){}
 
 document.addEventListener('DOMContentLoaded',function(){
   document.getElementById('aiInput').addEventListener('keypress',function(e){if(e.key==='Enter')sendAIQuery()});
