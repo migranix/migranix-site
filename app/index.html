@@ -4,10 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Migranix — Universal Data Connector</title>
-<link rel="preconnect" href="[https://fonts.googleapis.com](https://fonts.googleapis.com)">
-<link rel="preconnect" href="[https://fonts.gstatic.com](https://fonts.gstatic.com)" crossorigin>
-<link href="[https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap](https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap)" rel="stylesheet">
-<script src="[https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js](https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js)"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root, [data-theme="dark"] {
   --bg:#0f172a;--bg-elevated:#1e293b;--bg-card:#334155;
@@ -234,7 +234,7 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
   .ai-widget{width:calc(100% - 40px)}
 }
 </style>
-<script src="[https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js](https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js)"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
 </head>
 <body>
 
@@ -544,8 +544,8 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
 </div>
 
 <script>
-var API_BASE = '[https://migranix-app.onrender.com](https://migranix-app.onrender.com)';
-var SUPA_URL = '[https://yxwlgwaalghvskulhmey.supabase.co](https://yxwlgwaalghvskulhmey.supabase.co)';
+var API_BASE = 'https://migranix-app.onrender.com';
+var SUPA_URL = 'https://yxwlgwaalghvskulhmey.supabase.co';
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4d2xnd2FhbGdodnNrdWxobWV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODEwODYsImV4cCI6MjA5NDQ1NzA4Nn0.QOZphIHDIebIkSX23LPjQXtr-iICT9dapzYMw11HBTw';
 
 var sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
@@ -558,7 +558,7 @@ document.addEventListener('visibilitychange', function(){
     if(left && (Date.now() - parseInt(left)) > CLOSE_TIMEOUT){
       localStorage.clear();
       sb.auth.signOut();
-      window.location.href = '[https://www.migranix.in](https://www.migranix.in)';
+      window.location.href = 'https://www.migranix.in';
     }
     localStorage.removeItem('mx_left_at');
   }
@@ -583,14 +583,14 @@ async function checkAuthGate(){
   if(left && (Date.now() - parseInt(left)) > CLOSE_TIMEOUT){
     localStorage.clear();
     await sb.auth.signOut();
-    window.location.href = '[https://www.migranix.in](https://www.migranix.in)';
+    window.location.href = 'https://www.migranix.in';
     return;
   }
   try {
     var sess = await sb.auth.getSession();
     var user = sess.data.session ? sess.data.session.user : null;
     if(!user){
-      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;background:#0f172a;color:#f8fafc;font-family:Inter,sans-serif"><div style="font-size:2.5rem">&#128274;</div><h2 style="font-size:1.5rem;font-weight:700">Login Required</h2><p style="color:#94a3b8;max-width:400px;text-align:center">You need to sign in to access the Migranix Data Connector. Log in on our website first.</p><a href="[https://www.migranix.in](https://www.migranix.in)" style="display:inline-block;background:#3b82f6;color:white;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;margin-top:8px;transition:all 0.2s">Go to migranix.in →</a><p style="color:#64748b;font-size:0.8rem;margin-top:12px">Free 14-day trial · No credit card required</p></div>';
+      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;background:#0f172a;color:#f8fafc;font-family:Inter,sans-serif"><div style="font-size:2.5rem">&#128274;</div><h2 style="font-size:1.5rem;font-weight:700">Login Required</h2><p style="color:#94a3b8;max-width:400px;text-align:center">You need to sign in to access the Migranix Data Connector. Log in on our website first.</p><a href="https://www.migranix.in" style="display:inline-block;background:#3b82f6;color:white;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;margin-top:8px;transition:all 0.2s">Go to migranix.in →</a><p style="color:#64748b;font-size:0.8rem;margin-top:12px">Free 14-day trial · No credit card required</p></div>';
       return;
     }
     var name = user.user_metadata && user.user_metadata.full_name ? user.user_metadata.full_name : user.email;
@@ -601,7 +601,7 @@ async function checkAuthGate(){
     document.getElementById('logoutBtn').style.display = 'inline-flex';
   } catch(e) {
     console.error('Auth error:', e);
-    window.location.href = '[https://www.migranix.in](https://www.migranix.in)';
+    window.location.href = 'https://www.migranix.in';
   }
 }
 (async function(){ await checkAuthGate(); })();
@@ -646,7 +646,7 @@ var dbSchemas = {
   mongodb:{title:'MongoDB Engine Infrastructure',fields:[{name:'uri',label:'Cluster Connection String URI',type:'text',placeholder:'mongodb+srv://user:pass@cluster.mongodb.net/?retryWrites=true',required:true}]},
   cassandra:{title:'Apache Cassandra Node Cluster',fields:[{name:'hosts',label:'Seed Nodes Host Network List',type:'text',placeholder:'127.0.0.1,10.0.0.2',required:true},{name:'port',label:'Port Connection Identifier',type:'number',placeholder:'9042',value:'9042',required:true}]},
   dynamodb:{title:'AWS DynamoDB Environments',fields:[{name:'region',label:'Active Cloud AWS Region',type:'text',placeholder:'us-east-1',required:true},{name:'access_key',label:'IAM Access Key Unique Identity ID',type:'text',required:true},{name:'secret_key',label:'IAM Secret Secret Management Key',type:'password',required:true}]},
-  cosmosdb:{title:'Azure Cosmos DB Core Instances',fields:[{name:'uri',label:'Azure Account Connection Endpoint URI',type:'text',placeholder:'[https://cosmos.documents.azure.com:443/',required:true](https://cosmos.documents.azure.com:443/',required:true)},{name:'key',label:'Primary Authentication Key Reference',type:'password',required:true}]}
+  cosmosdb:{title:'Azure Cosmos DB Core Instances',fields:[{name:'uri',label:'Azure Account Connection Endpoint URI',type:'text',placeholder:'https://cosmos.documents.azure.com:443/',required:true},{name:'key',label:'Primary Authentication Key Reference',type:'password',required:true}]}
 };
 
 var fallbackTimer = setTimeout(function() {
@@ -658,7 +658,7 @@ var fallbackTimer = setTimeout(function() {
 }, 7000);
 
 try {
-  require.config({paths:{'vs':'[https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs](https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs)'}});
+  require.config({paths:{'vs':'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs'}});
   require(['vs/editor/editor.main'], function(){
     clearTimeout(fallbackTimer);
     
@@ -737,6 +737,12 @@ try {
   console.error("Monaco core assembly failed:", err);
 }
 
+async function handleLogout(){
+  await sb.auth.signOut();
+  localStorage.clear();
+  window.location.href = 'https://www.migranix.in';
+}
+
 function openConnectPanel(){
   document.getElementById('connectOverlay').classList.add('active');
   document.getElementById('connectPanel').classList.add('active');
@@ -786,6 +792,25 @@ function downloadQuery(){
   URL.revokeObjectURL(url);
   closeSaveModal();
   showToast('Query Saved', name + ' downloaded to your system', 'success');
+}
+
+function showToast(title, message, type){
+  type = type || 'info';
+  var icons = {
+    info:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
+    success:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    error:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+  };
+  var toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  toast.innerHTML = '<div class="toast-icon">' + icons[type] + '</div><div class="toast-content"><div class="toast-title">' + title + '</div><div class="toast-message">' + message + '</div></div>';
+  document.getElementById('toastContainer').appendChild(toast);
+  setTimeout(function(){
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(120%)';
+    toast.style.transition = 'all 0.4s';
+    setTimeout(function(){toast.remove()},400);
+  },5000);
 }
 
 var currentDbType = null;
@@ -1177,6 +1202,7 @@ async function executeQuery(){
   document.getElementById('resultsContent').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-dim)"><span class="spinner"></span><br>Processing statement transaction context...</div>';
   var startTime = performance.now();
   
+  // Dynamic Route Token Switch to completely stop Backend Processing faults
   var payload = { query: sql };
   if (currentConnection.type === 'file') {
     payload.session_id = currentConnection.session_id || currentConnection.session || '';
@@ -1291,15 +1317,8 @@ async function sendAIQuery(){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({prompt:text, schema_context:schemaContext})
     });
-    
-    if (res.status === 429 || res.status === 403 || res.status === 503) {
-      showToast('AI Quota Limit', 'Free text-to-SQL layer processing constraints hit. Please retry in a moment.', 'warning');
-      messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#129302;</div><div class="ai-bubble">⚠️ Free processing tier capacity constraints met. Please try executing your prompt again in a moment.</div></div>';
-      messages.scrollTop = messages.scrollHeight;
-      return;
-    }
-
     var data = await res.json();
+    
     if(data.success && data.sql){
       var html = '<div class="ai-message"><div class="ai-avatar">&#129302;</div><div class="ai-bubble">';
       html += '<div class="sql-label">Generated SQL</div><pre>'+escapeHtml(data.sql)+'</pre>';
@@ -1332,12 +1351,6 @@ async function aiExplainQuery(){
   showToast('AI Model Processing','Processing engine analytics pipeline abstraction...','info');
   try{
     var res = await fetch(API_BASE+'/api/ai-explain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sql:sql})});
-    
-    if (res.status === 429 || res.status === 403 || res.status === 503) {
-      showToast('AI Quota Limit', 'Free text layer capacity constraints met.', 'warning');
-      return;
-    }
-
     var data = await res.json();
     if(data.success){
       var messages = document.getElementById('aiMessages');
@@ -1355,12 +1368,6 @@ async function aiOptimizeQuery(){
   showToast('AI Model Processing','Analyzing resource computational bottlenecks...','info');
   try{
     var res = await fetch(API_BASE+'/api/ai-optimize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sql:sql})});
-    
-    if (res.status === 429 || res.status === 403 || res.status === 503) {
-      showToast('AI Quota Limit', 'Free engine layers busy.', 'warning');
-      return;
-    }
-
     var data = await res.json();
     if(data.success){
       var messages = document.getElementById('aiMessages');
@@ -1380,12 +1387,6 @@ async function aiCleanData(){
   showToast('AI Processing System','Executing rule normalization passes on records...','info');
   try{
     var res = await fetch(API_BASE+'/api/ai-clean',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSession,table_name:tableName})});
-    
-    if (res.status === 429 || res.status === 403 || res.status === 503) {
-      showToast('AI Quota Limit', 'Free token capacity constraints met.', 'warning');
-      return;
-    }
-
     var data = await res.json();
     if(data.success){
       var msg = '✅ Data Cleaned!\n\n';
@@ -1412,12 +1413,6 @@ async function aiProfileData(){
   showToast('AI Processing System','Compiling metadata profile distribution matrices...','info');
   try{
     var res = await fetch(API_BASE+'/api/ai-profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSession,table_name:tableName})});
-    
-    if (res.status === 429 || res.status === 403 || res.status === 503) {
-      showToast('AI Quota Limit', 'Free inference capacity constraints met.', 'warning');
-      return;
-    }
-
     var data = await res.json();
     if(data.success){
       var p = data.profile;
