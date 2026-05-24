@@ -852,6 +852,13 @@ async function testConnection(){
   status.innerHTML = '<span class="spinner"></span> Executing environment network handshake...';
   try{
     var res = await fetch(API_BASE+'/api/test-connection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:currentDbType,credentials:creds})});
+
+    var contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      var rawText = await res.text();
+      throw new Error('Server returned non-JSON response (status ' + res.status + '). Backend may be unavailable.');
+    }
+
     var data = await res.json();
     if(data.success){
       status.className = 'test-status success show';
@@ -859,7 +866,7 @@ async function testConnection(){
     } else {throw new Error(data.error||'Handshake refused')}
   }catch(err){
     status.className = 'test-status error show';
-    status.innerHTML = '&#10060; '+err.message;
+    status.innerHTML = '&#10060; '+(err.message || 'Connection test failed');
   }
   spinner.style.display = 'none';
   btnText.textContent = 'Test Connection';
@@ -879,6 +886,13 @@ async function saveAndConnect(){
       await sb.from('connections').insert({user_id:user.data.user.id,name:connName,type:currentDbType,credentials:creds,created_at:new Date().toISOString()});
     }
     var res = await fetch(API_BASE+'/api/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:currentDbType,credentials:creds})});
+
+    var contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      var rawText = await res.text();
+      throw new Error('Server returned non-JSON response (status ' + res.status + '). Backend may be unavailable.');
+    }
+
     var data = await res.json();
     if(data.success){
       currentConnection = {type:currentDbType,name:connName,session:data.session_id,session_id:data.session_id,tables:data.schema||[]};
@@ -886,9 +900,9 @@ async function saveAndConnect(){
       closeConnectPanel();
       loadSchema();
       showToast('Connected','Environment active on current session','success');
-    } else {throw new Error(data.error)}
+    } else {throw new Error(data.error || 'Connection failed')}
   }catch(err){
-    showToast('Connection Refused',err.message,'error');
+    showToast('Connection Refused',err.message || 'Unknown error','error');
   }
   spinner.style.display = 'none';
   btnText.textContent = 'Connect to Server';
@@ -947,16 +961,25 @@ async function connectSaved(id){
     if(result.error) throw result.error;
     var data = result.data;
     var res = await fetch(API_BASE+'/api/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:data.type,credentials:data.credentials})});
+
+    var contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      var rawText = await res.text();
+      throw new Error('Server returned non-JSON response (status ' + res.status + '). Backend may be unavailable.');
+    }
+
     var result2 = await res.json();
     if(result2.success){
-      currentConnection = {type:'data.type',name:data.name,id:data.id,session:result2.session_id,session_id:result2.session_id,tables:result2.schema||[]};
+      currentConnection = {type:data.type,name:data.name,id:data.id,session:result2.session_id,session_id:result2.session_id,tables:result2.schema||[]};
       updateConnectionStatus(true,data.name,data.type);
       closeConnectPanel();
       loadSchema();
       showToast('Connected','Re-established session context','success');
+    } else {
+      throw new Error(result2.error || 'Connection failed');
     }
   }catch(err){
-    showToast('Handshake Failed',err.message,'error');
+    showToast('Handshake Failed',err.message || 'Unknown error','error');
   }
 }
 
@@ -1049,6 +1072,13 @@ async function testCloudConnection(provider){
   status.innerHTML = '<span class="spinner"></span> Confirming cloud routing rules...';
   try{
     var res = await fetch(API_BASE+'/api/test-cloud',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({creds})});
+
+    var contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      var rawText = await res.text();
+      throw new Error('Server returned non-JSON response (status ' + res.status + '). Backend may be unavailable.');
+    }
+
     var data = await res.json();
     if(data.success){
       status.className = 'test-status success show';
@@ -1065,6 +1095,13 @@ async function saveCloudConnection(provider){
   if(!creds) return;
   try{
     var res = await fetch(API_BASE+'/api/connect-cloud',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({creds})});
+
+    var contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      var rawText = await res.text();
+      throw new Error('Server returned non-JSON response (status ' + res.status + '). Backend may be unavailable.');
+    }
+
     var data = await res.json();
     if(data.success){
       currentConnection = {type:'cloud',provider:provider,name:creds.bucket||creds.account||creds.stage,tables:data.tables,session:data.session_id,session_id:data.session_id,table_name:data.tables[0]?data.tables[0].name:''};
@@ -1084,13 +1121,20 @@ async function loadSchema(){
   tree.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-dim)"><span class="spinner"></span><br>Mapping runtime data catalogs...</div>';
   try{
     var res = await fetch(API_BASE+'/api/schema?session='+encodeURIComponent(currentConnection.session||''));
+
+    var contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      var rawText = await res.text();
+      throw new Error('Server returned non-JSON response (status ' + res.status + '). Backend may be unavailable.');
+    }
+
     var data = await res.json();
     if(data.success){
       currentConnection.tables = data.schema || [];
       renderSchemaTree(data.schema);
-    }else{throw new Error(data.error)}
+    }else{throw new Error(data.error || 'Schema load failed')}
   }catch(err){
-    tree.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="icon">&#9888;</div><h2>Catalog parsing error</h2><p>'+escapeHtml(err.message)+'</p></div>';
+    tree.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="icon">&#9888;</div><h2>Catalog parsing error</h2><p>'+escapeHtml(err.message || 'Unknown error')+'</p></div>';
   }
 }
 
