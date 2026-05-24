@@ -1057,7 +1057,7 @@ async function testCloudConnection(provider){
   status.className = 'test-status loading show';
   status.innerHTML = '<span class="spinner"></span> Confirming cloud routing rules...';
   try{
-    var res = await fetch(API_BASE+'/api/test-cloud',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(creds)});
+    var res = await fetch(API_BASE+'/api/test-cloud',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({creds})});
     var data = await res.json();
     if(data.success){
       status.className = 'test-status success show';
@@ -1201,8 +1201,17 @@ async function executeQuery(){
   btn.disabled = true;
   document.getElementById('resultsContent').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-dim)"><span class="spinner"></span><br>Processing statement transaction context...</div>';
   var startTime = performance.now();
+  
+  // Dynamic Route Token Switch to completely stop Backend Processing faults
+  var payload = { query: sql };
+  if (currentConnection.type === 'file') {
+    payload.session_id = currentConnection.session_id || currentConnection.session || '';
+  } else {
+    payload.session = currentConnection.session || currentConnection.session_id || '';
+  }
+
   try{
-    var res = await fetch(API_BASE+'/api/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:currentConnection.session_id||currentConnection.session||'',query:sql})});
+    var res = await fetch(API_BASE+'/api/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
     var data = await res.json();
     var elapsed = ((performance.now()-startTime)/1000).toFixed(2);
     if(data.success){
@@ -1254,7 +1263,6 @@ function renderResults(rows,columns){
   document.getElementById('pagination').style.display = 'none';
 }
 
-// Capitalize system keywords seamlessly
 function formatSQL(){
   var sql = safeGetValue();
   if(!sql) return;
