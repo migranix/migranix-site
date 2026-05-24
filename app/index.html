@@ -296,11 +296,6 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
       <button class="btn btn-ghost btn-sm" onclick="exportResults('json')">Export JSON</button>
       <button class="btn btn-ghost btn-sm" onclick="exportResults('excel')">Export Excel</button>
       <div class="toolbar-sep"></div>
-      <button class="btn btn-ghost btn-sm" onclick="aiExplainQuery()" title="AI explains your query in plain English">🧠 Explain</button>
-      <button class="btn btn-ghost btn-sm" onclick="aiOptimizeQuery()" title="AI suggests performance improvements">⚡ Optimize</button>
-      <button class="btn btn-ghost btn-sm" onclick="aiCleanData()" title="Auto-clean uploaded data">🧹 Auto-Clean</button>
-      <button class="btn btn-ghost btn-sm" onclick="aiProfileData()" title="AI data quality analysis">📊 Profile</button>
-      <div class="toolbar-sep"></div>
       <button class="btn btn-ghost btn-sm" onclick="saveQueryPrompt()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2zM17 21v-8H7v8"/></svg>
         Save Query
@@ -743,7 +738,6 @@ function openConnectPanel(){
   document.getElementById('connectPanel').classList.add('active');
   loadSavedConnections();
 }
-// DOM UI Control Interceptors
 function closeConnectPanel(){
   document.getElementById('connectOverlay').classList.remove('active');
   document.getElementById('connectPanel').classList.remove('active');
@@ -762,6 +756,7 @@ function backToSources(){
   document.querySelectorAll('.tab-content').forEach(function(t){t.style.display=''});
   document.querySelector('.connect-tab.active').click();
 }
+// Keeps structural widgets accessible via state hooks
 function toggleAI(){
   document.getElementById('aiWidget').classList.toggle('active');
   document.getElementById('aiToggle').classList.toggle('hidden');
@@ -773,7 +768,7 @@ function saveQueryPrompt(){
   document.getElementById('saveModal').classList.add('active');
   document.getElementById('queryFileName').value = 'query_' + new Date().toISOString().slice(0,10) + '.sql';
 }
-function closeSaveModal(){
+closeSaveModal = function(){
   document.getElementById('saveModal').classList.remove('active');
 }
 function downloadQuery(){
@@ -1292,7 +1287,6 @@ async function exportResults(format){
   }
 }
 
-/* ===== NEW CORTEX COMPILER BRIDGE ===== */
 async function sendAIQuery(){
   var input = document.getElementById('aiInput');
   var text = input.value.trim();
@@ -1346,124 +1340,6 @@ function applyAISQL(btn){
     safeSetValue(textarea.value);
     showToast('Applied','SQL injection string loaded inside code block','success');
   }
-}
-
-async function aiExplainQuery(){
-  var sql = safeGetValue().trim();
-  if(!sql || sql.startsWith('--')){showToast('Context Omitted','Specify structural statement targets inside code buffer blocks','error');return;}
-  showToast('AI Model Processing','Processing engine analytics pipeline abstraction...','info');
-  try{
-    var res = await fetch(API_BASE+'/api/ai-explain',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sql:sql})});
-    
-    if (res.status === 429 || res.status === 403 || res.status === 503) {
-      showToast('AI Quota Limit', 'Free text layer capacity constraints met.', 'warning');
-      return;
-    }
-
-    var data = await res.json();
-    if(data.success){
-      var messages = document.getElementById('aiMessages');
-      messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">❄️</div><div class="ai-bubble"><div class="sql-label">Query Explanation</div><div style="white-space:pre-wrap">'+escapeHtml(data.explanation)+'</div></div></div>';
-      document.getElementById('aiWidget').classList.add('active');
-      document.getElementById('aiToggle').classList.add('hidden');
-      messages.scrollTop = messages.scrollHeight;
-    } else {showToast('Error Fault',data.detail||'Failed','error');}
-  }catch(e){showToast('Error',e.message,'error');}
-}
-
-async function aiOptimizeQuery(){
-  var sql = safeGetValue().trim();
-  if(!sql || sql.startsWith('--')){showToast('Context Omitted','Specify structural statement targets inside code buffer blocks','error');return;}
-  showToast('AI Model Processing','Analyzing resource computational bottlenecks...','info');
-  try{
-    var res = await fetch(API_BASE+'/api/ai-optimize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sql:sql})});
-    
-    if (res.status === 429 || res.status === 403 || res.status === 503) {
-      showToast('AI Quota Limit', 'Free engine layers busy.', 'warning');
-      return;
-    }
-
-    var data = await res.json();
-    if(data.success){
-      var messages = document.getElementById('aiMessages');
-      messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">❄️</div><div class="ai-bubble"><div class="sql-label">Optimization Suggestions</div><div style="white-space:pre-wrap">'+escapeHtml(data.optimization)+'</div></div></div>';
-      document.getElementById('aiWidget').classList.add('active');
-      document.getElementById('aiToggle').classList.add('hidden');
-      messages.scrollTop = messages.scrollHeight;
-    } else {showToast('Error Fault',data.detail||'Failed','error');}
-  }catch(e){showToast('Error',e.message,'error');}
-}
-
-async function aiCleanData(){
-  if(!currentConnection || (!currentConnection.session && !currentConnection.session_id)){showToast('Target Context Missing','Resolve current session validation configurations first','error');return;}
-  var activeSession = currentConnection.session_id || currentConnection.session;
-  var tableName = currentConnection.table_name || currentConnection.name || '';
-  if(!tableName){showToast('Target Index Missing','Table object path initialization missing','error');return;}
-  showToast('AI Processing System','Executing rule normalization passes on records...','info');
-  try{
-    var res = await fetch(API_BASE+'/api/ai-clean',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSession,table_name:tableName})});
-    
-    if (res.status === 429 || res.status === 403 || res.status === 503) {
-      showToast('AI Quota Limit', 'Free token capacity constraints met.', 'warning');
-      return;
-    }
-
-    var data = await res.json();
-    if(data.success){
-      var msg = '✅ Data Cleaned!\n\n';
-      msg += 'Original: '+data.original_rows+' rows\n';
-      msg += 'Cleaned: '+data.cleaned_rows+' rows\n';
-      msg += 'Removed: '+data.removed_rows+' rows\n\n';
-      msg += 'Changes:\n'+data.changes.join('\n');
-      msg += '\n\nCleaned table: '+data.cleaned_table;
-      var messages = document.getElementById('aiMessages');
-      messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">❄️</div><div class="ai-bubble"><div class="sql-label">Data Cleaning Report</div><pre style="white-space:pre-wrap">'+escapeHtml(msg)+'</pre><button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="safeSetValue(\'SELECT * FROM \\\''+data.cleaned_table+'\\\'\')">Query Cleaned Data</button></div></div>';
-      document.getElementById('aiWidget').classList.add('active');
-      document.getElementById('aiToggle').classList.add('hidden');
-      messages.scrollTop = messages.scrollHeight;
-      showToast('Cleaned Tasks Handled',data.changes.length+' structural data enhancements implemented','success');
-    } else {showToast('Error Fault',data.detail||'Cleaning failed','error');}
-  }catch(e){showToast('Error',e.message,'error');}
-}
-
-async function aiProfileData(){
-  if(!currentConnection || (!currentConnection.session && !currentConnection.session_id)){showToast('Target Context Missing','Resolve current session validation configurations first','error');return;}
-  var activeSession = currentConnection.session_id || currentConnection.session;
-  var tableName = currentConnection.table_name || currentConnection.name || '';
-  if(!tableName){showToast('Target Index Missing','Table object path initialization missing','error');return;}
-  showToast('AI Processing System','Compiling metadata profile distribution matrices...','info');
-  try{
-    var res = await fetch(API_BASE+'/api/ai-profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSession,table_name:tableName})});
-    
-    if (res.status === 429 || res.status === 403 || res.status === 503) {
-      showToast('AI Quota Limit', 'Free inference capacity constraints met.', 'warning');
-      return;
-    }
-
-    var data = await res.json();
-    if(data.success){
-      var p = data.profile;
-      var msg = '📊 DATA QUALITY REPORT\n';
-      msg += '═══════════════════════\n\n';
-      msg += '🏆 Quality Score: '+p.quality_score+'/100\n';
-      msg += '📋 '+p.total_rows+' rows × '+p.total_columns+' columns\n\n';
-      msg += '📝 Summary: '+p.summary+'\n\n';
-      if(p.column_analysis && p.column_analysis.length>0){
-        msg += '📊 Column Analysis:\n';
-        p.column_analysis.forEach(function(c){
-          msg += '  • '+c.column+' ('+c.detected_type+')\n';
-          if(c.issues && c.issues.length>0) msg += '    Issues: '+c.issues.join(', ')+'\n';
-          if(c.suggestion) msg += '    Fix: '+c.suggestion+'\n';
-        });
-        msg += '\n';
-      }
-      var messages = document.getElementById('aiMessages');
-      messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">❄️</div><div class="ai-bubble"><pre style="white-space:pre-wrap;font-size:0.8rem">'+escapeHtml(msg)+'</pre><button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="aiCleanData()">🧹 Auto-Clean This Data</button></div></div>';
-      document.getElementById('aiWidget').classList.add('active');
-      document.getElementById('aiToggle').classList.add('hidden');
-      messages.scrollTop = messages.scrollHeight;
-    } else {showToast('Error Fault',data.detail||'Profiling failed','error');}
-  }catch(e){showToast('Error',e.message,'error');}
 }
 
 function changePage(dir){}
