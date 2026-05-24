@@ -615,7 +615,6 @@ var pageSize = 50;
 var monacoEditor = null;
 var monacoEditorEngine = false;
 
-/* Safely Fetch Query Values From Monaco Framework or Text Fallbacks */
 function safeGetValue() {
   if (monacoEditorEngine && monacoEditor) {
     return monacoEditor.getValue();
@@ -650,7 +649,6 @@ var dbSchemas = {
   cosmosdb:{title:'Azure Cosmos DB Core Instances',fields:[{name:'uri',label:'Azure Account Connection Endpoint URI',type:'text',placeholder:'https://cosmos.documents.azure.com:443/',required:true},{name:'key',label:'Primary Authentication Key Reference',type:'password',required:true}]}
 };
 
-// Loading Configuration with Fallback Watchdogs
 var fallbackTimer = setTimeout(function() {
   if (!monacoEditorEngine) {
     document.getElementById('monacoContainer').innerHTML = '<textarea id="fallbackTextBox" class="fallback-input-box" placeholder="Write your SQL statements directly here..."></textarea>';
@@ -661,8 +659,65 @@ var fallbackTimer = setTimeout(function() {
 
 try {
   require.config({paths:{'vs':'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs'}});
-  require(['vs/editor/editor.main'],function(){
+  require(['vs/editor/editor.main'], function(){
     clearTimeout(fallbackTimer);
+    
+    // ===== SSMS-STYLE TRUE INTELLISENSE INJECTION =====
+    monaco.languages.registerCompletionItemProvider('sql', {
+      triggerCharacters: ['.', ' '],
+      provideCompletionItems: function(model, position) {
+        var suggestions = [];
+        var textUntilPosition = model.getValueInRange({
+          startLineNumber: 1, startColumn: 1, 
+          endLineNumber: position.lineNumber, endColumn: position.column
+        });
+        
+        // Context Checklist: Check if user typed a table name followed by a dot
+        var words = textUntilPosition.trim().split(/[\s,]+/);
+        var lastWord = words[words.length - 1] || '';
+        
+        if (lastWord.includes('.')) {
+          var tableNamePart = lastWord.split('.')[0].replace(/["']/g, '');
+          if (currentConnection && currentConnection.tables) {
+            var targetTable = currentConnection.tables.find(function(t) { return t.name === tableNamePart; });
+            if (targetTable && targetTable.columns) {
+              targetTable.columns.forEach(function(col) {
+                suggestions.push({
+                  label: col.name,
+                  kind: monaco.languages.CompletionItemKind.Field,
+                  detail: col.type || 'Column',
+                  insertText: col.name
+                });
+              });
+            }
+          }
+        } else {
+          // Default context: Suggest table paths from active sidebar connections
+          if (currentConnection && currentConnection.tables) {
+            currentConnection.tables.forEach(function(tbl) {
+              suggestions.push({
+                label: tbl.name,
+                kind: monaco.languages.CompletionItemKind.Class,
+                detail: 'Database Table',
+                insertText: tbl.name
+              });
+            });
+          }
+          
+          // Core SQL keywords autocompletion
+          var keywords = ['SELECT', 'FROM', 'WHERE', 'JOIN', 'LEFT JOIN', 'GROUP BY', 'ORDER BY', 'LIMIT', 'INSERT', 'UPDATE', 'DELETE'];
+          keywords.forEach(function(kw) {
+            suggestions.push({
+              label: kw,
+              kind: monaco.languages.CompletionItemKind.Keyword,
+              insertText: kw
+            });
+          });
+        }
+        return { suggestions: suggestions };
+      }
+    });
+
     var currentGlobalTheme = document.documentElement.getAttribute('data-theme') || 'dark';
     monacoEditor = monaco.editor.create(document.getElementById('monacoContainer'),{
       value:'-- Write your SQL query here\nSELECT * FROM information_schema.tables LIMIT 10;',
@@ -678,7 +733,7 @@ try {
       roundedSelection:true,
       renderLineHighlight:'all',
       suggestOnTriggerCharacters:true,
-      quickSuggestions:true
+      quickSuggestions: { other: true, comments: false, strings: false }
     });
     monacoEditorEngine = true;
   });
@@ -697,7 +752,6 @@ function openConnectPanel(){
   document.getElementById('connectPanel').classList.add('active');
   loadSavedConnections();
 }
-// DOM Event Fixes replacing event context
 function closeConnectPanel(){
   document.getElementById('connectOverlay').classList.remove('active');
   document.getElementById('connectPanel').classList.remove('active');
@@ -840,7 +894,7 @@ async function saveAndConnect(){
     var res = await fetch(API_BASE+'/api/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:currentDbType,credentials:creds})});
     var data = await res.json();
     if(data.success){
-      currentConnection = {type:currentDbType,name:connName,session:data.session_id,session_id:data.session_id};
+      currentConnection = {type:currentDbType,name:connName,session:data.session_id,session_id:data.session_id,tables:data.schema||[]};
       updateConnectionStatus(true,connName,currentDbType);
       closeConnectPanel();
       loadSchema();
@@ -908,7 +962,7 @@ async function connectSaved(id){
     var res = await fetch(API_BASE+'/api/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:data.type,credentials:data.credentials})});
     var result2 = await res.json();
     if(result2.success){
-      currentConnection = {type:data.type,name:data.name,id:data.id,session:result2.session_id,session_id:result2.session_id};
+      currentConnection = {type:data.type,name:data.name,id:data.id,session:result2.session_id,session_id:result2.session_id,tables:result2.schema||[]};
       updateConnectionStatus(true,data.name,data.type);
       closeConnectPanel();
       loadSchema();
@@ -1007,7 +1061,7 @@ async function testCloudConnection(provider){
   status.className = 'test-status loading show';
   status.innerHTML = '<span class="spinner"></span> Confirming cloud routing rules...';
   try{
-    var res = await fetch(API_BASE+'/api/test-cloud',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(creds)});
+    var res = await fetch(API_BASE+'/api/test-cloud',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({creds})});
     var data = await res.json();
     if(data.success){
       status.className = 'test-status success show';
@@ -1045,6 +1099,7 @@ async function loadSchema(){
     var res = await fetch(API_BASE+'/api/schema?session='+encodeURIComponent(currentConnection.session||''));
     var data = await res.json();
     if(data.success){
+      currentConnection.tables = data.schema || [];
       renderSchemaTree(data.schema);
     }else{throw new Error(data.error)}
   }catch(err){
@@ -1066,7 +1121,7 @@ function renderSchemaTree(schema){
       html += '<div class="tree-item" onclick="toggleTree(this)" style="padding-left:20px"><span class="tree-icon">&#128193;</span><span>'+escapeHtml(sch.name)+'</span><span class="tree-chevron">&#9654;</span></div>';
       html += '<div class="tree-children">';
       (sch.tables||[]).forEach(function(tbl){
-        html += '<div class="tree-item" onclick="toggleTree(tbl, this)" style="padding-left:40px"><span class="tree-icon">&#128196;</span><span>'+escapeHtml(tbl.name)+'</span><span class="tree-chevron">&#9654;</span></div>';
+        html += '<div class="tree-item" onclick="toggleTree(this);selectTable(\''+escapeHtml(db.name)+'\',\''+escapeHtml(sch.name)+'\',\''+escapeHtml(tbl.name)+'\', this)" style="padding-left:40px"><span class="tree-icon">&#128196;</span><span>'+escapeHtml(tbl.name)+'</span><span class="tree-chevron">&#9654;</span></div>';
         html += '<div class="tree-children">';
         (tbl.columns||[]).forEach(function(col){
           var typeIcon = col.type && col.type.toLowerCase().includes('int') ? '&#123;' : col.type && (col.type.toLowerCase().includes('char')||col.type.toLowerCase().includes('text')) ? '&#8220;' : col.type && col.type.toLowerCase().includes('date') ? '&#128197;' : col.type && col.type.toLowerCase().includes('bool') ? '&#9744;' : '&#9679;';
@@ -1087,9 +1142,9 @@ function renderFileSchema(tables){
     tree.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="icon">&#128196;</div><h3>No Records</h3></div>';
     return;
   }
-  var html = '<div class="tree-item" onclick="toggleTree(null, this)"><span class="tree-icon">&#128451;</span><span>Files</span><span class="tree-chevron">&#9654;</span></div><div class="tree-children">';
+  var html = '<div class="tree-item" onclick="toggleTree(this)"><span class="tree-icon">&#128451;</span><span>Files</span><span class="tree-chevron">&#9654;</span></div><div class="tree-children">';
   tables.forEach(function(tbl){
-    html += '<div class="tree-item" onclick="toggleTree(null, this);selectTable(\'files\',\'default\',\''+escapeHtml(tbl.name)+'\', this)" style="padding-left:20px"><span class="tree-icon">&#128196;</span><span>'+escapeHtml(tbl.name)+'</span><span class="tree-chevron">&#9654;</span></div>';
+    html += '<div class="tree-item" onclick="toggleTree(this);selectTable(\'files\',\'default\',\''+escapeHtml(tbl.name)+'\', this)" style="padding-left:20px"><span class="tree-icon">&#128196;</span><span>'+escapeHtml(tbl.name)+'</span><span class="tree-chevron">&#9654;</span></div>';
     html += '<div class="tree-children">';
     (tbl.columns||[]).forEach(function(col){
       html += '<div class="tree-item" style="padding-left:40px;font-size:0.8rem;color:var(--text-dim)" onclick="insertColumn(\''+escapeHtml(tbl.name)+'\',\''+escapeHtml(col.name)+'\', this)"><span class="tree-icon">&#9679;</span><span>'+escapeHtml(col.name)+'</span><span style="margin-left:auto;font-size:0.7rem;opacity:0.6">'+escapeHtml(col.type)+'</span></div>';
@@ -1100,7 +1155,7 @@ function renderFileSchema(tables){
   tree.innerHTML = html;
 }
 
-function toggleTree(tblData, targetEl){
+function toggleTree(targetEl){
   targetEl.classList.toggle('active');
   var chevron = targetEl.querySelector('.tree-chevron');
   if(chevron) chevron.classList.toggle('expanded');
