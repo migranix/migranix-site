@@ -216,10 +216,10 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
   .ai-widget{width:calc(100% - 40px)}
 }
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
 </head>
 <body>
 
-<!-- ===== FILE 1: AUTH & TOP NAV ===== -->
 <div class="toast-container" id="toastContainer"></div>
 
 <nav class="top-nav">
@@ -243,10 +243,8 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
   </div>
 </nav>
 
-<!-- ===== MAIN LAYOUT ===== -->
 <div class="main">
 
-  <!-- ===== FILE 5: SCHEMA BROWSER (Sidebar) ===== -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <h3>Schema Explorer</h3>
@@ -264,7 +262,6 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
     </div>
   </aside>
 
-  <!-- ===== FILE 3: EDITOR & RESULTS (Center) ===== -->
   <div class="center">
     <div class="toolbar">
       <button class="btn btn-primary btn-sm" onclick="executeQuery()" id="runBtn">
@@ -337,7 +334,6 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
   </div>
 </div>
 
-<!-- Status Bar -->
 <div class="status-bar">
   <span id="statusConn">&#128268; Disconnected</span>
   <span id="statusDb">&#128187; No database selected</span>
@@ -345,7 +341,6 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
   <span style="margin-left:auto" id="statusReady">&#9989; Ready</span>
 </div>
 
-<!-- ===== FILE 2: CONNECT PANEL (Slide-out) ===== -->
 <div class="overlay" id="connectOverlay" onclick="closeConnectPanel()"></div>
 <div class="connect-panel" id="connectPanel">
   <div class="connect-header">
@@ -361,7 +356,6 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
 
   <div class="connect-body">
 
-    <!-- FILES TAB -->
     <div class="tab-content active" id="tab-files">
       <div class="section-title">&#128193; Local Files</div>
       <div class="file-types">
@@ -394,7 +388,6 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
       </div>
     </div>
 
-    <!-- DATABASES TAB -->
     <div class="tab-content" id="tab-databases">
       <div class="section-title">&#128187; Relational Databases</div>
       <div class="source-grid">
@@ -465,7 +458,6 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
       </div>
     </div>
 
-    <!-- SAVED TAB -->
     <div class="tab-content" id="tab-saved">
       <div class="section-title">&#128204; Recent Connections</div>
       <div class="saved-list" id="savedList">
@@ -477,7 +469,6 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
       </div>
     </div>
 
-    <!-- CREDENTIAL FORM -->
     <div class="cred-form" id="credForm">
       <div class="cred-header">
         <button class="back-btn" onclick="backToSources()">&#8592; Back</button>
@@ -499,7 +490,6 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
   </div>
 </div>
 
-<!-- ===== FILE 4: AI CHAT WIDGET ===== -->
 <button class="ai-toggle" id="aiToggle" onclick="toggleAI()">&#129302;</button>
 <div class="ai-widget" id="aiWidget">
   <div class="ai-widget-header">
@@ -521,7 +511,6 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
   </div>
 </div>
 
-<!-- SAVE QUERY MODAL -->
 <div class="modal-overlay" id="saveModal">
   <div class="modal">
     <h3>&#128190; Save Query</h3>
@@ -537,18 +526,16 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
   </div>
 </div>
 
-<!-- ===== MERGED JAVASCRIPT ===== -->
 <script>
 // ========== CONFIGURATION ==========
 var API_BASE = 'https://migranix-app.onrender.com';
 var SUPA_URL = 'https://yxwlgwaalghvskulhmey.supabase.co';
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4d2xnd2FhbGdodnNrdWxobWV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODEwODYsImV4cCI6MjA5NDQ1NzA4Nn0.QOZphIHDIebIkSX23LPjQXtr-iICT9dapzYMw11HBTw';
-// AI features powered by Google Gemini (via backend)
 
 var sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 
-/* ── 10-SECOND WINDOW-CLOSE TIMEOUT ── */
-var CLOSE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+/* ── 5-MINUTE WINDOW-CLOSE TIMEOUT ── */
+var CLOSE_TIMEOUT = 5 * 60 * 1000; 
 document.addEventListener('visibilitychange', function(){
   if(document.visibilityState === 'hidden') localStorage.setItem('mx_left_at', Date.now().toString());
   if(document.visibilityState === 'visible'){
@@ -562,9 +549,8 @@ document.addEventListener('visibilitychange', function(){
   }
 });
 
-/* ── AUTH GATE — redirect to main site if not logged in ── */
+/* ── AUTH GATE ── */
 async function checkAuthGate(){
-  // Check timeout first
   var left = localStorage.getItem('mx_left_at');
   if(left && (Date.now() - parseInt(left)) > CLOSE_TIMEOUT){
     localStorage.clear();
@@ -576,11 +562,9 @@ async function checkAuthGate(){
     var sess = await sb.auth.getSession();
     var user = sess.data.session ? sess.data.session.user : null;
     if(!user){
-      // Not logged in — redirect to main site
       document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;background:#0f172a;color:#f8fafc;font-family:Inter,sans-serif"><div style="font-size:2.5rem">&#128274;</div><h2 style="font-size:1.5rem;font-weight:700">Login Required</h2><p style="color:#94a3b8;max-width:400px;text-align:center">You need to sign in to access the Migranix Data Connector. Log in on our website first.</p><a href="https://www.migranix.in" style="display:inline-block;background:#3b82f6;color:white;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;margin-top:8px;transition:all 0.2s">Go to migranix.in →</a><p style="color:#64748b;font-size:0.8rem;margin-top:12px">Free 14-day trial · No credit card required</p></div>';
       return;
     }
-    // User is logged in — show their info in nav
     var name = user.user_metadata && user.user_metadata.full_name ? user.user_metadata.full_name : user.email;
     var initials = name.split(' ').map(function(n){return n[0]}).join('').substring(0,2).toUpperCase();
     document.getElementById('userName').textContent = name;
@@ -641,7 +625,6 @@ require(['vs/editor/editor.main'],function(){
 });
 
 // ========== AUTH ==========
-// Auth is handled by checkAuthGate() above
 async function handleLogout(){
   await sb.auth.signOut();
   localStorage.clear();
@@ -704,9 +687,9 @@ function downloadQuery(){
 function showToast(title, message, type){
   type = type || 'info';
   var icons = {
-    info:'<<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
-    success:'<<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
-    error:'<<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+    info:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
+    success:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    error:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
   };
   var toast = document.createElement('div');
   toast.className = 'toast ' + type;
@@ -806,7 +789,7 @@ async function saveAndConnect(){
     var res = await fetch(API_BASE+'/api/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:currentDbType,credentials:creds})});
     var data = await res.json();
     if(data.success){
-      currentConnection = {type:currentDbType,name:connName,session:data.session_id};
+      currentConnection = {type:currentDbType,name:connName,session:data.session_id,session_id:data.session_id};
       updateConnectionStatus(true,connName,currentDbType);
       closeConnectPanel();
       loadSchema();
@@ -872,10 +855,10 @@ async function connectSaved(id){
     var result = await sb.from('connections').select('*').eq('id',id).single();
     if(result.error) throw result.error;
     var data = result.data;
-    currentConnection = {type:data.type,name:data.name,id:data.id};
     var res = await fetch(API_BASE+'/api/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:data.type,credentials:data.credentials})});
     var result2 = await res.json();
     if(result2.success){
+      currentConnection = {type:data.type,name:data.name,id:data.id,session:result2.session_id,session_id:result2.session_id};
       updateConnectionStatus(true,data.name,data.type);
       closeConnectPanel();
       loadSchema();
@@ -913,7 +896,7 @@ function connectFile(type){
       var res = await fetch(API_BASE+'/api/upload-file',{method:'POST',body:formData});
       var data = await res.json();
       if(data.success){
-        currentConnection = {type:'file',name:file.name,format:type,tables:data.tables};
+        currentConnection = {type:'file',name:file.name,format:type,tables:data.tables,session:data.session_id,session_id:data.session_id,table_name:data.tables[0]?data.tables[0].name:''};
         updateConnectionStatus(true,file.name,type.toUpperCase());
         closeConnectPanel();
         renderFileSchema(data.tables);
@@ -993,7 +976,7 @@ async function saveCloudConnection(provider){
     var res = await fetch(API_BASE+'/api/connect-cloud',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(creds)});
     var data = await res.json();
     if(data.success){
-      currentConnection = {type:'cloud',provider:provider,name:creds.bucket||creds.account||creds.stage,tables:data.tables};
+      currentConnection = {type:'cloud',provider:provider,name:creds.bucket||creds.account||creds.stage,tables:data.tables,session:data.session_id,session_id:data.session_id,table_name:data.tables[0]?data.tables[0].name:''};
       updateConnectionStatus(true,currentConnection.name,provider.toUpperCase());
       closeConnectPanel();
       renderFileSchema(data.tables);
@@ -1085,7 +1068,9 @@ function selectTable(db,schema,table){
   sql += escapeIdentifier(table)+' LIMIT 100;';
   monacoEditor.setValue(sql);
   document.querySelectorAll('.tree-item').forEach(function(item){item.classList.remove('active')});
-  event.currentTarget.classList.add('active');
+  if(window.event && window.event.currentTarget) {
+    window.event.currentTarget.classList.add('active');
+  }
 }
 
 function insertColumn(table,column){
@@ -1121,7 +1106,7 @@ async function executeQuery(){
   document.getElementById('resultsContent').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-dim)"><span class="spinner"></span><br>Executing query...</div>';
   var startTime = performance.now();
   try{
-    var res = await fetch(API_BASE+'/api/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:currentConnection.session||'',query:sql})});
+    var res = await fetch(API_BASE+'/api/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:currentConnection.session||currentConnection.session_id||'',query:sql})});
     var data = await res.json();
     var elapsed = ((performance.now()-startTime)/1000).toFixed(2);
     if(data.success){
@@ -1294,12 +1279,13 @@ async function aiOptimizeQuery(){
 
 /* ── AI AUTO-CLEAN DATA ────────────────────────────── */
 async function aiCleanData(){
-  if(!currentConnection || !currentConnection.session_id){showToast('No Data','Upload a file first','error');return;}
+  if(!currentConnection || (!currentConnection.session && !currentConnection.session_id)){showToast('No Data','Upload a file first','error');return;}
+  var activeSession = currentConnection.session || currentConnection.session_id;
   var tableName = currentConnection.table_name || currentConnection.name || '';
   if(!tableName){showToast('No Table','No table available for cleaning','error');return;}
   showToast('AI','Cleaning your data...','info');
   try{
-    var res = await fetch(API_BASE+'/api/ai-clean',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:currentConnection.session_id,table_name:tableName})});
+    var res = await fetch(API_BASE+'/api/ai-clean',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSession,table_name:tableName})});
     var data = await res.json();
     if(data.success){
       var msg = '✅ Data Cleaned!\n\n';
@@ -1320,12 +1306,13 @@ async function aiCleanData(){
 
 /* ── AI DATA PROFILING ─────────────────────────────── */
 async function aiProfileData(){
-  if(!currentConnection || !currentConnection.session_id){showToast('No Data','Upload a file first','error');return;}
+  if(!currentConnection || (!currentConnection.session && !currentConnection.session_id)){showToast('No Data','Upload a file first','error');return;}
+  var activeSession = currentConnection.session || currentConnection.session_id;
   var tableName = currentConnection.table_name || currentConnection.name || '';
   if(!tableName){showToast('No Table','No table to profile','error');return;}
   showToast('AI','Profiling your data with AI...','info');
   try{
-    var res = await fetch(API_BASE+'/api/ai-profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:currentConnection.session_id,table_name:tableName})});
+    var res = await fetch(API_BASE+'/api/ai-profile',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:activeSession,table_name:tableName})});
     var data = await res.json();
     if(data.success){
       var p = data.profile;
