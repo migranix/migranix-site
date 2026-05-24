@@ -6,28 +6,28 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Load Token securely from Render Environment Variables
-const HF_TOKEN = process.env.HF_TOKEN;
-const HF_ROUTER_URL = "https://router.huggingface.co/v1/chat/completions";
-const CORE_MODEL = "Qwen/Qwen2.5-Coder-32B-Instruct";
+// Securely access configuration tokens mapped from Render console parameters
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const GROQ_ROUTER_URL = "https://api.groq.com/openai/v1/chat/completions";
+const CORE_MODEL = "llama-3.1-70b-versatile"; 
 
-/* ── Free Alternative Text-to-SQL Routing Engine ── */
+/* ── Groq API Text-to-SQL Performance Compiler Engine ── */
 app.post('/api/ai-sql', async (req, res) => {
   const { prompt, schema_context } = req.body;
 
   try {
-    const response = await fetch(HF_ROUTER_URL, {
+    const response = await fetch(GROQ_ROUTER_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${HF_TOKEN}`
+        "Authorization": `Bearer ${GROQ_API_KEY}`
       },
       body: JSON.stringify({
         model: CORE_MODEL,
         messages: [
           { 
             role: "system", 
-            content: "You are a professional compiler. Convert plain English directly into clean standard SQL syntax. Return ONLY raw executable query strings. Never wrap inside markdown symbols, do not include explanations, and omit commentary text completely." 
+            content: "You are a professional compiler. Convert plain English directly into clean, valid, executable standard SQL syntax. Return ONLY raw executable query strings. Never wrap inside markdown symbols, do not include explanations, and omit commentary text completely." 
           },
           { 
             role: "user", 
@@ -41,7 +41,7 @@ app.post('/api/ai-sql', async (req, res) => {
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `Hugging Face gateway returned status ${response.status}`);
+      throw new Error(errorData.error?.message || `Groq Gateway communication error status ${response.status}`);
     }
 
     const data = await response.json();
@@ -52,61 +52,11 @@ app.post('/api/ai-sql', async (req, res) => {
 
     return res.json({ success: true, sql: cleanSql });
   } catch (err) {
-    console.error("Free SQL Engine Fail:", err);
+    console.error("Groq Engine compilation fault:", err);
     return res.status(500).json({ success: false, error: err.message });
   }
 });
 
-/* ── Free Alternative AI Explanation Controller ── */
-app.post('/api/ai-explain', async (req, res) => {
-  const { sql } = req.body;
-  try {
-    const response = await fetch(HF_ROUTER_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${HF_TOKEN}`
-      },
-      body: JSON.stringify({
-        model: CORE_MODEL,
-        messages: [
-          { role: "system", content: "You are an expert data analyst. Explain what database operations the following SQL query performs in clear, plain English paragraphs. Keep it professional and structured." },
-          { role: "user", content: `Explain this query:\n${sql}` }
-        ]
-      })
-    });
-    const data = await response.json();
-    return res.json({ success: true, explanation: data.choices[0].message.content.trim() });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-/* ── Free Alternative AI Query Optimizer ── */
-app.post('/api/ai-optimize', async (req, res) => {
-  const { sql } = req.body;
-  try {
-    const response = await fetch(HF_ROUTER_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${HF_TOKEN}`
-      },
-      body: JSON.stringify({
-        model: CORE_MODEL,
-        messages: [
-          { role: "system", content: "Analyze the provided SQL query statement for computational inefficiencies, index misses, or structural flaws. List exact bullet points indicating optimizations or provide a refactored SQL alternative." },
-          { role: "user", content: `Optimize this statement:\n${sql}` }
-        ]
-      })
-    });
-    const data = await response.json();
-    return res.json({ success: true, optimization: data.choices[0].message.content.trim() });
-  } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Start server block rules...
+// Setup fallback pipeline tracking options...
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Ecosystem Server active on port ${PORT}`));
