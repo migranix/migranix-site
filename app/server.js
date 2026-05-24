@@ -9,7 +9,7 @@ app.use(express.json());
 // Securely access configuration tokens mapped from Render console parameters
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const GROQ_ROUTER_URL = "https://api.groq.com/openai/v1/chat/completions";
-const CORE_MODEL = "llama-3.1-70b-versatile"; 
+const CORE_MODEL = "llama-3.3-70b-versatile"; 
 
 /* ── Groq API Text-to-SQL Performance Compiler Engine ── */
 app.post('/api/ai-sql', async (req, res) => {
