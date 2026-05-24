@@ -72,7 +72,7 @@ import pandas as pd
 import io
 
 # ========== CONFIGURATION ==========
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "migranix-secret-key-32bytes!")
 
 # ========== SESSION STORE ==========
@@ -546,29 +546,321 @@ async def export_data(req: ExportRequest):
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-# ========== AI SQL GENERATION ==========
-@app.post("/api/ai-sql")
-async def generate_sql(request: dict):
-    """Generate SQL from natural language using Groq"""
-    if not GROQ_API_KEY:
-        raise HTTPException(400, "GROQ_API_KEY not configured")
+# ========== AI FEATURES (Google Gemini — Free) ==========
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
+async def call_gemini(prompt, system_prompt="", max_tokens=2048):
+    """Call Google Gemini API (free tier)"""
     import httpx
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            "https://api.groq.com/openai/v1/chat/completions",
-            headers={"Authorization": f"Bearer {GROQ_API_KEY}", "Content-Type": "application/json"},
+    key = GEMINI_API_KEY
+    if not key:
+        raise HTTPException(400, "GEMINI_API_KEY not configured. Get free key at aistudio.google.com")
+    
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}",
             json={
-                "model": "llama-3.3-70b-versatile",
-                "messages": [
-                    {"role": "system", "content": "You are an expert SQL assistant. Convert natural language to SQL."},
-                    {"role": "user", "content": request.get("prompt", "")}
-                ],
-                "temperature": 0.1,
-                "max_tokens": 1024
+                "contents": [{"parts": [{"text": (system_prompt + "\n\n" + prompt) if system_prompt else prompt}]}],
+                "generationConfig": {"temperature": 0.1, "maxOutputTokens": max_tokens}
             }
         )
-        return response.json()
+        data = resp.json()
+        if resp.status_code != 200:
+            error_msg = data.get("error", {}).get("message", "Gemini API error")
+            raise HTTPException(400, error_msg)
+        
+        text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+        return text
+
+@app.post("/api/ai-sql")
+async def generate_sql(request: dict):
+    """Generate SQL from natural language using Gemini"""
+    prompt = request.get("prompt", "")
+    schema_context = request.get("schema_context", "")
+    
+    system = f"""You are an expert SQL assistant. Convert natural language to SQL.
+{('Database schema: ' + schema_context) if schema_context else ''}
+Rules:
+- Return ONLY the SQL query, nothing else — no markdown, no backticks, no explanation
+- Use standard SQL syntax
+- Use proper aliases for readability
+- If intent is unclear, make reasonable assumptions"""
+    
+    sql = await call_gemini(prompt, system)
+    # Clean any markdown formatting
+    sql = sql.strip()
+    if sql.startswith("```"): sql = sql.split("\n", 1)[1] if "\n" in sql else sql[3:]
+    if sql.endswith("```"): sql = sql[:-3]
+    sql = sql.strip()
+    
+    return {"success": True, "sql": sql}
+
+@app.post("/api/ai-profile")
+async def ai_data_profile(request: dict):
+    """AI-powered data profiling — analyzes uploaded data and generates insights"""
+    session_id = request.get("session_id", "")
+    table_name = request.get("table_name", "")
+    
+    if session_id not in connections:
+        raise HTTPException(400, "No active connection")
+    
+    conn = connections[session_id]
+    
+    try:
+        # Get sample data and stats
+        if conn["type"] == "file":
+            engine = conn["engine"]
+            with engine.connect() as c:
+                # Get row count
+                count_result = c.execute(text(f"SELECT COUNT(*) FROM '{table_name}'"))
+                total_rows = count_result.fetchone()[0]
+                
+                # Get column info
+                cols_result = c.execute(text(f"PRAGMA table_info('{table_name}')"))
+                columns = [{"name": r[1], "type": r[2]} for r in cols_result.fetchall()]
+                
+                # Get sample data
+                sample_result = c.execute(text(f"SELECT * FROM '{table_name}' LIMIT 20"))
+                sample_cols = list(sample_result.keys())
+                sample_rows = [dict(zip(sample_cols, row)) for row in sample_result.fetchall()]
+                
+                # Get null counts per column
+                null_counts = {}
+                for col in columns:
+                    null_result = c.execute(text(f"SELECT COUNT(*) FROM '{table_name}' WHERE \"{col['name']}\" IS NULL"))
+                    null_counts[col["name"]] = null_result.fetchone()[0]
+                
+                # Get distinct counts
+                distinct_counts = {}
+                for col in columns:
+                    try:
+                        dist_result = c.execute(text(f"SELECT COUNT(DISTINCT \"{col['name']}\") FROM '{table_name}'"))
+                        distinct_counts[col["name"]] = dist_result.fetchone()[0]
+                    except:
+                        distinct_counts[col["name"]] = -1
+        else:
+            raise HTTPException(400, "AI profiling currently supports file uploads. Database profiling coming soon.")
+        
+        # Build profiling prompt
+        col_summary = "\n".join([f"- {c['name']} ({c['type']}): {null_counts.get(c['name'],0)} nulls, {distinct_counts.get(c['name'],0)} distinct values" for c in columns])
+        sample_str = json.dumps(sample_rows[:5], indent=2, default=str)
+        
+        prompt = f"""Analyze this dataset and provide a comprehensive data quality report.
+
+Table: {table_name}
+Total rows: {total_rows}
+Columns ({len(columns)}):
+{col_summary}
+
+Sample data (first 5 rows):
+{sample_str}
+
+Provide your analysis in this exact JSON format (no markdown, no backticks):
+{{
+  "quality_score": <0-100 integer>,
+  "summary": "<2-3 sentence overview>",
+  "column_analysis": [
+    {{
+      "column": "<name>",
+      "detected_type": "<actual data type like email, phone, date, currency, name, id, etc>",
+      "issues": ["<issue 1>", "<issue 2>"],
+      "suggestion": "<cleaning recommendation>"
+    }}
+  ],
+  "data_issues": [
+    {{
+      "severity": "high|medium|low",
+      "issue": "<description>",
+      "affected_rows": <estimated count>,
+      "fix": "<recommended action>"
+    }}
+  ],
+  "cleaning_sql": ["<SQL statement 1 to fix issues>", "<SQL statement 2>"]
+}}"""
+        
+        result = await call_gemini(prompt, "You are a data quality expert. Respond ONLY with valid JSON, no markdown.")
+        
+        # Parse the JSON response
+        result = result.strip()
+        if result.startswith("```"): result = result.split("\n", 1)[1]
+        if result.endswith("```"): result = result[:-3]
+        result = result.strip()
+        
+        try:
+            profile = json.loads(result)
+        except:
+            profile = {"quality_score": 0, "summary": result, "column_analysis": [], "data_issues": [], "cleaning_sql": []}
+        
+        profile["total_rows"] = total_rows
+        profile["total_columns"] = len(columns)
+        profile["columns"] = columns
+        profile["null_counts"] = null_counts
+        profile["distinct_counts"] = distinct_counts
+        
+        return {"success": True, "profile": profile}
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(400, str(e))
+
+@app.post("/api/ai-explain")
+async def ai_explain_query(request: dict):
+    """Explain what a SQL query does in plain English"""
+    sql = request.get("sql", "")
+    if not sql:
+        raise HTTPException(400, "No SQL provided")
+    
+    result = await call_gemini(
+        f"Explain this SQL query in simple English that a non-technical business person can understand:\n\n{sql}",
+        "You are a data expert. Explain SQL queries clearly and concisely. Use bullet points."
+    )
+    return {"success": True, "explanation": result}
+
+@app.post("/api/ai-optimize")
+async def ai_optimize_query(request: dict):
+    """Suggest optimizations for a SQL query"""
+    sql = request.get("sql", "")
+    schema_context = request.get("schema_context", "")
+    if not sql:
+        raise HTTPException(400, "No SQL provided")
+    
+    result = await call_gemini(
+        f"""Optimize this SQL query for better performance.
+{('Schema: ' + schema_context) if schema_context else ''}
+
+Original query:
+{sql}
+
+Provide:
+1. The optimized SQL query
+2. Brief explanation of what you changed and why
+3. Estimated performance improvement""",
+        "You are a database performance expert."
+    )
+    return {"success": True, "optimization": result}
+
+@app.post("/api/ai-clean")
+async def ai_clean_data(request: dict):
+    """AI-powered automatic data cleaning"""
+    session_id = request.get("session_id", "")
+    table_name = request.get("table_name", "")
+    
+    if session_id not in connections:
+        raise HTTPException(400, "No active connection")
+    
+    conn = connections[session_id]
+    
+    try:
+        if conn["type"] != "file":
+            raise HTTPException(400, "Auto-clean only works on uploaded files for safety")
+        
+        engine = conn["engine"]
+        import pandas as pd_local
+        
+        df = pd_local.read_sql(f"SELECT * FROM '{table_name}'", engine)
+        original_rows = len(df)
+        original_cols = len(df.columns)
+        changes = []
+        
+        # 1. Trim whitespace from all string columns
+        for col in df.select_dtypes(include=['object']).columns:
+            before = df[col].copy()
+            df[col] = df[col].str.strip()
+            trimmed = (before != df[col]).sum()
+            if trimmed > 0:
+                changes.append(f"Trimmed whitespace in '{col}': {trimmed} values")
+        
+        # 2. Replace common null strings with actual NaN
+        import numpy as np
+        null_strings = ['NA', 'N/A', 'null', 'NULL', 'None', 'none', '-', '', 'undefined', 'nil', '#N/A', 'NaN']
+        for col in df.select_dtypes(include=['object']).columns:
+            mask = df[col].isin(null_strings)
+            if mask.sum() > 0:
+                df.loc[mask, col] = np.nan
+                changes.append(f"Converted {mask.sum()} null-like values to NULL in '{col}'")
+        
+        # 3. Remove fully empty rows
+        empty_rows = df.isnull().all(axis=1).sum()
+        if empty_rows > 0:
+            df = df.dropna(how='all')
+            changes.append(f"Removed {empty_rows} completely empty rows")
+        
+        # 4. Remove exact duplicate rows
+        dupes = df.duplicated().sum()
+        if dupes > 0:
+            df = df.drop_duplicates()
+            changes.append(f"Removed {dupes} duplicate rows")
+        
+        # 5. Auto-detect and convert numeric columns
+        for col in df.select_dtypes(include=['object']).columns:
+            try:
+                converted = pd_local.to_numeric(df[col], errors='coerce')
+                non_null = df[col].notna().sum()
+                if non_null > 0 and converted.notna().sum() / non_null >= 0.85:
+                    df[col] = converted
+                    changes.append(f"Converted '{col}' from text to numeric")
+            except:
+                pass
+        
+        # 6. Auto-detect and convert date columns
+        for col in df.select_dtypes(include=['object']).columns:
+            try:
+                sample = df[col].dropna().head(20)
+                converted = pd_local.to_datetime(sample, errors='coerce', infer_datetime_format=True)
+                if converted.notna().sum() / len(sample) >= 0.8:
+                    df[col] = pd_local.to_datetime(df[col], errors='coerce', infer_datetime_format=True)
+                    changes.append(f"Converted '{col}' from text to datetime")
+            except:
+                pass
+        
+        # Save cleaned data back
+        cleaned_table = f"{table_name}_cleaned"
+        df.to_sql(cleaned_table, engine, index=False, if_exists='replace')
+        
+        return {
+            "success": True,
+            "original_rows": original_rows,
+            "cleaned_rows": len(df),
+            "removed_rows": original_rows - len(df),
+            "original_columns": original_cols,
+            "changes": changes,
+            "cleaned_table": cleaned_table,
+            "message": f"Data cleaned! {len(changes)} improvements made. Query the cleaned data from table '{cleaned_table}'"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(400, str(e))
+
+@app.post("/api/ai-migration-plan")
+async def ai_migration_plan(request: dict):
+    """Generate a migration plan from source to target"""
+    source_type = request.get("source_type", "")
+    target_type = request.get("target_type", "Snowflake")
+    schema_info = request.get("schema_info", "")
+    row_count = request.get("row_count", "unknown")
+    
+    prompt = f"""Generate a detailed data migration plan:
+
+Source: {source_type}
+Target: {target_type}
+Schema: {schema_info}
+Estimated rows: {row_count}
+
+Provide a comprehensive plan including:
+1. Pre-migration checklist (5-7 items)
+2. Schema mapping recommendations
+3. Data type conversions needed
+4. Estimated timeline
+5. Risk assessment (high/medium/low risks)
+6. Post-migration validation steps
+7. SQL scripts for creating the target tables
+
+Format as clean, readable text with headers and bullet points."""
+    
+    result = await call_gemini(prompt, "You are a senior data migration architect with 15 years of experience. Provide practical, actionable migration plans.")
+    return {"success": True, "plan": result}
 
 # ========== CLEANUP ==========
 @app.on_event("shutdown")
