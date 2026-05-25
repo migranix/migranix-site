@@ -358,8 +358,10 @@ async def get_schema(session: str):
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
+# ========== FIXED CORE QUERY RUNTIME BLOCK ==========
 @app.post("/api/query")
 async def execute_query(req: QueryRequest):
+    """Execute SQL query and return results inside thread-safe context pools"""
     if req.session not in connections:
         raise HTTPException(404, "Session not found")
 
@@ -367,7 +369,8 @@ async def execute_query(req: QueryRequest):
     try:
         if "engine" in conn:
             engine = conn["engine"]
-            with engine.connect() as c:
+            # Forces context allocation and automatic lifecycle cleanup
+            with engine.begin() as c:
                 result = c.execute(text(req.query))
 
                 if result.returns_rows:
@@ -375,7 +378,6 @@ async def execute_query(req: QueryRequest):
                     rows = [dict(zip(columns, row)) for row in result.fetchall()]
                     return {"success": True, "columns": columns, "results": rows}
                 else:
-                    c.commit()
                     return {"success": True, "columns": [], "results": [], "message": "Query executed successfully"}
         else:
             raise HTTPException(400, "Query execution not supported for this connection type")
@@ -572,7 +574,6 @@ Rules:
     
     sql = await call_groq_router(prompt, system)
     
-    # Strip markdown wrappers if the engine defaults to them anyway
     sql = sql.strip()
     if sql.startswith("```"): 
         sql = sql.split("\n", 1)[1] if "\n" in sql else sql[3:]
@@ -592,7 +593,7 @@ async def ai_data_profile(request: dict):
     try:
         if conn["type"] == "file":
             engine = conn["engine"]
-            with engine.connect() as c:
+            with engine.begin() as c:
                 count_result = c.execute(text(f"SELECT COUNT(*) FROM '{table_name}'"))
                 total_rows = count_result.fetchone()[0]
                 
