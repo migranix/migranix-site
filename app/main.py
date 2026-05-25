@@ -155,15 +155,24 @@ class ConnectionManager:
     def create_snowflake(creds: dict) -> str:
         if snowflake is None:
             raise ImportError("snowflake-connector-python not installed")
-        conn = snowflake.connector.connect(
-            account=creds['account'],
-            user=creds['username'],
-            password=creds['password'],
-            warehouse=creds.get('warehouse'),
-            database=creds.get('database'),
-            schema=creds.get('schema'),
-            role=creds.get('role')
-        )
+        
+        # Strip out common full URL remnants if users paste them by accident
+        account_clean = creds['account'].replace(".snowflakecomputing.com", "").split("://")[-1]
+        
+        # Build flexible connection config parameter map
+        conn_params = {
+            "account": account_clean,
+            "user": creds['username'],
+            "password": creds['password']
+        }
+        
+        # Handle optional variables gracefully if missing from layout forms
+        if creds.get('warehouse'): conn_params["warehouse"] = creds['warehouse']
+        if creds.get('database'): conn_params["database"] = creds['database']
+        if creds.get('schema'): conn_params["schema"] = creds['schema']
+        if creds.get('role'): conn_params["role"] = creds['role']
+        
+        conn = snowflake.connector.connect(**conn_params)
         return "snowflake", conn
 
     @staticmethod
@@ -258,9 +267,16 @@ async def test_connection(req: DBCredentials):
         result = creator(req.credentials)
         if isinstance(result, tuple):
             dsn, engine = result
-            with engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
-            engine.dispose()
+            if req.type != "snowflake":
+                with engine.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                engine.dispose()
+            else:
+                # Custom validation pass for Snowflake connector objects
+                cursor = engine.cursor()
+                cursor.execute("SELECT 1")
+                cursor.close()
+                engine.close()
         return {"success": True, "message": "Connection successful"}
     except Exception as e:
         raise HTTPException(400, detail=str(e))
@@ -276,7 +292,7 @@ async def connect(req: DBCredentials):
         result = creator(req.credentials)
         session_id = str(uuid.uuid4())
 
-        if isinstance(result, tuple):
+        if isinstance(result, tuple) and req.type != "snowflake":
             dsn, engine = result
             connections[session_id] = {
                 "type": req.type,
@@ -285,7 +301,8 @@ async def connect(req: DBCredentials):
                 "created_at": datetime.utcnow().isoformat()
             }
         else:
-            conn_type, conn = result
+            # Snowflake and non-SQLAlchemy raw protocol objects route here safely
+            conn_type, conn = result if not isinstance(result, tuple) else ("snowflake", result[1])
             connections[session_id] = {
                 "type": req.type,
                 "connection": conn,
@@ -303,7 +320,45 @@ async def get_schema(session: str):
 
     conn = connections[session]
     try:
-        if "engine" in conn:
+        if conn["type"] == "snowflake":
+            sf_conn = conn["connection"]
+            cursor = sf_conn.cursor()
+            schema_data = []
+            
+            # Look up default database context assigned to this active user session token
+            cursor.execute("SELECT CURRENT_DATABASE(), CURRENT_SCHEMA()")
+            curr_db, curr_schema = cursor.fetchone()
+            
+            db_name = curr_db or "SNOWFLAKE_DB"
+            sch_name = curr_schema or "PUBLIC"
+            
+            db_info = {"name": db_name, "schemas": [{"name": sch_name, "tables": []}]}
+            
+            # Fetch active table collection metadata catalogs
+            cursor.execute("SHOW TABLES")
+            tables = cursor.fetchall()
+            
+            for t_row in tables[:30]: # Safely cap processing scope limits to prevent request timeouts
+                t_name = t_row[1]
+                table_info = {"name": t_name, "columns": []}
+                
+                # Query column signatures
+                try:
+                    desc_cursor = sf_conn.cursor()
+                    desc_cursor.execute(f"DESCRIBE TABLE {t_name}")
+                    for col_row in desc_cursor.fetchall():
+                        table_info["columns"].append({"name": col_row[0], "type": col_row[1]})
+                    desc_cursor.close()
+                except:
+                    pass
+                
+                db_info["schemas"][0]["tables"].append(table_info)
+                
+            schema_data.append(db_info)
+            cursor.close()
+            return {"success": True, "schema": schema_data}
+
+        elif "engine" in conn:
             engine = conn["engine"]
             inspector = inspect(engine)
             schema_data = []
@@ -323,7 +378,6 @@ async def get_schema(session: str):
 
             for db_name in databases[:5]:
                 db_info = {"name": db_name, "schemas": []}
-
                 try:
                     schemas = inspector.get_schema_names() or ['public']
                 except:
@@ -349,30 +403,39 @@ async def get_schema(session: str):
                         schema_info["tables"].append(table_info)
 
                     db_info["schemas"].append(schema_info)
-
                 schema_data.append(db_info)
-
             return {"success": True, "schema": schema_data}
         else:
             return {"success": True, "schema": [{"name": conn["type"], "tables": []}]}
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-# ========== FIXED CORE QUERY RUNTIME BLOCK ==========
 @app.post("/api/query")
 async def execute_query(req: QueryRequest):
-    """Execute SQL query and return results inside thread-safe context pools"""
     if req.session not in connections:
         raise HTTPException(404, "Session not found")
 
     conn = connections[req.session]
     try:
-        if "engine" in conn:
+        # Route Snowflake runtime command text executions separately
+        if conn["type"] == "snowflake":
+            sf_conn = conn["connection"]
+            cursor = sf_conn.cursor()
+            cursor.execute(req.query)
+            
+            if cursor.description:
+                columns = [col[0] for col in cursor.description]
+                rows = [dict(zip(columns, row)) for row in cursor.fetchall()]
+                cursor.close()
+                return {"success": True, "columns": columns, "results": rows}
+            else:
+                cursor.close()
+                return {"success": True, "columns": [], "results": [], "message": "Query executed successfully"}
+
+        elif "engine" in conn:
             engine = conn["engine"]
-            # Forces context allocation and automatic lifecycle cleanup
             with engine.begin() as c:
                 result = c.execute(text(req.query))
-
                 if result.returns_rows:
                     columns = list(result.keys())
                     rows = [dict(zip(columns, row)) for row in result.fetchall()]
@@ -706,89 +769,3 @@ async def ai_optimize_query(request: dict):
 
 @app.post("/api/ai-clean")
 async def ai_clean_data(request: dict):
-    session_id = request.get("session_id", "")
-    table_name = request.get("table_name", "")
-    
-    if session_id not in connections:
-        raise HTTPException(400, "No operational session scope context validated.")
-    
-    conn = connections[session_id]
-    try:
-        if conn["type"] != "file":
-            raise HTTPException(400, "Handshake validation scope error.")
-        
-        engine = conn["engine"]
-        import pandas as pd_local
-        import numpy as np
-        
-        df = pd_local.read_sql(f"SELECT * FROM '{table_name}'", engine)
-        original_rows = len(df)
-        original_cols = len(df.columns)
-        changes = []
-        
-        for col in df.select_dtypes(include=['object']).columns:
-            before = df[col].copy()
-            df[col] = df[col].str.strip()
-            trimmed = (before != df[col]).sum()
-            if trimmed > 0:
-                changes.append(f"Trimmed whitespace metrics inside: {col}")
-        
-        null_strings = ['NA', 'N/A', 'null', 'NULL', 'None', 'none', '-', '']
-        for col in df.select_dtypes(include=['object']).columns:
-            mask = df[col].isin(null_strings)
-            if mask.sum() > 0:
-                df.loc[mask, col] = np.nan
-                changes.append(f"Wiped out standard null placeholders context in: {col}")
-        
-        empty_rows = df.isnull().all(axis=1).sum()
-        if empty_rows > 0:
-            df = df.dropna(how='all')
-            changes.append(f"Wiped out completely sparse null records data rows.")
-        
-        dupes = df.duplicated().sum()
-        if dupes > 0:
-            df = df.drop_duplicates()
-            changes.append(f"Deduplicated repeating tracking elements structural keys.")
-        
-        cleaned_table = f"{table_name}_cleaned"
-        df.to_sql(cleaned_table, engine, index=False, if_exists='replace')
-        
-        return {
-            "success": True,
-            "original_rows": original_rows,
-            "cleaned_rows": len(df),
-            "removed_rows": original_rows - len(df),
-            "original_columns": original_cols,
-            "changes": changes,
-            "cleaned_table": cleaned_table,
-            "message": f"Normalizations applied successfully into table references: {cleaned_table}"
-        }
-    except Exception as e:
-        raise HTTPException(400, str(e))
-
-@app.post("/api/ai-migration-plan")
-async def ai_migration_plan(request: dict):
-    source_type = request.get("source_type", "")
-    target_type = request.get("target_type", "Snowflake")
-    schema_info = request.get("schema_info", "")
-    row_count = request.get("row_count", "unknown")
-    
-    prompt = f"""Generate a detailed enterprise target environment routing plan structure template based on parameters:
-Source infrastructure elements: {source_type}
-Target infrastructure elements: {target_type}
-Entity relationship maps structural configuration context: {schema_info}
-Scale parameters metrics elements: {row_count}"""
-    
-    result = await call_groq_router(prompt, "You are a professional systems integration architect.")
-    return {"success": True, "plan": result}
-
-# ========== CLEANUP ==========
-@app.on_event("shutdown")
-async def shutdown():
-    for conn in connections.values():
-        if "engine" in conn:
-            conn["engine"].dispose()
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=int(os.getenv("PORT", 8000)))
