@@ -76,6 +76,7 @@ GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "migranix-secret-key-32bytes!")
 
 # ========== SESSION STORE ==========
+# In production, use Redis. For Render free tier, in-memory dict with cleanup.
 connections: Dict[str, Dict[str, Any]] = {}
 
 # ========== PYDANTIC MODELS ==========
@@ -243,12 +244,15 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ========== HEALTH CHECK ==========
 @app.get("/")
 async def root():
     return {"status": "Migranix API v2.0", "timestamp": datetime.utcnow().isoformat()}
 
+# ========== CONNECTION ENDPOINTS ==========
 @app.post("/api/test-connection")
 async def test_connection(req: DBCredentials):
+    """Test database connection without saving"""
     try:
         manager = ConnectionManager()
         creator = getattr(manager, f"create_{req.type}", None)
@@ -261,12 +265,16 @@ async def test_connection(req: DBCredentials):
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
             engine.dispose()
+        else:
+            pass
+
         return {"success": True, "message": "Connection successful"}
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
 @app.post("/api/connect")
 async def connect(req: DBCredentials):
+    """Establish connection and return session ID"""
     try:
         manager = ConnectionManager()
         creator = getattr(manager, f"create_{req.type}", None)
@@ -296,8 +304,10 @@ async def connect(req: DBCredentials):
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
+# ========== SCHEMA ENDPOINTS ==========
 @app.get("/api/schema")
 async def get_schema(session: str):
+    """Get database schema"""
     if session not in connections:
         raise HTTPException(404, "Session not found")
 
@@ -358,10 +368,10 @@ async def get_schema(session: str):
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-# ========== FIXED CORE QUERY RUNTIME BLOCK ==========
+# ========== QUERY ENDPOINTS ==========
 @app.post("/api/query")
 async def execute_query(req: QueryRequest):
-    """Execute SQL query and return results inside thread-safe context pools"""
+    """Execute SQL query and return results"""
     if req.session not in connections:
         raise HTTPException(404, "Session not found")
 
@@ -369,8 +379,7 @@ async def execute_query(req: QueryRequest):
     try:
         if "engine" in conn:
             engine = conn["engine"]
-            # Forces context allocation and automatic lifecycle cleanup
-            with engine.begin() as c:
+            with engine.connect() as c:
                 result = c.execute(text(req.query))
 
                 if result.returns_rows:
@@ -378,14 +387,17 @@ async def execute_query(req: QueryRequest):
                     rows = [dict(zip(columns, row)) for row in result.fetchall()]
                     return {"success": True, "columns": columns, "results": rows}
                 else:
+                    c.commit()
                     return {"success": True, "columns": [], "results": [], "message": "Query executed successfully"}
         else:
             raise HTTPException(400, "Query execution not supported for this connection type")
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
+# ========== FILE UPLOAD ENDPOINTS ==========
 @app.post("/api/upload-file")
 async def upload_file(file: UploadFile = File(...), type: str = Form(...)):
+    """Upload and parse file (CSV, Excel, JSON, etc.)"""
     try:
         content = await file.read()
 
@@ -446,8 +458,10 @@ async def upload_file(file: UploadFile = File(...), type: str = Form(...)):
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
+# ========== CLOUD STORAGE ENDPOINTS ==========
 @app.post("/api/test-cloud")
 async def test_cloud(creds: CloudCreds):
+    """Test cloud storage connection"""
     try:
         if creds.provider == 's3' and boto3:
             s3 = boto3.client('s3', aws_access_key_id=creds.access_key, aws_secret_access_key=creds.secret_key, region_name=creds.region)
@@ -484,6 +498,7 @@ async def test_cloud(creds: CloudCreds):
 
 @app.post("/api/connect-cloud")
 async def connect_cloud(creds: CloudCreds):
+    """Connect to cloud storage"""
     try:
         tables = []
         if creds.provider == 's3' and boto3:
@@ -495,8 +510,10 @@ async def connect_cloud(creds: CloudCreds):
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
+# ========== EXPORT ENDPOINTS ==========
 @app.post("/api/export")
 async def export_data(req: ExportRequest):
+    """Export query results to various formats"""
     try:
         df = pd.DataFrame(req.results)
 
@@ -526,14 +543,15 @@ async def export_data(req: ExportRequest):
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-# ========== NEW AI INFRASTRUCTURE (GROQ ROUTING) ==========
-async def call_groq_router(prompt: str, system_prompt: str = "") -> str:
-    """Execute low-latency completions via Groq LPU Framework"""
+# ========== AI FEATURES (Groq — Free) ==========
+
+async def call_ai(prompt, system_prompt="", max_tokens=2048):
+    """Call Groq API (Llama 3.3 70B — free tier)"""
     import httpx
     key = GROQ_API_KEY
     if not key:
-        raise HTTPException(400, "GROQ_API_KEY environment parameter missing. Configure it in Render console.")
-    
+        raise HTTPException(400, "GROQ_API_KEY not configured. Get free key at console.groq.com")
+
     messages = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
@@ -542,73 +560,74 @@ async def call_groq_router(prompt: str, system_prompt: str = "") -> str:
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
             "https://api.groq.com/openai/v1/chat/completions",
-            headers={
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {key}"
-            },
+            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
             json={
                 "model": "llama-3.3-70b-versatile",
                 "messages": messages,
-                "temperature": 0.1
+                "temperature": 0.1,
+                "max_tokens": max_tokens
             }
         )
         data = resp.json()
         if resp.status_code != 200:
-            error_msg = data.get("error", {}).get("message", "Groq Infrastructure API Routing error")
+            error_msg = data.get("error", {}).get("message", "Groq API error")
             raise HTTPException(400, error_msg)
-        
-        return data["choices"][0]["message"]["content"].strip()
+
+        text_response = data.get("choices", [{}])[0].get("message", {}).get("content", "")
+        return text_response
 
 @app.post("/api/ai-sql")
 async def generate_sql(request: dict):
-    """Generate SQL from natural language using Groq Pipeline"""
+    """Generate SQL from natural language using Groq"""
     prompt = request.get("prompt", "")
     schema_context = request.get("schema_context", "")
-    
-    system = f"""You are an expert compiler. Convert plain English requests directly into clean, valid, executable standard SQL syntax.
-{('Active dataset schema metrics: ' + schema_context) if schema_context else ''}
+
+    system = f"""You are an expert SQL assistant. Convert natural language to SQL.
+{('Database schema: ' + schema_context) if schema_context else ''}
 Rules:
-- Return ONLY the executable SQL statement string context
-- Absolutely NO markdown wrapping symbols, no backticks (```), and no code blocks
-- Do not include descriptions, structural explanations, or introductory commentary text"""
-    
-    sql = await call_groq_router(prompt, system)
-    
+- Return ONLY the SQL query, nothing else — no markdown, no backticks, no explanation
+- Use standard SQL syntax
+- Use proper aliases for readability
+- If intent is unclear, make reasonable assumptions"""
+
+    sql = await call_ai(prompt, system)
     sql = sql.strip()
-    if sql.startswith("```"): 
-        sql = sql.split("\n", 1)[1] if "\n" in sql else sql[3:]
-    if sql.endswith("```"): 
-        sql = sql[:-3]
-    return {"success": True, "sql": sql.strip()}
+    if sql.startswith("```"): sql = sql.split("\n", 1)[1] if "\n" in sql else sql[3:]
+    if sql.endswith("```"): sql = sql[:-3]
+    sql = sql.strip()
+
+    return {"success": True, "sql": sql}
 
 @app.post("/api/ai-profile")
 async def ai_data_profile(request: dict):
+    """AI-powered data profiling — analyzes uploaded data and generates insights"""
     session_id = request.get("session_id", "")
     table_name = request.get("table_name", "")
-    
+
     if session_id not in connections:
-        raise HTTPException(400, "No active context sequence")
-    
+        raise HTTPException(400, "No active connection")
+
     conn = connections[session_id]
+
     try:
         if conn["type"] == "file":
             engine = conn["engine"]
-            with engine.begin() as c:
+            with engine.connect() as c:
                 count_result = c.execute(text(f"SELECT COUNT(*) FROM '{table_name}'"))
                 total_rows = count_result.fetchone()[0]
-                
+
                 cols_result = c.execute(text(f"PRAGMA table_info('{table_name}')"))
                 columns = [{"name": r[1], "type": r[2]} for r in cols_result.fetchall()]
-                
+
                 sample_result = c.execute(text(f"SELECT * FROM '{table_name}' LIMIT 20"))
                 sample_cols = list(sample_result.keys())
                 sample_rows = [dict(zip(sample_cols, row)) for row in sample_result.fetchall()]
-                
+
                 null_counts = {}
                 for col in columns:
                     null_result = c.execute(text(f"SELECT COUNT(*) FROM '{table_name}' WHERE \"{col['name']}\" IS NULL"))
                     null_counts[col["name"]] = null_result.fetchone()[0]
-                
+
                 distinct_counts = {}
                 for col in columns:
                     try:
@@ -617,63 +636,64 @@ async def ai_data_profile(request: dict):
                     except:
                         distinct_counts[col["name"]] = -1
         else:
-            raise HTTPException(400, "Ecosystem data parsing error.")
-        
-        col_summary = "\n".join([f"- {c['name']} ({c['type']}): {null_counts.get(c['name'],0)} null values, {distinct_counts.get(c['name'],0)} distinct values" for c in columns])
-        sample_str = json.dumps(sample_rows[:5], indent=2, default=str)
-        
-        prompt = f"""Analyze this structured storage metadata template structure and generate a complete analytical metrics configuration JSON object mapping:
+            raise HTTPException(400, "AI profiling currently supports file uploads. Database profiling coming soon.")
 
-Table Target name: {table_name}
-Indices row metrics: {total_rows}
-Data attributes summary:
+        col_summary = "\n".join([f"- {c['name']} ({c['type']}): {null_counts.get(c['name'],0)} nulls, {distinct_counts.get(c['name'],0)} distinct values" for c in columns])
+        sample_str = json.dumps(sample_rows[:5], indent=2, default=str)
+
+        prompt = f"""Analyze this dataset and provide a comprehensive data quality report.
+
+Table: {table_name}
+Total rows: {total_rows}
+Columns ({len(columns)}):
 {col_summary}
 
-Top rows array reference elements:
+Sample data (first 5 rows):
 {sample_str}
 
-Respond strictly using this raw structural schema blueprint mapping format without markdown formatting blocks:
+Provide your analysis in this exact JSON format (no markdown, no backticks):
 {{
-  "quality_score": <0-100 configuration int>,
-  "summary": "<2-3 descriptive processing statements summary>",
+  "quality_score": <0-100 integer>,
+  "summary": "<2-3 sentence overview>",
   "column_analysis": [
     {{
-      "column": "<attribute_name>",
-      "detected_type": "<type>",
-      "issues": ["<issue>"],
-      "suggestion": "<fix>"
+      "column": "<name>",
+      "detected_type": "<actual data type like email, phone, date, currency, name, id, etc>",
+      "issues": ["<issue 1>", "<issue 2>"],
+      "suggestion": "<cleaning recommendation>"
     }}
   ],
   "data_issues": [
     {{
       "severity": "high|medium|low",
       "issue": "<description>",
-      "affected_rows": <count>,
-      "fix": "<action>"
+      "affected_rows": <estimated count>,
+      "fix": "<recommended action>"
     }}
   ],
-  "cleaning_sql": ["<SQL statement>"]
+  "cleaning_sql": ["<SQL statement 1 to fix issues>", "<SQL statement 2>"]
 }}"""
-        
-        result = await call_groq_router(prompt, "You are a professional dataset parser. Respond ONLY using structural standard JSON text profiles. Omit markdown formatting backticks entirely.")
+
+        result = await call_ai(prompt, "You are a data quality expert. Respond ONLY with valid JSON, no markdown.")
+
         result = result.strip()
-        if result.startswith("```"): 
-            result = result.split("\n", 1)[1]
-        if result.endswith("```"): 
-            result = result[:-3]
-        
+        if result.startswith("```"): result = result.split("\n", 1)[1]
+        if result.endswith("```"): result = result[:-3]
+        result = result.strip()
+
         try:
-            profile = json.loads(result.strip())
+            profile = json.loads(result)
         except:
             profile = {"quality_score": 0, "summary": result, "column_analysis": [], "data_issues": [], "cleaning_sql": []}
-        
+
         profile["total_rows"] = total_rows
         profile["total_columns"] = len(columns)
         profile["columns"] = columns
         profile["null_counts"] = null_counts
         profile["distinct_counts"] = distinct_counts
-        
+
         return {"success": True, "profile": profile}
+
     except HTTPException:
         raise
     except Exception as e:
@@ -681,78 +701,111 @@ Respond strictly using this raw structural schema blueprint mapping format witho
 
 @app.post("/api/ai-explain")
 async def ai_explain_query(request: dict):
+    """Explain what a SQL query does in plain English"""
     sql = request.get("sql", "")
     if not sql:
-        raise HTTPException(400, "No data strings provided")
-    
-    result = await call_groq_router(
-        f"Explain this structured data operations query using brief bullet items targeting non-technical audiences:\n\n{sql}",
-        "You are an expert compiler analyst helper."
+        raise HTTPException(400, "No SQL provided")
+
+    result = await call_ai(
+        f"Explain this SQL query in simple English that a non-technical business person can understand:\n\n{sql}",
+        "You are a data expert. Explain SQL queries clearly and concisely. Use bullet points."
     )
     return {"success": True, "explanation": result}
 
 @app.post("/api/ai-optimize")
 async def ai_optimize_query(request: dict):
+    """Suggest optimizations for a SQL query"""
     sql = request.get("sql", "")
     schema_context = request.get("schema_context", "")
     if not sql:
-        raise HTTPException(400, "No metrics targets specified")
-    
-    result = await call_groq_router(
-        f"Analyze the performance distribution parameters of this statement block and return optimization paths:\n\n{sql}\n\nContext metrics: {schema_context}",
-        "You are a professional compiler optimization service."
+        raise HTTPException(400, "No SQL provided")
+
+    result = await call_ai(
+        f"""Optimize this SQL query for better performance.
+{('Schema: ' + schema_context) if schema_context else ''}
+
+Original query:
+{sql}
+
+Provide:
+1. The optimized SQL query
+2. Brief explanation of what you changed and why
+3. Estimated performance improvement""",
+        "You are a database performance expert."
     )
     return {"success": True, "optimization": result}
 
 @app.post("/api/ai-clean")
 async def ai_clean_data(request: dict):
+    """AI-powered automatic data cleaning"""
     session_id = request.get("session_id", "")
     table_name = request.get("table_name", "")
-    
+
     if session_id not in connections:
-        raise HTTPException(400, "No operational session scope context validated.")
-    
+        raise HTTPException(400, "No active connection")
+
     conn = connections[session_id]
+
     try:
         if conn["type"] != "file":
-            raise HTTPException(400, "Handshake validation scope error.")
-        
+            raise HTTPException(400, "Auto-clean only works on uploaded files for safety")
+
         engine = conn["engine"]
         import pandas as pd_local
-        import numpy as np
-        
+
         df = pd_local.read_sql(f"SELECT * FROM '{table_name}'", engine)
         original_rows = len(df)
         original_cols = len(df.columns)
         changes = []
-        
+
         for col in df.select_dtypes(include=['object']).columns:
             before = df[col].copy()
             df[col] = df[col].str.strip()
             trimmed = (before != df[col]).sum()
             if trimmed > 0:
-                changes.append(f"Trimmed whitespace metrics inside: {col}")
-        
-        null_strings = ['NA', 'N/A', 'null', 'NULL', 'None', 'none', '-', '']
+                changes.append(f"Trimmed whitespace in '{col}': {trimmed} values")
+
+        import numpy as np
+        null_strings = ['NA', 'N/A', 'null', 'NULL', 'None', 'none', '-', '', 'undefined', 'nil', '#N/A', 'NaN']
         for col in df.select_dtypes(include=['object']).columns:
             mask = df[col].isin(null_strings)
             if mask.sum() > 0:
                 df.loc[mask, col] = np.nan
-                changes.append(f"Wiped out standard null placeholders context in: {col}")
-        
+                changes.append(f"Converted {mask.sum()} null-like values to NULL in '{col}'")
+
         empty_rows = df.isnull().all(axis=1).sum()
         if empty_rows > 0:
             df = df.dropna(how='all')
-            changes.append(f"Wiped out completely sparse null records data rows.")
-        
+            changes.append(f"Removed {empty_rows} completely empty rows")
+
         dupes = df.duplicated().sum()
         if dupes > 0:
             df = df.drop_duplicates()
-            changes.append(f"Deduplicated repeating tracking elements structural keys.")
-        
+            changes.append(f"Removed {dupes} duplicate rows")
+
+        for col in df.select_dtypes(include=['object']).columns:
+            try:
+                converted = pd_local.to_numeric(df[col], errors='coerce')
+                non_null = df[col].notna().sum()
+                if non_null > 0 and converted.notna().sum() / non_null >= 0.85:
+                    df[col] = converted
+                    changes.append(f"Converted '{col}' from text to numeric")
+            except:
+                pass
+
+        for col in df.select_dtypes(include=['object']).columns:
+            try:
+                sample = df[col].dropna().head(20)
+                converted = pd_local.to_datetime(sample, errors='coerce', infer_datetime_format=True)
+                if converted.notna().sum() / len(sample) >= 0.8:
+                    df[col] = pd_local.to_datetime(df[col], errors='coerce', infer_datetime_format=True)
+                    changes.append(f"Converted '{col}' from text to datetime")
+            except:
+                pass
+
         cleaned_table = f"{table_name}_cleaned"
         df.to_sql(cleaned_table, engine, index=False, if_exists='replace')
-        
+
         return {
             "success": True,
             "original_rows": original_rows,
@@ -761,25 +814,40 @@ async def ai_clean_data(request: dict):
             "original_columns": original_cols,
             "changes": changes,
             "cleaned_table": cleaned_table,
-            "message": f"Normalizations applied successfully into table references: {cleaned_table}"
+            "message": f"Data cleaned! {len(changes)} improvements made. Query the cleaned data from table '{cleaned_table}'"
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(400, str(e))
 
 @app.post("/api/ai-migration-plan")
 async def ai_migration_plan(request: dict):
+    """Generate a migration plan from source to target"""
     source_type = request.get("source_type", "")
     target_type = request.get("target_type", "Snowflake")
     schema_info = request.get("schema_info", "")
     row_count = request.get("row_count", "unknown")
-    
-    prompt = f"""Generate a detailed enterprise target environment routing plan structure template based on parameters:
-Source infrastructure elements: {source_type}
-Target infrastructure elements: {target_type}
-Entity relationship maps structural configuration context: {schema_info}
-Scale parameters metrics elements: {row_count}"""
-    
-    result = await call_groq_router(prompt, "You are a professional systems integration architect.")
+
+    prompt = f"""Generate a detailed data migration plan:
+
+Source: {source_type}
+Target: {target_type}
+Schema: {schema_info}
+Estimated rows: {row_count}
+
+Provide a comprehensive plan including:
+1. Pre-migration checklist (5-7 items)
+2. Schema mapping recommendations
+3. Data type conversions needed
+4. Estimated timeline
+5. Risk assessment (high/medium/low risks)
+6. Post-migration validation steps
+7. SQL scripts for creating the target tables
+
+Format as clean, readable text with headers and bullet points."""
+
+    result = await call_ai(prompt, "You are a senior data migration architect with 15 years of experience. Provide practical, actionable migration plans.")
     return {"success": True, "plan": result}
 
 # ========== CLEANUP ==========
