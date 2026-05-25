@@ -72,11 +72,10 @@ import pandas as pd
 import io
 
 # ========== CONFIGURATION ==========
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "migranix-secret-key-32bytes!")
 
 # ========== SESSION STORE ==========
-# In production, use Redis. For Render free tier, in-memory dict with cleanup.
 connections: Dict[str, Dict[str, Any]] = {}
 
 # ========== PYDANTIC MODELS ==========
@@ -244,15 +243,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ========== HEALTH CHECK ==========
 @app.get("/")
 async def root():
     return {"status": "Migranix API v2.0", "timestamp": datetime.utcnow().isoformat()}
 
-# ========== CONNECTION ENDPOINTS ==========
 @app.post("/api/test-connection")
 async def test_connection(req: DBCredentials):
-    """Test database connection without saving"""
     try:
         manager = ConnectionManager()
         creator = getattr(manager, f"create_{req.type}", None)
@@ -265,17 +261,12 @@ async def test_connection(req: DBCredentials):
             with engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
             engine.dispose()
-        else:
-            # For non-SQLAlchemy connections
-            pass
-
         return {"success": True, "message": "Connection successful"}
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
 @app.post("/api/connect")
 async def connect(req: DBCredentials):
-    """Establish connection and return session ID"""
     try:
         manager = ConnectionManager()
         creator = getattr(manager, f"create_{req.type}", None)
@@ -305,10 +296,8 @@ async def connect(req: DBCredentials):
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-# ========== SCHEMA ENDPOINTS ==========
 @app.get("/api/schema")
 async def get_schema(session: str):
-    """Get database schema (databases -> schemas -> tables -> columns)"""
     if session not in connections:
         raise HTTPException(404, "Session not found")
 
@@ -319,7 +308,6 @@ async def get_schema(session: str):
             inspector = inspect(engine)
             schema_data = []
 
-            # Get databases
             if conn["type"] in ['postgresql', 'mysql', 'sqlserver', 'redshift']:
                 with engine.connect() as c:
                     if conn["type"] == 'postgresql':
@@ -333,7 +321,7 @@ async def get_schema(session: str):
             else:
                 databases = [conn["dsn"].split('/')[-1].split('?')[0]]
 
-            for db_name in databases[:5]:  # Limit to first 5 databases
+            for db_name in databases[:5]:
                 db_info = {"name": db_name, "schemas": []}
 
                 try:
@@ -366,15 +354,12 @@ async def get_schema(session: str):
 
             return {"success": True, "schema": schema_data}
         else:
-            # Handle non-SQLAlchemy connections
             return {"success": True, "schema": [{"name": conn["type"], "tables": []}]}
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-# ========== QUERY ENDPOINTS ==========
 @app.post("/api/query")
 async def execute_query(req: QueryRequest):
-    """Execute SQL query and return results"""
     if req.session not in connections:
         raise HTTPException(404, "Session not found")
 
@@ -397,10 +382,8 @@ async def execute_query(req: QueryRequest):
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-# ========== FILE UPLOAD ENDPOINTS ==========
 @app.post("/api/upload-file")
 async def upload_file(file: UploadFile = File(...), type: str = Form(...)):
-    """Upload and parse file (CSV, Excel, JSON, etc.)"""
     try:
         content = await file.read()
 
@@ -439,16 +422,16 @@ async def upload_file(file: UploadFile = File(...), type: str = Form(...)):
         else:
             raise HTTPException(400, f"Unsupported file type: {type}")
 
-        # Create in-memory SQLite for querying
         engine = create_engine("sqlite:///:memory:", poolclass=NullPool)
         table_name = file.filename.rsplit('.', 1)[0].replace('-', '_').replace(' ', '_')
         df.to_sql(table_name, engine, index=False)
 
         session_id = str(uuid.uuid4())
         connections[session_id] = {
-            "type": "sqlite",
+            "type": "file",
             "engine": engine,
             "tables": [table_name],
+            "table_name": table_name,
             "created_at": datetime.utcnow().isoformat()
         }
 
@@ -461,10 +444,8 @@ async def upload_file(file: UploadFile = File(...), type: str = Form(...)):
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-# ========== CLOUD STORAGE ENDPOINTS ==========
 @app.post("/api/test-cloud")
 async def test_cloud(creds: CloudCreds):
-    """Test cloud storage connection"""
     try:
         if creds.provider == 's3' and boto3:
             s3 = boto3.client('s3', aws_access_key_id=creds.access_key, aws_secret_access_key=creds.secret_key, region_name=creds.region)
@@ -501,7 +482,6 @@ async def test_cloud(creds: CloudCreds):
 
 @app.post("/api/connect-cloud")
 async def connect_cloud(creds: CloudCreds):
-    """Connect to cloud storage"""
     try:
         tables = []
         if creds.provider == 's3' and boto3:
@@ -513,10 +493,8 @@ async def connect_cloud(creds: CloudCreds):
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-# ========== EXPORT ENDPOINTS ==========
 @app.post("/api/export")
 async def export_data(req: ExportRequest):
-    """Export query results to various formats"""
     try:
         df = pd.DataFrame(req.results)
 
@@ -546,91 +524,90 @@ async def export_data(req: ExportRequest):
     except Exception as e:
         raise HTTPException(400, detail=str(e))
 
-# ========== AI FEATURES (Google Gemini — Free) ==========
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-
-async def call_gemini(prompt, system_prompt="", max_tokens=2048):
-    """Call Google Gemini API (free tier)"""
+# ========== NEW AI INFRASTRUCTURE (GROQ ROUTING) ==========
+async def call_groq_router(prompt: str, system_prompt: str = "") -> str:
+    """Execute low-latency completions via Groq LPU Framework"""
     import httpx
-    key = GEMINI_API_KEY
+    key = GROQ_API_KEY
     if not key:
-        raise HTTPException(400, "GEMINI_API_KEY not configured. Get free key at aistudio.google.com")
+        raise HTTPException(400, "GROQ_API_KEY environment parameter missing. Configure it in Render console.")
     
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": prompt})
+
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
-            f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={key}",
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {key}"
+            },
             json={
-                "contents": [{"parts": [{"text": (system_prompt + "\n\n" + prompt) if system_prompt else prompt}]}],
-                "generationConfig": {"temperature": 0.1, "maxOutputTokens": max_tokens}
+                "model": "llama-3.3-70b-versatile",
+                "messages": messages,
+                "temperature": 0.1
             }
         )
         data = resp.json()
         if resp.status_code != 200:
-            error_msg = data.get("error", {}).get("message", "Gemini API error")
+            error_msg = data.get("error", {}).get("message", "Groq Infrastructure API Routing error")
             raise HTTPException(400, error_msg)
         
-        text = data.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-        return text
+        return data["choices"][0]["message"]["content"].strip()
 
 @app.post("/api/ai-sql")
 async def generate_sql(request: dict):
-    """Generate SQL from natural language using Gemini"""
+    """Generate SQL from natural language using Groq Pipeline"""
     prompt = request.get("prompt", "")
     schema_context = request.get("schema_context", "")
     
-    system = f"""You are an expert SQL assistant. Convert natural language to SQL.
-{('Database schema: ' + schema_context) if schema_context else ''}
+    system = f"""You are an expert compiler. Convert plain English requests directly into clean, valid, executable standard SQL syntax.
+{('Active dataset schema metrics: ' + schema_context) if schema_context else ''}
 Rules:
-- Return ONLY the SQL query, nothing else — no markdown, no backticks, no explanation
-- Use standard SQL syntax
-- Use proper aliases for readability
-- If intent is unclear, make reasonable assumptions"""
+- Return ONLY the executable SQL statement string context
+- Absolutely NO markdown wrapping symbols, no backticks (```), and no code blocks
+- Do not include descriptions, structural explanations, or introductory commentary text"""
     
-    sql = await call_gemini(prompt, system)
-    # Clean any markdown formatting
-    sql = sql.strip()
-    if sql.startswith("```"): sql = sql.split("\n", 1)[1] if "\n" in sql else sql[3:]
-    if sql.endswith("```"): sql = sql[:-3]
-    sql = sql.strip()
+    sql = await call_groq_router(prompt, system)
     
-    return {"success": True, "sql": sql}
+    # Strip markdown wrappers if the engine defaults to them anyway
+    sql = sql.strip()
+    if sql.startswith("```"): 
+        sql = sql.split("\n", 1)[1] if "\n" in sql else sql[3:]
+    if sql.endswith("```"): 
+        sql = sql[:-3]
+    return {"success": True, "sql": sql.strip()}
 
 @app.post("/api/ai-profile")
 async def ai_data_profile(request: dict):
-    """AI-powered data profiling — analyzes uploaded data and generates insights"""
     session_id = request.get("session_id", "")
     table_name = request.get("table_name", "")
     
     if session_id not in connections:
-        raise HTTPException(400, "No active connection")
+        raise HTTPException(400, "No active context sequence")
     
     conn = connections[session_id]
-    
     try:
-        # Get sample data and stats
         if conn["type"] == "file":
             engine = conn["engine"]
             with engine.connect() as c:
-                # Get row count
                 count_result = c.execute(text(f"SELECT COUNT(*) FROM '{table_name}'"))
                 total_rows = count_result.fetchone()[0]
                 
-                # Get column info
                 cols_result = c.execute(text(f"PRAGMA table_info('{table_name}')"))
                 columns = [{"name": r[1], "type": r[2]} for r in cols_result.fetchall()]
                 
-                # Get sample data
                 sample_result = c.execute(text(f"SELECT * FROM '{table_name}' LIMIT 20"))
                 sample_cols = list(sample_result.keys())
                 sample_rows = [dict(zip(sample_cols, row)) for row in sample_result.fetchall()]
                 
-                # Get null counts per column
                 null_counts = {}
                 for col in columns:
                     null_result = c.execute(text(f"SELECT COUNT(*) FROM '{table_name}' WHERE \"{col['name']}\" IS NULL"))
                     null_counts[col["name"]] = null_result.fetchone()[0]
                 
-                # Get distinct counts
                 distinct_counts = {}
                 for col in columns:
                     try:
@@ -639,55 +616,53 @@ async def ai_data_profile(request: dict):
                     except:
                         distinct_counts[col["name"]] = -1
         else:
-            raise HTTPException(400, "AI profiling currently supports file uploads. Database profiling coming soon.")
+            raise HTTPException(400, "Ecosystem data parsing error.")
         
-        # Build profiling prompt
-        col_summary = "\n".join([f"- {c['name']} ({c['type']}): {null_counts.get(c['name'],0)} nulls, {distinct_counts.get(c['name'],0)} distinct values" for c in columns])
+        col_summary = "\n".join([f"- {c['name']} ({c['type']}): {null_counts.get(c['name'],0)} null values, {distinct_counts.get(c['name'],0)} distinct values" for c in columns])
         sample_str = json.dumps(sample_rows[:5], indent=2, default=str)
         
-        prompt = f"""Analyze this dataset and provide a comprehensive data quality report.
+        prompt = f"""Analyze this structured storage metadata template structure and generate a complete analytical metrics configuration JSON object mapping:
 
-Table: {table_name}
-Total rows: {total_rows}
-Columns ({len(columns)}):
+Table Target name: {table_name}
+Indices row metrics: {total_rows}
+Data attributes summary:
 {col_summary}
 
-Sample data (first 5 rows):
+Top rows array reference elements:
 {sample_str}
 
-Provide your analysis in this exact JSON format (no markdown, no backticks):
+Respond strictly using this raw structural schema blueprint mapping format without markdown formatting blocks:
 {{
-  "quality_score": <0-100 integer>,
-  "summary": "<2-3 sentence overview>",
+  "quality_score": <0-100 configuration int>,
+  "summary": "<2-3 descriptive processing statements summary>",
   "column_analysis": [
     {{
-      "column": "<name>",
-      "detected_type": "<actual data type like email, phone, date, currency, name, id, etc>",
-      "issues": ["<issue 1>", "<issue 2>"],
-      "suggestion": "<cleaning recommendation>"
+      "column": "<attribute_name>",
+      "detected_type": "<type>",
+      "issues": ["<issue>"],
+      "suggestion": "<fix>"
     }}
   ],
   "data_issues": [
     {{
       "severity": "high|medium|low",
       "issue": "<description>",
-      "affected_rows": <estimated count>,
-      "fix": "<recommended action>"
+      "affected_rows": <count>,
+      "fix": "<action>"
     }}
   ],
-  "cleaning_sql": ["<SQL statement 1 to fix issues>", "<SQL statement 2>"]
+  "cleaning_sql": ["<SQL statement>"]
 }}"""
         
-        result = await call_gemini(prompt, "You are a data quality expert. Respond ONLY with valid JSON, no markdown.")
-        
-        # Parse the JSON response
+        result = await call_groq_router(prompt, "You are a professional dataset parser. Respond ONLY using structural standard JSON text profiles. Omit markdown formatting backticks entirely.")
         result = result.strip()
-        if result.startswith("```"): result = result.split("\n", 1)[1]
-        if result.endswith("```"): result = result[:-3]
-        result = result.strip()
+        if result.startswith("```"): 
+            result = result.split("\n", 1)[1]
+        if result.endswith("```"): 
+            result = result[:-3]
         
         try:
-            profile = json.loads(result)
+            profile = json.loads(result.strip())
         except:
             profile = {"quality_score": 0, "summary": result, "column_analysis": [], "data_issues": [], "cleaning_sql": []}
         
@@ -698,7 +673,6 @@ Provide your analysis in this exact JSON format (no markdown, no backticks):
         profile["distinct_counts"] = distinct_counts
         
         return {"success": True, "profile": profile}
-    
     except HTTPException:
         raise
     except Exception as e:
@@ -706,115 +680,75 @@ Provide your analysis in this exact JSON format (no markdown, no backticks):
 
 @app.post("/api/ai-explain")
 async def ai_explain_query(request: dict):
-    """Explain what a SQL query does in plain English"""
     sql = request.get("sql", "")
     if not sql:
-        raise HTTPException(400, "No SQL provided")
+        raise HTTPException(400, "No data strings provided")
     
-    result = await call_gemini(
-        f"Explain this SQL query in simple English that a non-technical business person can understand:\n\n{sql}",
-        "You are a data expert. Explain SQL queries clearly and concisely. Use bullet points."
+    result = await call_groq_router(
+        f"Explain this structured data operations query using brief bullet items targeting non-technical audiences:\n\n{sql}",
+        "You are an expert compiler analyst helper."
     )
     return {"success": True, "explanation": result}
 
 @app.post("/api/ai-optimize")
 async def ai_optimize_query(request: dict):
-    """Suggest optimizations for a SQL query"""
     sql = request.get("sql", "")
     schema_context = request.get("schema_context", "")
     if not sql:
-        raise HTTPException(400, "No SQL provided")
+        raise HTTPException(400, "No metrics targets specified")
     
-    result = await call_gemini(
-        f"""Optimize this SQL query for better performance.
-{('Schema: ' + schema_context) if schema_context else ''}
-
-Original query:
-{sql}
-
-Provide:
-1. The optimized SQL query
-2. Brief explanation of what you changed and why
-3. Estimated performance improvement""",
-        "You are a database performance expert."
+    result = await call_groq_router(
+        f"Analyze the performance distribution parameters of this statement block and return optimization paths:\n\n{sql}\n\nContext metrics: {schema_context}",
+        "You are a professional compiler optimization service."
     )
     return {"success": True, "optimization": result}
 
 @app.post("/api/ai-clean")
 async def ai_clean_data(request: dict):
-    """AI-powered automatic data cleaning"""
     session_id = request.get("session_id", "")
     table_name = request.get("table_name", "")
     
     if session_id not in connections:
-        raise HTTPException(400, "No active connection")
+        raise HTTPException(400, "No operational session scope context validated.")
     
     conn = connections[session_id]
-    
     try:
         if conn["type"] != "file":
-            raise HTTPException(400, "Auto-clean only works on uploaded files for safety")
+            raise HTTPException(400, "Handshake validation scope error.")
         
         engine = conn["engine"]
         import pandas as pd_local
+        import numpy as np
         
         df = pd_local.read_sql(f"SELECT * FROM '{table_name}'", engine)
         original_rows = len(df)
         original_cols = len(df.columns)
         changes = []
         
-        # 1. Trim whitespace from all string columns
         for col in df.select_dtypes(include=['object']).columns:
             before = df[col].copy()
             df[col] = df[col].str.strip()
             trimmed = (before != df[col]).sum()
             if trimmed > 0:
-                changes.append(f"Trimmed whitespace in '{col}': {trimmed} values")
+                changes.append(f"Trimmed whitespace metrics inside: {col}")
         
-        # 2. Replace common null strings with actual NaN
-        import numpy as np
-        null_strings = ['NA', 'N/A', 'null', 'NULL', 'None', 'none', '-', '', 'undefined', 'nil', '#N/A', 'NaN']
+        null_strings = ['NA', 'N/A', 'null', 'NULL', 'None', 'none', '-', '']
         for col in df.select_dtypes(include=['object']).columns:
             mask = df[col].isin(null_strings)
             if mask.sum() > 0:
                 df.loc[mask, col] = np.nan
-                changes.append(f"Converted {mask.sum()} null-like values to NULL in '{col}'")
+                changes.append(f"Wiped out standard null placeholders context in: {col}")
         
-        # 3. Remove fully empty rows
         empty_rows = df.isnull().all(axis=1).sum()
         if empty_rows > 0:
             df = df.dropna(how='all')
-            changes.append(f"Removed {empty_rows} completely empty rows")
+            changes.append(f"Wiped out completely sparse null records data rows.")
         
-        # 4. Remove exact duplicate rows
         dupes = df.duplicated().sum()
         if dupes > 0:
             df = df.drop_duplicates()
-            changes.append(f"Removed {dupes} duplicate rows")
+            changes.append(f"Deduplicated repeating tracking elements structural keys.")
         
-        # 5. Auto-detect and convert numeric columns
-        for col in df.select_dtypes(include=['object']).columns:
-            try:
-                converted = pd_local.to_numeric(df[col], errors='coerce')
-                non_null = df[col].notna().sum()
-                if non_null > 0 and converted.notna().sum() / non_null >= 0.85:
-                    df[col] = converted
-                    changes.append(f"Converted '{col}' from text to numeric")
-            except:
-                pass
-        
-        # 6. Auto-detect and convert date columns
-        for col in df.select_dtypes(include=['object']).columns:
-            try:
-                sample = df[col].dropna().head(20)
-                converted = pd_local.to_datetime(sample, errors='coerce', infer_datetime_format=True)
-                if converted.notna().sum() / len(sample) >= 0.8:
-                    df[col] = pd_local.to_datetime(df[col], errors='coerce', infer_datetime_format=True)
-                    changes.append(f"Converted '{col}' from text to datetime")
-            except:
-                pass
-        
-        # Save cleaned data back
         cleaned_table = f"{table_name}_cleaned"
         df.to_sql(cleaned_table, engine, index=False, if_exists='replace')
         
@@ -826,40 +760,25 @@ async def ai_clean_data(request: dict):
             "original_columns": original_cols,
             "changes": changes,
             "cleaned_table": cleaned_table,
-            "message": f"Data cleaned! {len(changes)} improvements made. Query the cleaned data from table '{cleaned_table}'"
+            "message": f"Normalizations applied successfully into table references: {cleaned_table}"
         }
-    except HTTPException:
-        raise
     except Exception as e:
         raise HTTPException(400, str(e))
 
 @app.post("/api/ai-migration-plan")
 async def ai_migration_plan(request: dict):
-    """Generate a migration plan from source to target"""
     source_type = request.get("source_type", "")
     target_type = request.get("target_type", "Snowflake")
     schema_info = request.get("schema_info", "")
     row_count = request.get("row_count", "unknown")
     
-    prompt = f"""Generate a detailed data migration plan:
-
-Source: {source_type}
-Target: {target_type}
-Schema: {schema_info}
-Estimated rows: {row_count}
-
-Provide a comprehensive plan including:
-1. Pre-migration checklist (5-7 items)
-2. Schema mapping recommendations
-3. Data type conversions needed
-4. Estimated timeline
-5. Risk assessment (high/medium/low risks)
-6. Post-migration validation steps
-7. SQL scripts for creating the target tables
-
-Format as clean, readable text with headers and bullet points."""
+    prompt = f"""Generate a detailed enterprise target environment routing plan structure template based on parameters:
+Source infrastructure elements: {source_type}
+Target infrastructure elements: {target_type}
+Entity relationship maps structural configuration context: {schema_info}
+Scale parameters metrics elements: {row_count}"""
     
-    result = await call_gemini(prompt, "You are a senior data migration architect with 15 years of experience. Provide practical, actionable migration plans.")
+    result = await call_groq_router(prompt, "You are a professional systems integration architect.")
     return {"success": True, "plan": result}
 
 # ========== CLEANUP ==========
