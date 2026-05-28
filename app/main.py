@@ -85,8 +85,12 @@ class DBCredentials(BaseModel):
     credentials: Dict[str, Any]
 
 class QueryRequest(BaseModel):
-    session: str
+    session: Optional[str] = None
+    session_id: Optional[str] = None
     query: str
+    
+    def get_session(self):
+        return self.session_id or self.session or ""
 
 class ExportRequest(BaseModel):
     format: str = Field(..., pattern="^(csv|json|excel|parquet)$")
@@ -372,10 +376,13 @@ async def get_schema(session: str):
 @app.post("/api/query")
 async def execute_query(req: QueryRequest):
     """Execute SQL query and return results"""
-    if req.session not in connections:
-        raise HTTPException(404, "Session not found")
+    session = req.get_session()
+    if not session:
+        raise HTTPException(400, "No session ID provided")
+    if session not in connections:
+        raise HTTPException(404, f"Session not found. Active sessions: {len(connections)}. Reconnect to your data.")
 
-    conn = connections[req.session]
+    conn = connections[session]
     try:
         if "engine" in conn:
             engine = conn["engine"]
@@ -391,8 +398,15 @@ async def execute_query(req: QueryRequest):
                     return {"success": True, "columns": [], "results": [], "message": "Query executed successfully"}
         else:
             raise HTTPException(400, "Query execution not supported for this connection type")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(400, detail=str(e))
+        # Return actual SQL error (e.g. "no such table: superstore_orders")
+        error_msg = str(e)
+        # Clean up SQLAlchemy verbose error format
+        if "(sqlite3." in error_msg:
+            error_msg = error_msg.split("(sqlite3.")[1].split(")")[1].strip() if ")" in error_msg.split("(sqlite3.")[1] else error_msg
+        raise HTTPException(400, detail=error_msg)
 
 # ========== FILE UPLOAD ENDPOINTS ==========
 @app.post("/api/upload-file")
@@ -437,7 +451,14 @@ async def upload_file(file: UploadFile = File(...), type: str = Form(...)):
             raise HTTPException(400, f"Unsupported file type: {type}")
 
         engine = create_engine("sqlite:///:memory:", poolclass=NullPool)
-        table_name = file.filename.rsplit('.', 1)[0].replace('-', '_').replace(' ', '_')
+        # Lowercase + sanitize the table name for case-insensitive queries
+        raw_name = file.filename.rsplit('.', 1)[0]
+        table_name = raw_name.lower().replace('-', '_').replace(' ', '_').replace('.', '_')
+        # Remove any non-alphanumeric chars except underscore
+        import re
+        table_name = re.sub(r'[^a-z0-9_]', '', table_name)
+        if not table_name or table_name[0].isdigit():
+            table_name = 't_' + table_name
         df.to_sql(table_name, engine, index=False)
 
         session_id = str(uuid.uuid4())
