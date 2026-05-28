@@ -129,6 +129,7 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
 .cred-header .back-btn:hover{background:var(--bg-card);color:var(--text)}
 .cred-header h3{font-size:1rem;font-weight:700}
 .form-group{margin-bottom:16px}
+.form-group.is-hidden{display:none}
 .form-group label{display:block;font-size:0.82rem;font-weight:600;color:var(--text-muted);margin-bottom:6px}
 .form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:inherit;font-size:0.9rem;transition:var(--transition);outline:none}
 .form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
@@ -547,17 +548,17 @@ var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 
 var sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 
-var CLOSE_TIMEOUT = 5 * 60 * 1000; 
+var CLOSE_TIMEOUT = 5 * 60 * 1000;
+var mxThemePref = 'dark';
+var mxLeftAt = null;
 document.addEventListener('visibilitychange', function(){
-  if(document.visibilityState === 'hidden') localStorage.setItem('mx_left_at', Date.now().toString());
+  if(document.visibilityState === 'hidden') mxLeftAt = Date.now();
   if(document.visibilityState === 'visible'){
-    var left = localStorage.getItem('mx_left_at');
-    if(left && (Date.now() - parseInt(left)) > CLOSE_TIMEOUT){
-      localStorage.clear();
+    if(mxLeftAt && (Date.now() - mxLeftAt) > CLOSE_TIMEOUT){
       sb.auth.signOut();
       window.location.href = 'https://www.migranix.in';
     }
-    localStorage.removeItem('mx_left_at');
+    mxLeftAt = null;
   }
 });
 
@@ -565,20 +566,19 @@ function toggleTheme() {
   var currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
   var newTheme = currentTheme === 'dark' ? 'light' : 'dark';
   document.documentElement.setAttribute('data-theme', newTheme);
-  localStorage.setItem('mx_theme', newTheme);
+  mxThemePref = newTheme;
   
   if (monacoEditor && monacoEditorEngine) {
     monaco.editor.setTheme(newTheme === 'dark' ? 'vs-dark' : 'vs');
   }
 }
 
-var savedTheme = localStorage.getItem('mx_theme') || 'dark';
+var savedTheme = mxThemePref || 'dark';
 document.documentElement.setAttribute('data-theme', savedTheme);
 
 async function checkAuthGate(){
-  var left = localStorage.getItem('mx_left_at');
-  if(left && (Date.now() - parseInt(left)) > CLOSE_TIMEOUT){
-    localStorage.clear();
+  var left = mxLeftAt;
+  if(left && (Date.now() - left) > CLOSE_TIMEOUT){
     await sb.auth.signOut();
     window.location.href = 'https://www.migranix.in';
     return;
@@ -630,20 +630,119 @@ function safeSetValue(val) {
 }
 
 var dbSchemas = {
-  postgresql:{title:'PostgreSQL Instance',fields:[{name:'host',label:'Database Host Endpoint',type:'text',placeholder:'e.g. database-1.rds.amazonaws.com',required:true},{name:'port',label:'Port',type:'number',placeholder:'5432',value:'5432',required:true},{name:'username',label:'Username',type:'text',placeholder:'postgres',required:true},{name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}]},
-  mysql:{title:'MySQL Server',fields:[{name:'host',label:'Server Host Address',type:'text',placeholder:'e.g. 127.0.0.1 or instance-endpoint',required:true},{name:'port',label:'Port',type:'number',placeholder:'3306',value:'3306',required:true},{name:'username',label:'Username',type:'text',placeholder:'root',required:true},{name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}]},
-  sqlserver:{title:'SQL Server Instance',fields:[{name:'host',label:'Server Instance Network Name',type:'text',placeholder:'e.g. database.windows.net',required:true},{name:'port',label:'Port',type:'number',placeholder:'1433',value:'1433',required:true},{name:'username',label:'Authentication Username (sa)',type:'text',placeholder:'sa',required:true},{name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}]},
-  oracle:{title:'Oracle Infrastructure',fields:[{name:'host',label:'Host Server Connection Address',type:'text',placeholder:'oracle-instance-ip',required:true},{name:'port',label:'Port',type:'number',placeholder:'1521',value:'1521',required:true},{name:'username',label:'System User',type:'text',placeholder:'system',required:true},{name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}]},
-  db2:{title:'IBM DB2 Cluster',fields:[{name:'host',label:'Host Address Destination',type:'text',placeholder:'db2-host-ip',required:true},{name:'port',label:'Port',type:'number',placeholder:'50000',value:'50000',required:true},{name:'username',label:'Instance User Access',type:'text',placeholder:'db2inst1',required:true},{name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}]},
-  sqlite:{title:'Local SQLite Instance',fields:[{name:'filepath',label:'System File Path Destination',type:'text',placeholder:'/var/data/app_database.db',required:true}]},
-  snowflake:{title:'Snowflake Computing Workspace',fields:[{name:'account',label:'Full Account URL Identifier',type:'text',placeholder:'xy12345.us-east-1',required:true},{name:'username',label:'Workspace User Access',type:'text',placeholder:'snowflake_user',required:true},{name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}]},
-  bigquery:{title:'Google BigQuery Ecosystem',fields:[{name:'project',label:'Google Cloud Project ID Reference',type:'text',placeholder:'gcp-project-id-123',required:true},{name:'credentials_json',label:'IAM Service Account Key Document (JSON)',type:'textarea',placeholder:'Paste contents of your client service configuration JSON file here...',rows:6,required:true}]},
-  redshift:{title:'AWS Redshift Cluster',fields:[{name:'host',label:'Redshift Network Cluster Endpoint',type:'text',placeholder:'cluster.region.redshift.amazonaws.com',required:true},{name:'port',label:'Port',type:'number',placeholder:'5439',value:'5439',required:true},{name:'username',label:'Master User Name',type:'text',placeholder:'awsuser',required:true},{name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}]},
-  databricks:{title:'Databricks System Environments',fields:[{name:'server_hostname',label:'Server Cloud Host Workspace Link',type:'text',placeholder:'cloud.databricks.com',required:true},{name:'http_path',label:'HTTP Engine Route Path',type:'text',placeholder:'/sql/1.0/endpoints/abc123',required:true},{name:'token',label:'Access Token (dapi)',type:'password',placeholder:'dapi123456...',required:true}]},
-  mongodb:{title:'MongoDB Engine Infrastructure',fields:[{name:'uri',label:'Cluster Connection String URI',type:'text',placeholder:'mongodb+srv://user:pass@cluster.mongodb.net/?retryWrites=true',required:true}]},
-  cassandra:{title:'Apache Cassandra Node Cluster',fields:[{name:'hosts',label:'Seed Nodes Host Network List',type:'text',placeholder:'127.0.0.1,10.0.0.2',required:true},{name:'port',label:'Port Connection Identifier',type:'number',placeholder:'9042',value:'9042',required:true}]},
-  dynamodb:{title:'AWS DynamoDB Environments',fields:[{name:'region',label:'Active Cloud AWS Region',type:'text',placeholder:'us-east-1',required:true},{name:'access_key',label:'IAM Access Key Unique Identity ID',type:'text',required:true},{name:'secret_key',label:'IAM Secret Secret Management Key',type:'password',required:true}]},
-  cosmosdb:{title:'Azure Cosmos DB Core Instances',fields:[{name:'uri',label:'Azure Account Connection Endpoint URI',type:'text',placeholder:'https://cosmos.documents.azure.com:443/',required:true},{name:'key',label:'Primary Authentication Key Reference',type:'password',required:true}]}
+  postgresql:{title:'PostgreSQL Instance',fields:[
+    {name:'host',label:'Database Host Endpoint',type:'text',placeholder:'e.g. database-1.rds.amazonaws.com',required:true},
+    {name:'port',label:'Port',type:'number',placeholder:'5432',value:'5432',required:true},
+    {name:'database',label:'Database',type:'text',placeholder:'postgres',required:true},
+    {name:'schema',label:'Schema',type:'text',placeholder:'public'},
+    {name:'ssl',label:'Use SSL',type:'select',options:[['false','No'],['true','Yes']],value:'false'},
+    {name:'username',label:'Username',type:'text',placeholder:'postgres',required:true},
+    {name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}
+  ]},
+  mysql:{title:'MySQL Server',fields:[
+    {name:'host',label:'Server Host Address',type:'text',placeholder:'e.g. 127.0.0.1 or instance-endpoint',required:true},
+    {name:'port',label:'Port',type:'number',placeholder:'3306',value:'3306',required:true},
+    {name:'database',label:'Database',type:'text',placeholder:'app_db',required:true},
+    {name:'username',label:'Username',type:'text',placeholder:'root',required:true},
+    {name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}
+  ]},
+  sqlserver:{title:'SQL Server Instance',fields:[
+    {name:'host',label:'Server Instance Network Name',type:'text',placeholder:'e.g. database.windows.net',required:true},
+    {name:'port',label:'Port',type:'number',placeholder:'1433',value:'1433',required:true},
+    {name:'database',label:'Database',type:'text',placeholder:'master',required:true},
+    {name:'auth_type',label:'Authentication Type',type:'select',value:'sql',required:true,options:[['sql','SQL Login'],['service_principal','Azure Service Principal'],['aad_password','Azure AD Username/Password']]},
+    {name:'username',label:'SQL Username',type:'text',placeholder:'sa',required:true,showWhen:{auth_type:['sql']}},
+    {name:'password',label:'SQL Password',type:'password',placeholder:'••••••••',required:true,showWhen:{auth_type:['sql']}},
+    {name:'aad_username',label:'Azure AD Username',type:'text',placeholder:'user@tenant.com',required:true,showWhen:{auth_type:['aad_password']}},
+    {name:'aad_password',label:'Azure AD Password',type:'password',placeholder:'••••••••',required:true,showWhen:{auth_type:['aad_password']}},
+    {name:'tenant_id',label:'Tenant ID',type:'text',placeholder:'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',required:true,showWhen:{auth_type:['service_principal']}},
+    {name:'client_id',label:'Client ID',type:'text',placeholder:'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx',required:true,showWhen:{auth_type:['service_principal']}},
+    {name:'client_secret',label:'Client Secret',type:'password',placeholder:'••••••••',required:true,showWhen:{auth_type:['service_principal']}},
+    {name:'trust_server_certificate',label:'Trust Server Certificate',type:'select',options:[['false','No'],['true','Yes']],value:'false'}
+  ]},
+  oracle:{title:'Oracle Infrastructure',fields:[
+    {name:'host',label:'Host Server Connection Address',type:'text',placeholder:'oracle-instance-ip',required:true},
+    {name:'port',label:'Port',type:'number',placeholder:'1521',value:'1521',required:true},
+    {name:'service_name',label:'Service Name',type:'text',placeholder:'ORCLCDB',required:true},
+    {name:'username',label:'System User',type:'text',placeholder:'system',required:true},
+    {name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}
+  ]},
+  db2:{title:'IBM DB2 Cluster',fields:[
+    {name:'host',label:'Host Address Destination',type:'text',placeholder:'db2-host-ip',required:true},
+    {name:'port',label:'Port',type:'number',placeholder:'50000',value:'50000',required:true},
+    {name:'database',label:'Database',type:'text',placeholder:'SAMPLE',required:true},
+    {name:'username',label:'Instance User Access',type:'text',placeholder:'db2inst1',required:true},
+    {name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}
+  ]},
+  sqlite:{title:'Local SQLite Instance',fields:[
+    {name:'filepath',label:'System File Path Destination',type:'text',placeholder:'/var/data/app_database.db',required:true}
+  ]},
+  snowflake:{title:'Snowflake Computing Workspace',fields:[
+    {name:'account',label:'Full Account URL Identifier',type:'text',placeholder:'xy12345.us-east-1',required:true},
+    {name:'warehouse',label:'Warehouse',type:'text',placeholder:'COMPUTE_WH',required:true},
+    {name:'database',label:'Database',type:'text',placeholder:'ANALYTICS',required:true},
+    {name:'schema',label:'Schema',type:'text',placeholder:'PUBLIC',required:true},
+    {name:'role',label:'Role',type:'text',placeholder:'SYSADMIN'},
+    {name:'auth_type',label:'Authentication Type',type:'select',value:'password',required:true,options:[['password','Username / Password'],['keypair','Private Key'],['token','OAuth / Access Token']]},
+    {name:'username',label:'Workspace User Access',type:'text',placeholder:'snowflake_user',required:true,showWhen:{auth_type:['password','keypair']}},
+    {name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true,showWhen:{auth_type:['password']}},
+    {name:'private_key',label:'Private Key PEM',type:'textarea',rows:6,placeholder:'-----BEGIN PRIVATE KEY-----',required:true,showWhen:{auth_type:['keypair']}},
+    {name:'private_key_passphrase',label:'Private Key Passphrase',type:'password',placeholder:'Optional',showWhen:{auth_type:['keypair']}},
+    {name:'token',label:'OAuth / Access Token',type:'password',placeholder:'token...',required:true,showWhen:{auth_type:['token']}}
+  ]},
+  bigquery:{title:'Google BigQuery Ecosystem',fields:[
+    {name:'project',label:'Google Cloud Project ID Reference',type:'text',placeholder:'gcp-project-id-123',required:true},
+    {name:'dataset',label:'Dataset',type:'text',placeholder:'analytics_dataset'},
+    {name:'auth_type',label:'Authentication Type',type:'select',value:'service_account',required:true,options:[['service_account','Service Account JSON'],['oauth_token','OAuth Token']]},
+    {name:'credentials_json',label:'IAM Service Account Key Document (JSON)',type:'textarea',placeholder:'Paste contents of your client service configuration JSON file here...',rows:6,required:true,showWhen:{auth_type:['service_account']}},
+    {name:'oauth_token',label:'OAuth Access Token',type:'password',placeholder:'ya29....',required:true,showWhen:{auth_type:['oauth_token']}}
+  ]},
+  redshift:{title:'AWS Redshift Cluster',fields:[
+    {name:'host',label:'Redshift Network Cluster Endpoint',type:'text',placeholder:'cluster.region.redshift.amazonaws.com',required:true},
+    {name:'port',label:'Port',type:'number',placeholder:'5439',value:'5439',required:true},
+    {name:'database',label:'Database',type:'text',placeholder:'dev',required:true},
+    {name:'username',label:'Master User Name',type:'text',placeholder:'awsuser',required:true},
+    {name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}
+  ]},
+  databricks:{title:'Databricks System Environments',fields:[
+    {name:'server_hostname',label:'Server Cloud Host Workspace Link',type:'text',placeholder:'cloud.databricks.com',required:true},
+    {name:'http_path',label:'HTTP Engine Route Path',type:'text',placeholder:'/sql/1.0/endpoints/abc123',required:true},
+    {name:'catalog',label:'Catalog',type:'text',placeholder:'main'},
+    {name:'schema',label:'Schema',type:'text',placeholder:'default'},
+    {name:'token',label:'Access Token (dapi)',type:'password',placeholder:'dapi123456...',required:true}
+  ]},
+  mongodb:{title:'MongoDB Engine Infrastructure',fields:[
+    {name:'auth_type',label:'Connection Mode',type:'select',value:'uri',required:true,options:[['uri','Connection URI'],['manual','Manual Fields']]},
+    {name:'uri',label:'Cluster Connection String URI',type:'text',placeholder:'mongodb+srv://user:pass@cluster.mongodb.net/?retryWrites=true',required:true,showWhen:{auth_type:['uri']}},
+    {name:'host',label:'Host',type:'text',placeholder:'cluster.mongodb.net',required:true,showWhen:{auth_type:['manual']}},
+    {name:'port',label:'Port',type:'number',placeholder:'27017',value:'27017',showWhen:{auth_type:['manual']}},
+    {name:'database',label:'Database',type:'text',placeholder:'admin',required:true,showWhen:{auth_type:['manual']}},
+    {name:'username',label:'Username',type:'text',placeholder:'mongo_user',showWhen:{auth_type:['manual']}},
+    {name:'password',label:'Password',type:'password',placeholder:'••••••••',showWhen:{auth_type:['manual']}}
+  ]},
+  cassandra:{title:'Apache Cassandra Node Cluster',fields:[
+    {name:'hosts',label:'Seed Nodes Host Network List',type:'text',placeholder:'127.0.0.1,10.0.0.2',required:true},
+    {name:'port',label:'Port Connection Identifier',type:'number',placeholder:'9042',value:'9042',required:true},
+    {name:'keyspace',label:'Keyspace',type:'text',placeholder:'analytics'},
+    {name:'username',label:'Username',type:'text',placeholder:'cassandra'},
+    {name:'password',label:'Password',type:'password',placeholder:'••••••••'}
+  ]},
+  dynamodb:{title:'AWS DynamoDB Environments',fields:[
+    {name:'region',label:'Active Cloud AWS Region',type:'text',placeholder:'us-east-1',required:true},
+    {name:'table_name',label:'Table Name',type:'text',placeholder:'events'},
+    {name:'auth_type',label:'Authentication Type',type:'select',value:'access_key',required:true,options:[['access_key','Access Key / Secret'],['session_token','Temporary Session Credentials']]},
+    {name:'access_key',label:'IAM Access Key ID',type:'text',required:true,showWhen:{auth_type:['access_key','session_token']}},
+    {name:'secret_key',label:'IAM Secret Access Key',type:'password',required:true,showWhen:{auth_type:['access_key','session_token']}},
+    {name:'session_token',label:'Session Token',type:'password',required:true,showWhen:{auth_type:['session_token']}}
+  ]},
+  cosmosdb:{title:'Azure Cosmos DB Core Instances',fields:[
+    {name:'uri',label:'Azure Account Connection Endpoint URI',type:'text',placeholder:'https://cosmos.documents.azure.com:443/',required:true},
+    {name:'database',label:'Database',type:'text',placeholder:'appdb'},
+    {name:'container',label:'Container',type:'text',placeholder:'items'},
+    {name:'auth_type',label:'Authentication Type',type:'select',value:'key',required:true,options:[['key','Primary Key'],['token','Bearer Token']]},
+    {name:'key',label:'Primary Authentication Key Reference',type:'password',required:true,showWhen:{auth_type:['key']}},
+    {name:'token',label:'Bearer Token',type:'password',required:true,showWhen:{auth_type:['token']}}
+  ]}
 };
 
 var fallbackTimer = setTimeout(function() {
@@ -805,124 +904,168 @@ function showToast(title, message, type){
 }
 
 var currentDbType = null;
+
+function getFieldVisibility(field, values){
+  if(!field.showWhen) return true;
+  for(var key in field.showWhen){
+    var allowed = field.showWhen[key] || [];
+    if(allowed.indexOf(values[key]) === -1) return false;
+  }
+  return true;
+}
+
+function getFormValues(){
+  var values = {};
+  document.querySelectorAll('#credFields [name]').forEach(function(el){
+    values[el.name] = el.value;
+  });
+  return values;
+}
+
+function applyCredentialFieldVisibility(){
+  if(!currentDbType) return;
+  var schema = dbSchemas[currentDbType];
+  if(!schema) return;
+  var values = getFormValues();
+  schema.fields.forEach(function(field){
+    var wrapper = document.querySelector('.form-group[data-field-name="'+field.name+'"]');
+    var input = document.querySelector('#credFields [name="'+field.name+'"]');
+    if(!wrapper || !input) return;
+    var visible = getFieldVisibility(field, values);
+    wrapper.classList.toggle('is-hidden', !visible);
+    input.disabled = !visible;
+    if(field.required){
+      if(visible) input.setAttribute('required','required');
+      else input.removeAttribute('required');
+    }
+  });
+}
+
+function cleanCredentials(raw){
+  var cleaned = {};
+  Object.keys(raw || {}).forEach(function(key){
+    var value = raw[key];
+    if(value === '' || value === null || typeof value === 'undefined') return;
+    cleaned[key] = value;
+  });
+  return cleaned;
+}
+
+function collectCreds(){
+  var creds = {};
+  document.querySelectorAll('#credFields [name]').forEach(function(el){
+    if(el.disabled) return;
+    var wrapper = el.closest('.form-group');
+    if(wrapper && wrapper.classList.contains('is-hidden')) return;
+    creds[el.name] = el.value;
+  });
+  return cleanCredentials(creds);
+}
+
 function showCredForm(dbType){
   currentDbType = dbType;
   var schema = dbSchemas[dbType];
-  if(!schema) return;
+  document.getElementById('credTitle').textContent = schema.title;
+  var html = schema.fields.map(function(field){
+    var inputHtml = '';
+    if(field.type === 'textarea'){
+      inputHtml = '<textarea name="'+field.name+'" placeholder="'+(field.placeholder||'')+'" '+(field.rows?'rows="'+field.rows+'"':'')+' '+(field.required?'required':'')+'>'+(field.value||'')+'</textarea>';
+    } else if(field.type === 'select'){
+      inputHtml = '<select name="'+field.name+'" '+(field.required?'required':'')+'>' + (field.options||[]).map(function(opt){
+        var val = Array.isArray(opt) ? opt[0] : opt;
+        var label = Array.isArray(opt) ? opt[1] : opt;
+        return '<option value="'+val+'" '+((field.value||'')===val?'selected':'')+'>'+label+'</option>';
+      }).join('') + '</select>';
+    } else {
+      inputHtml = '<input type="'+(field.type||'text')+'" name="'+field.name+'" placeholder="'+(field.placeholder||'')+'" value="'+(field.value||'')+'" '+(field.required?'required':'')+' />';
+    }
+    return '<div class="form-group" data-field-name="'+field.name+'"><label>'+field.label+(field.required?' *':'')+'</label>'+inputHtml+'</div>';
+  }).join('');
+  document.getElementById('credFields').innerHTML = html;
   document.querySelectorAll('.tab-content').forEach(function(t){t.style.display='none'});
   document.getElementById('credForm').classList.add('active');
-  document.getElementById('credTitle').textContent = 'Connect to ' + schema.title;
-  
-  var html = '';
-  schema.fields.forEach(function(f){
-    if(f.type === 'textarea'){
-      html += '<div class="form-group"><label>'+f.label+(f.required?' *':'')+'</label><textarea id="field_'+f.name+'" placeholder="'+(f.placeholder||'')+'" rows="'+(f.rows||3)+'"></textarea></div>';
-    } else {
-      html += '<div class="form-group"><label>'+f.label+(f.required?' *':'')+'</label><input type="'+f.type+'" id="field_'+f.name+'" placeholder="'+(f.placeholder||'')+'" value="'+(f.value||'')+'"'+(f.required?' required':'')+'></div>';
-    }
-  });
-  document.getElementById('credFields').innerHTML = html;
   document.getElementById('testStatus').className = 'test-status';
   document.getElementById('testStatus').innerHTML = '';
+  document.querySelectorAll('#credFields select, #credFields input, #credFields textarea').forEach(function(el){
+    el.addEventListener('change', applyCredentialFieldVisibility);
+    el.addEventListener('input', applyCredentialFieldVisibility);
+  });
+  applyCredentialFieldVisibility();
 }
 
-function collectCredentials(){
-  var schema = dbSchemas[currentDbType];
-  var creds = {};
-  var missing = [];
-  schema.fields.forEach(function(f){
-    var el = document.getElementById('field_'+f.name);
-    if(!el) return;
-    creds[f.name] = el.value.trim(); 
-    if(f.required && !creds[f.name]) missing.push(f.label);
-  });
-  if(missing.length > 0){showToast('Missing Parameters','Please resolve: '+missing.join(', '),'error'); return null}
-  return creds;
+function backToSources(){
+  document.getElementById('credForm').classList.remove('active');
+  document.querySelectorAll('.tab-content').forEach(function(t){t.style.display=''});
+  document.querySelector('.connect-tab.active').click();
+  currentDbType = null;
 }
 
 async function testConnection(){
+  if(!currentDbType) return;
+  var creds = collectCreds();
   var status = document.getElementById('testStatus');
-  var spinner = document.getElementById('testSpinner');
-  var btnText = document.getElementById('testText');
-  var creds = collectCredentials();
-  if(!creds) return;
-  spinner.style.display = 'inline-block';
-  btnText.textContent = 'Verifying...';
-  status.className = 'test-status loading show';
-  status.innerHTML = '<span class="spinner"></span> Executing environment network handshake...';
-  try{
-    var res = await fetch(API_BASE+'/api/test-connection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:currentDbType,credentials:creds})});
-
-    var contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      var rawText = await res.text();
-      throw new Error('Server returned non-JSON response (status ' + res.status + '). Backend may be unavailable.');
-    }
-
+  document.getElementById('testSpinner').style.display = 'inline-block';
+  document.getElementById('testText').textContent = 'Testing...';
+  status.className = 'test-status show loading';
+  status.innerHTML = '<span class="spinner"></span> Checking credentials and network connectivity...';
+  try {
+    var res = await fetch(API_BASE+'/api/test-connection',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({type:currentDbType,credentials:creds})
+    });
     var data = await res.json();
-    if(data.success){
-      status.className = 'test-status success show';
-      status.innerHTML = '&#9989; Connection endpoint authenticated! '+(data.version||'');
-    } else {throw new Error(data.error||'Handshake refused')}
-  }catch(err){
-    status.className = 'test-status error show';
-    status.innerHTML = '&#10060; '+(err.message || 'Connection test failed');
+    if(res.ok && data.success !== false){
+      status.className = 'test-status show success';
+      status.textContent = data.message || 'Connection successful';
+      showToast('Connection OK', data.message || 'Credentials validated successfully.', 'success');
+    } else {
+      throw new Error(data.error || data.message || 'Connection test failed');
+    }
+  } catch(err){
+    status.className = 'test-status show error';
+    status.textContent = err.message || 'Connection test failed';
+    showToast('Connection Failed', err.message || 'Unable to validate credentials.', 'error');
+  } finally {
+    document.getElementById('testSpinner').style.display = 'none';
+    document.getElementById('testText').textContent = 'Test Connection';
   }
-  spinner.style.display = 'none';
-  btnText.textContent = 'Test Connection';
 }
 
 async function saveAndConnect(){
-  var spinner = document.getElementById('saveSpinner');
-  var btnText = document.getElementById('saveText');
-  var creds = collectCredentials();
-  if(!creds) return;
+  if(!currentDbType) return;
+  var creds = collectCreds();
   var connName = dbSchemas[currentDbType].title + ' Server';
-  spinner.style.display = 'inline-block';
-  btnText.textContent = 'Connecting...';
-  try{
+  document.getElementById('saveSpinner').style.display = 'inline-block';
+  document.getElementById('saveText').textContent = 'Connecting...';
+  try {
     var user = await sb.auth.getUser();
-    if(user.data.user){
-      await sb.from('connections').insert({user_id:user.data.user.id,name:connName,type:currentDbType,credentials:creds,created_at:new Date().toISOString()});
+    if(user && user.data && user.data.user){
+      await sb.from('connections').insert({
+        user_id:user.data.user.id,
+        name:connName,
+        type:currentDbType,
+        credentials:creds,
+        created_at:new Date().toISOString()
+      });
     }
-    var res = await fetch(API_BASE+'/api/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:currentDbType,credentials:creds})});
-
-    var contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      var rawText = await res.text();
-      throw new Error('Server returned non-JSON response (status ' + res.status + '). Backend may be unavailable.');
-    }
-
+    var res = await fetch(API_BASE+'/api/connect',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({type:currentDbType,credentials:creds})
+    });
     var data = await res.json();
-    if(data.success){
-      currentConnection = {type:currentDbType,name:connName,session:data.session_id,session_id:data.session_id,tables:data.schema||[]};
-      updateConnectionStatus(true,connName,currentDbType);
-      closeConnectPanel();
-      loadSchema();
-      showToast('Connected','Environment active on current session','success');
-    } else {throw new Error(data.error || 'Connection failed')}
-  }catch(err){
-    showToast('Connection Refused',err.message || 'Unknown error','error');
-  }
-  spinner.style.display = 'none';
-  btnText.textContent = 'Connect to Server';
-}
-
-function updateConnectionStatus(online,name,type){
-  var badge = document.getElementById('connBadge');
-  var text = document.getElementById('connText');
-  var statusConn = document.getElementById('statusConn');
-  var statusDb = document.getElementById('statusDb');
-  if(online){
-    badge.className = 'connection-badge online';
-    text.textContent = 'Connected';
-    statusConn.innerHTML = '&#128268; Connected';
-    statusDb.innerHTML = '&#128187; '+name+' ('+type+')';
-  } else {
-    badge.className = 'connection-badge';
-    text.textContent = 'Offline';
-    statusConn.innerHTML = '&#128268; Disconnected';
-    statusDb.innerHTML = '&#128187; No database selected';
+    if(!res.ok || data.success === false) throw new Error(data.error || 'Connection failed');
+    currentConnection = {type:currentDbType,name:connName,session:data.session_id,session_id:data.session_id,tables:data.schema||[]};
+    updateConnectionStatus(true,connName,currentDbType);
+    renderSchemaTree(data.schema || []);
+    closeConnectPanel();
+    showToast('Connected', data.message || 'Connection established successfully.', 'success');
+  } catch(err){
+    showToast('Connection Error', err.message || 'Unable to connect to server.', 'error');
+  } finally {
+    document.getElementById('saveSpinner').style.display = 'none';
+    document.getElementById('saveText').textContent = 'Connect to Server';
   }
 }
 
