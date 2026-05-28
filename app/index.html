@@ -9,7 +9,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
-:root, [data-theme="dark"] {
+:root{
   --bg:#0f172a;--bg-elevated:#1e293b;--bg-card:#334155;
   --border:#475569;--border-light:#64748b;
   --text:#f8fafc;--text-muted:#94a3b8;--text-dim:#64748b;
@@ -22,27 +22,20 @@
   --shadow:0 4px 20px rgba(0,0,0,0.4);
   --transition:all 0.2s cubic-bezier(0.4,0,0.2,1);
 }
-[data-theme="light"] {
-  --bg:#f8fafc;--bg-elevated:#ffffff;--bg-card:#e2e8f0;
-  --border:#cbd5e1;--border-light:#94a3b8;
-  --text:#0f172a;--text-muted:#475569;--text-dim:#64748b;
-  --primary:#2563eb;--primary-hover:#1d4ed8;--primary-glow:rgba(37,99,235,0.15);
-  --success:#059669;--warning:#d97706;--danger:#dc2626;
-  --accent-purple:#7c3aed;--accent-cyan:#0891b2;--accent-pink:#db2777;
-}
 *{box-sizing:border-box;margin:0;padding:0}
-html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:var(--text);overflow:hidden;transition:background 0.2s, color 0.2s}
+html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:var(--text);overflow:hidden}
 ::-webkit-scrollbar{width:6px;height:6px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 
+/* ===== FILE 1: AUTH & LAYOUT ===== */
 .top-nav{height:52px;background:var(--bg-elevated);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 20px;flex-shrink:0;z-index:100}
 .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:1.1rem;letter-spacing:-0.02em}
-.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--primary),var(--accent-cyan));border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem;color:#fff}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--primary),var(--accent-cyan));border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem}
 .nav-actions{display:flex;align-items:center;gap:12px}
 .btn{display:inline-flex;align-items:center;gap:8px;padding:8px 16px;border-radius:var(--radius);font-size:0.85rem;font-weight:600;cursor:pointer;border:1px solid transparent;transition:var(--transition);font-family:inherit;background:var(--bg-card);color:var(--text);text-decoration:none}
 .btn:hover{background:var(--border);transform:translateY(-1px)}
-.btn-primary{background:var(--primary);border-color:var(--primary);color:#fff}
+.btn-primary{background:var(--primary);border-color:var(--primary)}
 .btn-primary:hover{background:var(--primary-hover);box-shadow:0 0 20px var(--primary-glow)}
 .btn-sm{padding:6px 12px;font-size:0.8rem}
 .btn-ghost{background:transparent;border-color:var(--border);color:var(--text-muted)}
@@ -50,10 +43,11 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
 .btn-danger{background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.3);color:var(--danger)}
 .btn-danger:hover{background:rgba(239,68,68,0.2)}
 .user-pill{display:none;align-items:center;gap:8px;padding:4px 12px 4px 4px;background:var(--bg);border:1px solid var(--border);border-radius:99px;font-size:0.8rem}
-.user-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent-purple));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.75rem;color:#fff}
+.user-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent-purple));display:flex;align-items:center;justify-content:center;font-weight:700;font-size:0.75rem}
 
 .main{display:flex;height:calc(100vh - 52px);position:relative}
 
+/* ===== FILE 5: SCHEMA BROWSER ===== */
 .sidebar{width:260px;background:var(--bg-elevated);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:var(--transition)}
 .sidebar-header{padding:16px 16px 8px;display:flex;align-items:center;justify-content:space-between}
 .sidebar-header h3{font-size:0.75rem;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);font-weight:600}
@@ -71,11 +65,11 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
 .tree-children{margin-left:20px;border-left:1px solid var(--border);padding-left:4px;display:none}
 .tree-children.expanded{display:block}
 
+/* ===== FILE 3: EDITOR & RESULTS ===== */
 .center{flex:1;display:flex;flex-direction:column;min-width:0}
 .toolbar{height:44px;background:var(--bg-elevated);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:12px}
 .toolbar-sep{width:1px;height:24px;background:var(--border);margin:0 4px}
 .editor-area{flex:1;display:flex;flex-direction:column;min-height:0}
-.editor-area textarea.fallback-input-box {flex:1; background:var(--bg); color:var(--text); font-family:var(--font-mono); font-size:14px; padding:16px; border:none; resize:none; outline:none;}
 .editor-header{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:var(--bg);border-bottom:1px solid var(--border)}
 .editor-header h4{font-size:0.8rem;font-weight:600;color:var(--text-muted);display:flex;align-items:center;gap:8px}
 #monacoContainer{flex:1;min-height:0}
@@ -90,6 +84,7 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
 .data-table tr:hover td{background:rgba(59,130,246,0.05);color:var(--text)}
 .pagination{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--bg);border-top:1px solid var(--border);font-size:0.8rem;color:var(--text-muted)}
 
+/* ===== FILE 2: CONNECT PANEL ===== */
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);z-index:200;opacity:0;pointer-events:none;transition:opacity 0.3s}
 .overlay.active{opacity:1;pointer-events:auto}
 .connect-panel{position:fixed;top:0;right:0;width:480px;height:100%;background:var(--bg-elevated);border-left:1px solid var(--border);z-index:201;transform:translateX(100%);transition:transform 0.35s cubic-bezier(0.16,1,0.3,1);display:flex;flex-direction:column;box-shadow:-10px 0 40px rgba(0,0,0,0.4)}
@@ -130,9 +125,12 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
 .cred-header h3{font-size:1rem;font-weight:700}
 .form-group{margin-bottom:16px}
 .form-group label{display:block;font-size:0.82rem;font-weight:600;color:var(--text-muted);margin-bottom:6px}
-.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:inherit;font-size:0.9rem;transition:var(--transition);outline:none}
-.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
-.form-group input::placeholder,.form-group textarea::placeholder{color:var(--text-dim)}
+.form-group input,.form-group select{width:100%;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:inherit;font-size:0.9rem;transition:var(--transition);outline:none}
+.form-group input:focus,.form-group select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+.form-group input::placeholder{color:var(--text-dim)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.checkbox{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:0.85rem;color:var(--text-muted)}
+.checkbox input{width:16px;height:16px;accent-color:var(--primary)}
 .connect-actions{display:flex;gap:12px;margin-top:24px;padding-top:20px;border-top:1px solid var(--border)}
 .connect-actions .btn{flex:1;justify-content:center;padding:12px}
 .test-status{margin-top:12px;padding:10px 14px;border-radius:var(--radius);font-size:0.85rem;display:none;align-items:center;gap:8px}
@@ -152,10 +150,10 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
 .saved-actions button{width:28px;height:28px;border-radius:6px;background:var(--bg-card);border:1px solid var(--border);color:var(--text-muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.8rem;transition:var(--transition)}
 .saved-actions button:hover{background:var(--danger);color:#fff;border-color:var(--danger)}
 
-/* ===== CORTEX WIDGET STYLES ===== */
+/* ===== FILE 4: AI CHAT WIDGET ===== */
 .ai-widget{position:fixed;bottom:20px;right:20px;width:380px;background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:0 20px 50px rgba(0,0,0,0.5);z-index:150;transform:translateY(calc(100% + 30px));transition:transform 0.4s cubic-bezier(0.16,1,0.3,1);display:flex;flex-direction:column;overflow:hidden}
 .ai-widget.active{transform:translateY(0)}
-.ai-widget-header{padding:14px 18px;background:linear-gradient(135deg,var(--primary),var(--accent-purple));display:flex;align-items:center;justify-content:space-between;color:#fff}
+.ai-widget-header{padding:14px 18px;background:linear-gradient(135deg,var(--primary),var(--accent-purple));display:flex;align-items:center;justify-content:space-between}
 .ai-widget-header h4{font-size:0.9rem;font-weight:700;display:flex;align-items:center;gap:8px}
 .ai-widget-header .ai-badge{font-size:0.65rem;padding:2px 8px;background:rgba(255,255,255,0.2);border-radius:99px;font-weight:600}
 .ai-close{width:28px;height:28px;border-radius:6px;background:rgba(255,255,255,0.15);border:none;color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:var(--transition)}
@@ -163,7 +161,7 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
 .ai-messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;min-height:300px;max-height:400px}
 .ai-message{display:flex;gap:10px;align-items:flex-start;animation:messageIn 0.3s ease}
 @keyframes messageIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
-.ai-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent-purple));display:flex;align-items:center;justify-content:center;font-size:0.8rem;flex-shrink:0;color:#fff}
+.ai-avatar{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent-purple));display:flex;align-items:center;justify-content:center;font-size:0.8rem;flex-shrink:0}
 .ai-avatar.user{background:var(--bg-card)}
 .ai-bubble{flex:1;padding:10px 14px;background:var(--bg);border-radius:var(--radius) var(--radius) var(--radius) 4px;font-size:0.85rem;line-height:1.5;color:var(--text-muted)}
 .ai-bubble.user{background:var(--primary);color:#fff;border-radius:var(--radius) var(--radius) 4px var(--radius)}
@@ -178,6 +176,7 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
 .ai-toggle:hover{transform:scale(1.1);box-shadow:0 6px 30px rgba(59,130,246,0.5)}
 .ai-toggle.hidden{opacity:0;pointer-events:none}
 
+/* ===== SHARED: TOAST, MODAL, STATUS ===== */
 .toast-container{position:fixed;top:64px;right:20px;z-index:300;display:flex;flex-direction:column;gap:10px}
 .toast{background:var(--bg-elevated);border:1px solid var(--border);border-radius:var(--radius);padding:14px 18px;box-shadow:var(--shadow);display:flex;align-items:center;gap:12px;animation:toastIn 0.4s ease;max-width:380px;border-left:3px solid var(--primary)}
 .toast.error{border-left-color:var(--danger)}
@@ -205,24 +204,6 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
 .empty-state h3{font-size:1rem;color:var(--text-muted)}
 .empty-state p{font-size:0.85rem;max-width:300px;line-height:1.5}
 
-.theme-switch {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius);
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  color: var(--text);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.1rem;
-  transition: var(--transition);
-}
-.theme-switch:hover {
-  background: var(--border);
-}
-
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -235,11 +216,10 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
   .ai-widget{width:calc(100% - 40px)}
 }
 </style>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
-<base target="_blank">
 </head>
 <body>
 
+<!-- ===== FILE 1: AUTH & TOP NAV ===== -->
 <div class="toast-container" id="toastContainer"></div>
 
 <nav class="top-nav">
@@ -248,7 +228,6 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
     Migranix
   </div>
   <div class="nav-actions">
-    <button class="theme-switch" id="themeToggleBtn" onclick="toggleTheme()" title="Toggle Light/Dark Theme">🌓</button>
     <div class="user-pill" id="userPill">
       <div class="user-avatar" id="userAvatar">?</div>
       <span id="userName">User</span>
@@ -257,14 +236,17 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
       Connect to Data
     </button>
-    <button class="btn btn-danger" id="logoutBtn" onclick="handleLogout()">
+    <button class="btn btn-danger" id="logoutBtn" onclick="handleLogout()" style="display:none">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
       Logout
     </button>
   </div>
 </nav>
 
+<!-- ===== MAIN LAYOUT ===== -->
 <div class="main">
+
+  <!-- ===== FILE 5: SCHEMA BROWSER (Sidebar) ===== -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
       <h3>Schema Explorer</h3>
@@ -282,6 +264,7 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
     </div>
   </aside>
 
+  <!-- ===== FILE 3: EDITOR & RESULTS (Center) ===== -->
   <div class="center">
     <div class="toolbar">
       <button class="btn btn-primary btn-sm" onclick="executeQuery()" id="runBtn">
@@ -349,6 +332,7 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
   </div>
 </div>
 
+<!-- Status Bar -->
 <div class="status-bar">
   <span id="statusConn">&#128268; Disconnected</span>
   <span id="statusDb">&#128187; No database selected</span>
@@ -356,6 +340,7 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
   <span style="margin-left:auto" id="statusReady">&#9989; Ready</span>
 </div>
 
+<!-- ===== FILE 2: CONNECT PANEL (Slide-out) ===== -->
 <div class="overlay" id="connectOverlay" onclick="closeConnectPanel()"></div>
 <div class="connect-panel" id="connectPanel">
   <div class="connect-header">
@@ -370,6 +355,8 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
   </div>
 
   <div class="connect-body">
+
+    <!-- FILES TAB -->
     <div class="tab-content active" id="tab-files">
       <div class="section-title">&#128193; Local Files</div>
       <div class="file-types">
@@ -397,37 +384,38 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
         </div>
         <div class="source-card" onclick="connectCloud('snowflake_stage')">
           <div class="source-icon" style="background:rgba(139,92,246,0.1)">&#10052;</div>
-          <div class="source-info"><span class="source-name">Snowflake Stage</span><span class="source-desc">Data staging env</span></div>
+          <div class="source-info"><span class="source-name">Snowflake Stage</span><span class="source-desc">Internal/External</span></div>
         </div>
       </div>
     </div>
 
+    <!-- DATABASES TAB -->
     <div class="tab-content" id="tab-databases">
       <div class="section-title">&#128187; Relational Databases</div>
       <div class="source-grid">
         <div class="source-card" onclick="showCredForm('postgresql')">
           <div class="source-icon" style="background:rgba(59,130,246,0.1);color:#3b82f6">&#128011;</div>
-          <div class="source-info"><span class="source-name">PostgreSQL</span><span class="source-desc">Standard connection</span></div>
+          <div class="source-info"><span class="source-name">PostgreSQL</span><span class="source-desc">Open source RDBMS</span></div>
         </div>
         <div class="source-card" onclick="showCredForm('mysql')">
           <div class="source-icon" style="background:rgba(245,158,11,0.1);color:#f59e0b">&#128024;</div>
-          <div class="source-info"><span class="source-name">MySQL</span><span class="source-desc">MySQL server connection</span></div>
+          <div class="source-info"><span class="source-name">MySQL</span><span class="source-desc">Oracle MySQL / MariaDB</span></div>
         </div>
         <div class="source-card" onclick="showCredForm('sqlserver')">
           <div class="source-icon" style="background:rgba(139,92,246,0.1);color:#8b5cf6">&#128225;</div>
-          <div class="source-info"><span class="source-name">SQL Server</span><span class="source-desc">Microsoft SQL Server</span></div>
+          <div class="source-info"><span class="source-name">SQL Server</span><span class="source-desc">Microsoft T-SQL</span></div>
         </div>
         <div class="source-card" onclick="showCredForm('oracle')">
           <div class="source-icon" style="background:rgba(239,68,68,0.1);color:#ef4444">&#128302;</div>
-          <div class="source-info"><span class="source-name">Oracle</span><span class="source-desc">Oracle DB instance</span></div>
+          <div class="source-info"><span class="source-name">Oracle</span><span class="source-desc">Oracle Database</span></div>
         </div>
         <div class="source-card" onclick="showCredForm('db2')">
           <div class="source-icon" style="background:rgba(6,182,212,0.1);color:#06b6d4">&#128190;</div>
-          <div class="source-info"><span class="source-name">IBM DB2</span><span class="source-desc">DB2 connection host</span></div>
+          <div class="source-info"><span class="source-name">IBM DB2</span><span class="source-desc">Enterprise RDBMS</span></div>
         </div>
         <div class="source-card" onclick="showCredForm('sqlite')">
-          <div class="source-icon" style="background:rgba(16,185,129,0.1);color:#10b981">&#127811;</div>
-          <div class="source-info"><span class="source-name">SQLite</span><span class="source-desc">Local database file</span></div>
+          <div class="source-icon" style="background:rgba(16,185,129,0.1);color:#10b981">&#128230;</div>
+          <div class="source-info"><span class="source-name">SQLite</span><span class="source-desc">File-based database</span></div>
         </div>
       </div>
 
@@ -435,19 +423,19 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
       <div class="source-grid">
         <div class="source-card" onclick="showCredForm('snowflake')">
           <div class="source-icon" style="background:rgba(139,92,246,0.1);color:#8b5cf6">&#10052;</div>
-          <div class="source-info"><span class="source-name">Snowflake</span><span class="source-desc">Snowflake environment</span></div>
+          <div class="source-info"><span class="source-name">Snowflake</span><span class="source-desc">Cloud data warehouse</span></div>
         </div>
         <div class="source-card" onclick="showCredForm('bigquery')">
           <div class="source-icon" style="background:rgba(59,130,246,0.1);color:#3b82f6">&#128270;</div>
-          <div class="source-info"><span class="source-name">BigQuery</span><span class="source-desc">Google Cloud projects</span></div>
+          <div class="source-info"><span class="source-name">BigQuery</span><span class="source-desc">Google Analytics DW</span></div>
         </div>
         <div class="source-card" onclick="showCredForm('redshift')">
           <div class="source-icon" style="background:rgba(245,158,11,0.1);color:#f59e0b">&#9650;</div>
-          <div class="source-info"><span class="source-name">Redshift</span><span class="source-desc">AWS Cluster Endpoint</span></div>
+          <div class="source-info"><span class="source-name">Redshift</span><span class="source-desc">AWS Data Warehouse</span></div>
         </div>
         <div class="source-card" onclick="showCredForm('databricks')">
           <div class="source-icon" style="background:rgba(239,68,68,0.1);color:#ef4444">&#9889;</div>
-          <div class="source-info"><span class="source-name">Databricks</span><span class="source-desc">Databricks computation</span></div>
+          <div class="source-info"><span class="source-name">Databricks</span><span class="source-desc">Lakehouse Platform</span></div>
         </div>
       </div>
 
@@ -455,23 +443,24 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
       <div class="source-grid">
         <div class="source-card" onclick="showCredForm('mongodb')">
           <div class="source-icon" style="background:rgba(16,185,129,0.1);color:#10b981">&#127811;</div>
-          <div class="source-info"><span class="source-name">MongoDB</span><span class="source-desc">URI endpoint access</span></div>
+          <div class="source-info"><span class="source-name">MongoDB</span><span class="source-desc">Document database</span></div>
         </div>
         <div class="source-card" onclick="showCredForm('cassandra')">
           <div class="source-icon" style="background:rgba(139,92,246,0.1);color:#8b5cf6">&#9733;</div>
-          <div class="source-info"><span class="source-name">Cassandra</span><span class="source-desc">Cluster seed addresses</span></div>
+          <div class="source-info"><span class="source-name">Cassandra</span><span class="source-desc">Wide-column store</span></div>
         </div>
         <div class="source-card" onclick="showCredForm('dynamodb')">
           <div class="source-icon" style="background:rgba(245,158,11,0.1);color:#f59e0b">&#9632;</div>
-          <div class="source-info"><span class="source-name">DynamoDB</span><span class="source-desc">AWS instance validation</span></div>
+          <div class="source-info"><span class="source-name">DynamoDB</span><span class="source-desc">AWS NoSQL</span></div>
         </div>
         <div class="source-card" onclick="showCredForm('cosmosdb')">
           <div class="source-icon" style="background:rgba(6,182,212,0.1);color:#06b6d4">&#9733;</div>
-          <div class="source-info"><span class="source-name">Cosmos DB</span><span class="source-desc">Azure Core validation</span></div>
+          <div class="source-info"><span class="source-name">Cosmos DB</span><span class="source-desc">Azure NoSQL</span></div>
         </div>
       </div>
     </div>
 
+    <!-- SAVED TAB -->
     <div class="tab-content" id="tab-saved">
       <div class="section-title">&#128204; Recent Connections</div>
       <div class="saved-list" id="savedList">
@@ -483,6 +472,7 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
       </div>
     </div>
 
+    <!-- CREDENTIAL FORM -->
     <div class="cred-form" id="credForm">
       <div class="cred-header">
         <button class="back-btn" onclick="backToSources()">&#8592; Back</button>
@@ -497,34 +487,36 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
         </button>
         <button class="btn btn-primary" onclick="saveAndConnect()">
           <span id="saveSpinner" style="display:none" class="spinner"></span>
-          <span id="saveText">Connect to Server</span>
+          <span id="saveText">Connect & Save</span>
         </button>
       </div>
     </div>
   </div>
 </div>
 
-<button class="ai-toggle" id="aiToggle" onclick="toggleAI()">❄️</button>
+<!-- ===== FILE 4: AI CHAT WIDGET ===== -->
+<button class="ai-toggle" id="aiToggle" onclick="toggleAI()">&#129302;</button>
 <div class="ai-widget" id="aiWidget">
   <div class="ai-widget-header">
-    <h4>❄️ Cortex Copilot <span class="ai-badge">Free Tier</span></h4>
+    <h4>&#129302; AI SQL Assistant <span class="ai-badge">Beta</span></h4>
     <button class="ai-close" onclick="toggleAI()">&#10005;</button>
   </div>
   <div class="ai-messages" id="aiMessages">
     <div class="ai-message">
-      <div class="ai-avatar">❄️</div>
+      <div class="ai-avatar">&#129302;</div>
       <div class="ai-bubble">
-        Hi! I am your integrated **Cortex Copilot** analytics engine. Describe the datasets metrics you need in plain language, and I will compile them directly into standard-compliant SQL code strings.<br><br>
-        <em>Example: "Calculate rolling monthly totals sorted by row_id descending"</em>
+        Hi! I'm your AI SQL assistant. Describe what data you need in plain English, and I'll generate the SQL query for you.<br><br>
+        <em>Example: "Show me top 10 customers by revenue last month"</em>
       </div>
     </div>
   </div>
   <div class="ai-input-area">
-    <input type="text" id="aiInput" placeholder="Ask Cortex Copilot anything..." onkeypress="if(event.key==='Enter')sendAIQuery()">
-    <button onclick="sendAIQuery()">Compile</button>
+    <input type="text" id="aiInput" placeholder="Describe your query in plain English..." onkeypress="if(event.key==='Enter')sendAIQuery()">
+    <button onclick="sendAIQuery()">Send</button>
   </div>
 </div>
 
+<!-- SAVE QUERY MODAL -->
 <div class="modal-overlay" id="saveModal">
   <div class="modal">
     <h3>&#128190; Save Query</h3>
@@ -540,200 +532,241 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
   </div>
 </div>
 
+<!-- ===== MERGED JAVASCRIPT ===== -->
 <script>
+// ========== CONFIGURATION ==========
 var API_BASE = 'https://migranix-app.onrender.com';
 var SUPA_URL = 'https://yxwlgwaalghvskulhmey.supabase.co';
 var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4d2xnd2FhbGdodnNrdWxobWV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODEwODYsImV4cCI6MjA5NDQ1NzA4Nn0.QOZphIHDIebIkSX23LPjQXtr-iICT9dapzYMw11HBTw';
+var GROQ_API_KEY = 'your-groq-api-key-here'; // Get from console.groq.com
 
 var sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
 
-var CLOSE_TIMEOUT = 5 * 60 * 1000; 
-document.addEventListener('visibilitychange', function(){
-  if(document.visibilityState === 'hidden') localStorage.setItem('mx_left_at', Date.now().toString());
-  if(document.visibilityState === 'visible'){
-    var left = localStorage.getItem('mx_left_at');
-    if(left && (Date.now() - parseInt(left)) > CLOSE_TIMEOUT){
-      localStorage.clear();
-      sb.auth.signOut();
-      window.location.href = 'https://www.migranix.in';
+/* 10-second window-close timeout */
+var CLOSE_TIMEOUT=10*1000;
+document.addEventListener("visibilitychange",function(){
+  if(document.visibilityState==="hidden") localStorage.setItem("mx_left_at",Date.now().toString());
+  if(document.visibilityState==="visible"){
+    var left=localStorage.getItem("mx_left_at");
+    if(left&&(Date.now()-parseInt(left))>CLOSE_TIMEOUT){
+      localStorage.clear(); sb.auth.signOut(); window.location.href="https://www.migranix.in";
     }
-    localStorage.removeItem('mx_left_at');
+    localStorage.removeItem("mx_left_at");
   }
 });
-
-function toggleTheme() {
-  var currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-  var newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  document.documentElement.setAttribute('data-theme', newTheme);
-  localStorage.setItem('mx_theme', newTheme);
-  
-  if (monacoEditor && monacoEditorEngine) {
-    monaco.editor.setTheme(newTheme === 'dark' ? 'vs-dark' : 'vs');
-  }
-}
-
-var savedTheme = localStorage.getItem('mx_theme') || 'dark';
-document.documentElement.setAttribute('data-theme', savedTheme);
-
-async function checkAuthGate(){
-  var left = localStorage.getItem('mx_left_at');
-  if(left && (Date.now() - parseInt(left)) > CLOSE_TIMEOUT){
-    localStorage.clear();
-    await sb.auth.signOut();
-    window.location.href = 'https://www.migranix.in';
-    return;
-  }
-  try {
-    var sess = await sb.auth.getSession();
-    var user = sess.data.session ? sess.data.session.user : null;
-    if(!user){
-      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;flex-direction:column;gap:16px;background:#0f172a;color:#f8fafc;font-family:Inter,sans-serif"><div style="font-size:2.5rem">&#128274;</div><h2 style="font-size:1.5rem;font-weight:700">Login Required</h2><p style="color:#94a3b8;max-width:400px;text-align:center">You need to sign in to access the Migranix Data Connector. Log in on our website first.</p><a href="https://www.migranix.in" style="display:inline-block;background:#3b82f6;color:white;padding:12px 28px;border-radius:8px;font-weight:700;text-decoration:none;margin-top:8px;transition:all 0.2s">Go to migranix.in →</a><p style="color:#64748b;font-size:0.8rem;margin-top:12px">Free 14-day trial · No credit card required</p></div>';
-      return;
-    }
-    var name = user.user_metadata && user.user_metadata.full_name ? user.user_metadata.full_name : user.email;
-    var initials = name.split(' ').map(function(n){return n[0]}).join('').substring(0,2).toUpperCase();
-    document.getElementById('userName').textContent = name;
-    document.getElementById('userAvatar').textContent = initials;
-    document.getElementById('userPill').style.display = 'flex';
-    document.getElementById('logoutBtn').style.display = 'inline-flex';
-  } catch(e) {
-    console.error('Auth error:', e);
-    window.location.href = 'https://www.migranix.in';
-  }
-}
-(async function(){ await checkAuthGate(); })();
-
 var currentConnection = null;
 var currentQuery = '';
 var queryResults = [];
 var currentPage = 1;
 var pageSize = 50;
-
 var monacoEditor = null;
-var monacoEditorEngine = false;
 
-function safeGetValue() {
-  if (monacoEditorEngine && monacoEditor) {
-    return monacoEditor.getValue();
-  }
-  var backupBox = document.getElementById('fallbackTextBox');
-  return backupBox ? backupBox.value : '';
-}
-
-function safeSetValue(val) {
-  if (monacoEditorEngine && monacoEditor) {
-    monacoEditor.setValue(val);
-    return;
-  }
-  var backupBox = document.getElementById('fallbackTextBox');
-  if (backupBox) backupBox.value = val;
-}
-
+// ========== DATABASE SCHEMAS ==========
 var dbSchemas = {
-  postgresql:{title:'PostgreSQL Instance',fields:[{name:'host',label:'Database Host Endpoint',type:'text',placeholder:'e.g. database-1.rds.amazonaws.com',required:true},{name:'port',label:'Port',type:'number',placeholder:'5432',value:'5432',required:true},{name:'username',label:'Username',type:'text',placeholder:'postgres',required:true},{name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}]},
-  mysql:{title:'MySQL Server',fields:[{name:'host',label:'Server Host Address',type:'text',placeholder:'e.g. 127.0.0.1 or instance-endpoint',required:true},{name:'port',label:'Port',type:'number',placeholder:'3306',value:'3306',required:true},{name:'username',label:'Username',type:'text',placeholder:'root',required:true},{name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}]},
-  sqlserver:{title:'SQL Server Instance',fields:[{name:'host',label:'Server Instance Network Name',type:'text',placeholder:'e.g. database.windows.net',required:true},{name:'port',label:'Port',type:'number',placeholder:'1433',value:'1433',required:true},{name:'username',label:'Authentication Username (sa)',type:'text',placeholder:'sa',required:true},{name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}]},
-  oracle:{title:'Oracle Infrastructure',fields:[{name:'host',label:'Host Server Connection Address',type:'text',placeholder:'oracle-instance-ip',required:true},{name:'port',label:'Port',type:'number',placeholder:'1521',value:'1521',required:true},{name:'username',label:'System User',type:'text',placeholder:'system',required:true},{name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}]},
-  db2:{title:'IBM DB2 Cluster',fields:[{name:'host',label:'Host Address Destination',type:'text',placeholder:'db2-host-ip',required:true},{name:'port',label:'Port',type:'number',placeholder:'50000',value:'50000',required:true},{name:'username',label:'Instance User Access',type:'text',placeholder:'db2inst1',required:true},{name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}]},
-  sqlite:{title:'Local SQLite Instance',fields:[{name:'filepath',label:'System File Path Destination',type:'text',placeholder:'/var/data/app_database.db',required:true}]},
-  snowflake:{title:'Snowflake Computing Workspace',fields:[{name:'account',label:'Full Account URL Identifier',type:'text',placeholder:'xy12345.us-east-1',required:true},{name:'username',label:'Workspace User Access',type:'text',placeholder:'snowflake_user',required:true},{name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}]},
-  bigquery:{title:'Google BigQuery Ecosystem',fields:[{name:'project',label:'Google Cloud Project ID Reference',type:'text',placeholder:'gcp-project-id-123',required:true},{name:'credentials_json',label:'IAM Service Account Key Document (JSON)',type:'textarea',placeholder:'Paste contents of your client service configuration JSON file here...',rows:6,required:true}]},
-  redshift:{title:'AWS Redshift Cluster',fields:[{name:'host',label:'Redshift Network Cluster Endpoint',type:'text',placeholder:'cluster.region.redshift.amazonaws.com',required:true},{name:'port',label:'Port',type:'number',placeholder:'5439',value:'5439',required:true},{name:'username',label:'Master User Name',type:'text',placeholder:'awsuser',required:true},{name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}]},
-  databricks:{title:'Databricks System Environments',fields:[{name:'server_hostname',label:'Server Cloud Host Workspace Link',type:'text',placeholder:'cloud.databricks.com',required:true},{name:'http_path',label:'HTTP Engine Route Path',type:'text',placeholder:'/sql/1.0/endpoints/abc123',required:true},{name:'token',label:'Access Token (dapi)',type:'password',placeholder:'dapi123456...',required:true}]},
-  mongodb:{title:'MongoDB Engine Infrastructure',fields:[{name:'uri',label:'Cluster Connection String URI',type:'text',placeholder:'mongodb+srv://user:pass@cluster.mongodb.net/?retryWrites=true',required:true}]},
-  cassandra:{title:'Apache Cassandra Node Cluster',fields:[{name:'hosts',label:'Seed Nodes Host Network List',type:'text',placeholder:'127.0.0.1,10.0.0.2',required:true},{name:'port',label:'Port Connection Identifier',type:'number',placeholder:'9042',value:'9042',required:true}]},
-  dynamodb:{title:'AWS DynamoDB Environments',fields:[{name:'region',label:'Active Cloud AWS Region',type:'text',placeholder:'us-east-1',required:true},{name:'access_key',label:'IAM Access Key Unique Identity ID',type:'text',required:true},{name:'secret_key',label:'IAM Secret Secret Management Key',type:'password',required:true}]},
-  cosmosdb:{title:'Azure Cosmos DB Core Instances',fields:[{name:'uri',label:'Azure Account Connection Endpoint URI',type:'text',placeholder:'https://cosmos.documents.azure.com:443/',required:true},{name:'key',label:'Primary Authentication Key Reference',type:'password',required:true}]}
+  postgresql:{title:'PostgreSQL',baseFields:[
+    {name:'host',label:'Server',type:'text',placeholder:'localhost or aws-region.rds.amazonaws.com',required:true},
+    {name:'database',label:'Database (optional)',type:'text',placeholder:'mydb'},
+    {name:'port',label:'Port',type:'number',placeholder:'5432',value:'5432'}
+  ],authMethods:{
+    'database':{label:'Database Authentication',fields:[
+      {name:'username',label:'User name',type:'text',placeholder:'postgres',required:true},
+      {name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}
+    ]}
+  },extras:[{name:'ssl',label:'Encrypt connection',type:'checkbox',value:true}]},
+
+  mysql:{title:'MySQL / MariaDB',baseFields:[
+    {name:'host',label:'Server',type:'text',placeholder:'localhost',required:true},
+    {name:'database',label:'Database (optional)',type:'text',placeholder:'mydb'},
+    {name:'port',label:'Port',type:'number',placeholder:'3306',value:'3306'}
+  ],authMethods:{
+    'database':{label:'Database',fields:[
+      {name:'username',label:'User name',type:'text',placeholder:'root',required:true},
+      {name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}
+    ]}
+  },extras:[{name:'ssl',label:'Use SSL',type:'checkbox',value:false}]},
+
+  sqlserver:{title:'SQL Server',baseFields:[
+    {name:'host',label:'Server',type:'text',placeholder:'localhost\\SQLEXPRESS or server.database.windows.net',required:true},
+    {name:'database',label:'Database (optional)',type:'text',placeholder:'master'},
+    {name:'port',label:'Port',type:'number',placeholder:'1433',value:'1433'}
+  ],authMethods:{
+    'sql':{label:'SQL Server Authentication',fields:[
+      {name:'username',label:'User name',type:'text',placeholder:'sa',required:true},
+      {name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}
+    ]},
+    'windows':{label:'Windows Authentication',fields:[],note:'⚠️ Windows Authentication requires on-premise Migranix Agent. Please use SQL Server Authentication for cloud access.'}
+  }},
+
+  oracle:{title:'Oracle Database',baseFields:[
+    {name:'host',label:'Server',type:'text',placeholder:'localhost',required:true},
+    {name:'service',label:'Service Name / SID',type:'text',placeholder:'ORCL',required:true},
+    {name:'port',label:'Port',type:'number',placeholder:'1521',value:'1521'}
+  ],authMethods:{
+    'database':{label:'Database Authentication',fields:[
+      {name:'username',label:'User name',type:'text',placeholder:'system',required:true},
+      {name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}
+    ]},
+    'os':{label:'Operating System Authentication',fields:[],note:'⚠️ OS Authentication requires on-premise Migranix Agent. Please use Database Authentication for cloud access.'}
+  }},
+
+  db2:{title:'IBM DB2',baseFields:[
+    {name:'host',label:'Server',type:'text',placeholder:'localhost',required:true},
+    {name:'database',label:'Database',type:'text',placeholder:'SAMPLE',required:true},
+    {name:'port',label:'Port',type:'number',placeholder:'50000',value:'50000'}
+  ],authMethods:{
+    'database':{label:'Database Authentication',fields:[
+      {name:'username',label:'User name',type:'text',placeholder:'db2inst1',required:true},
+      {name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}
+    ]}
+  }},
+
+  sqlite:{title:'SQLite',baseFields:[
+    {name:'filepath',label:'Database File Path',type:'text',placeholder:'/path/to/database.db',required:true}
+  ],authMethods:{
+    'none':{label:'No Authentication',fields:[]}
+  }},
+
+  snowflake:{title:'Snowflake',baseFields:[
+    {name:'account',label:'Server (Account Identifier)',type:'text',placeholder:'xy12345.us-east-1',required:true},
+    {name:'warehouse',label:'Warehouse',type:'text',placeholder:'COMPUTE_WH'},
+    {name:'database',label:'Database (optional)',type:'text',placeholder:'MY_DB'},
+    {name:'schema',label:'Schema (optional)',type:'text',placeholder:'PUBLIC'},
+    {name:'role',label:'Role (optional)',type:'text',placeholder:'ACCOUNTADMIN'}
+  ],authMethods:{
+    'password':{label:'Username & Password',fields:[
+      {name:'username',label:'User name',type:'text',placeholder:'your_username',required:true},
+      {name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}
+    ]},
+    'sso':{label:'Single Sign-On (SSO)',fields:[],note:'⚠️ SSO requires browser-based OAuth flow. Please use Username & Password.'},
+    'keypair':{label:'Key Pair Authentication',fields:[],note:'⚠️ Key Pair authentication coming soon. Please use Username & Password.'}
+  }},
+
+  bigquery:{title:'Google BigQuery',baseFields:[
+    {name:'project',label:'Project ID',type:'text',placeholder:'my-project-123',required:true},
+    {name:'dataset',label:'Dataset (optional)',type:'text',placeholder:'my_dataset'}
+  ],authMethods:{
+    'service_account':{label:'Service Account',fields:[
+      {name:'credentials_json',label:'Service Account JSON Key',type:'textarea',placeholder:'Paste your service account JSON here...',rows:6,required:true}
+    ]},
+    'oauth':{label:'OAuth (Organizational Account)',fields:[],note:'⚠️ OAuth flow coming soon. Please use Service Account for now.'}
+  }},
+
+  redshift:{title:'Amazon Redshift',baseFields:[
+    {name:'host',label:'Server',type:'text',placeholder:'cluster.region.redshift.amazonaws.com',required:true},
+    {name:'database',label:'Database',type:'text',placeholder:'dev',required:true},
+    {name:'port',label:'Port',type:'number',placeholder:'5439',value:'5439'}
+  ],authMethods:{
+    'database':{label:'Database Authentication',fields:[
+      {name:'username',label:'User name',type:'text',placeholder:'awsuser',required:true},
+      {name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true}
+    ]},
+    'iam':{label:'AWS IAM Authentication',fields:[],note:'⚠️ AWS IAM authentication coming soon. Please use Database Authentication.'}
+  }},
+
+  databricks:{title:'Databricks',baseFields:[
+    {name:'server_hostname',label:'Server Hostname',type:'text',placeholder:'abc-12345678-wxyz.cloud.databricks.com',required:true},
+    {name:'http_path',label:'HTTP Path',type:'text',placeholder:'/sql/1.0/endpoints/abc123',required:true},
+    {name:'catalog',label:'Catalog (optional)',type:'text',placeholder:'hive_metastore'},
+    {name:'schema',label:'Schema (optional)',type:'text',placeholder:'default'}
+  ],authMethods:{
+    'token':{label:'Personal Access Token',fields:[
+      {name:'token',label:'Access Token',type:'password',placeholder:'dapi...',required:true}
+    ]},
+    'oauth':{label:'OAuth (Azure AD)',fields:[],note:'⚠️ OAuth coming soon. Please use Personal Access Token.'}
+  }},
+
+  mongodb:{title:'MongoDB',baseFields:[
+    {name:'database',label:'Database (optional)',type:'text',placeholder:'mydb'}
+  ],authMethods:{
+    'uri':{label:'Connection String (URI)',fields:[
+      {name:'uri',label:'Connection URI',type:'text',placeholder:'mongodb+srv://user:pass@cluster.mongodb.net/db',required:true}
+    ]},
+    'fields':{label:'Server & Credentials',fields:[
+      {name:'host',label:'Server',type:'text',placeholder:'cluster.mongodb.net',required:true},
+      {name:'username',label:'User name',type:'text',placeholder:'admin',required:true},
+      {name:'password',label:'Password',type:'password',placeholder:'••••••••',required:true},
+      {name:'port',label:'Port',type:'number',placeholder:'27017',value:'27017'}
+    ]}
+  }},
+
+  cassandra:{title:'Apache Cassandra',baseFields:[
+    {name:'hosts',label:'Server(s)',type:'text',placeholder:'127.0.0.1,127.0.0.2',required:true},
+    {name:'keyspace',label:'Keyspace (optional)',type:'text',placeholder:'mykeyspace'},
+    {name:'port',label:'Port',type:'number',placeholder:'9042',value:'9042'}
+  ],authMethods:{
+    'none':{label:'No Authentication',fields:[]},
+    'password':{label:'Username & Password',fields:[
+      {name:'username',label:'User name',type:'text',required:true},
+      {name:'password',label:'Password',type:'password',required:true}
+    ]}
+  }},
+
+  dynamodb:{title:'Amazon DynamoDB',baseFields:[
+    {name:'region',label:'AWS Region',type:'text',placeholder:'us-east-1',required:true}
+  ],authMethods:{
+    'access_key':{label:'Access Key & Secret',fields:[
+      {name:'access_key',label:'Access Key ID',type:'text',required:true},
+      {name:'secret_key',label:'Secret Access Key',type:'password',required:true}
+    ]},
+    'iam_role':{label:'IAM Role',fields:[],note:'⚠️ IAM Role authentication coming soon. Please use Access Key & Secret.'}
+  }},
+
+  cosmosdb:{title:'Azure Cosmos DB',baseFields:[
+    {name:'uri',label:'Account URI',type:'text',placeholder:'https://myaccount.documents.azure.com:443/',required:true},
+    {name:'database',label:'Database (optional)',type:'text',placeholder:'mydb'}
+  ],authMethods:{
+    'key':{label:'Account Key',fields:[
+      {name:'key',label:'Primary Key',type:'password',required:true}
+    ]},
+    'aad':{label:'Azure Active Directory',fields:[],note:'⚠️ Azure AD authentication coming soon. Please use Account Key.'}
+  }}
 };
 
-var fallbackTimer = setTimeout(function() {
-  if (!monacoEditorEngine) {
-    document.getElementById('monacoContainer').innerHTML = '<textarea id="fallbackTextBox" class="fallback-input-box" placeholder="Write your SQL statements directly here..."></textarea>';
-    safeSetValue('-- Write your SQL query here\nSELECT * FROM information_schema.tables LIMIT 10;');
-    showToast('Editor Fallback', 'Cloud Monaco assets slow to resolve. Native input module activated.', 'info');
-  }
-}, 7000);
-
-try {
-  require.config({paths:{'vs':'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs'}});
-  require(['vs/editor/editor.main'], function(){
-    clearTimeout(fallbackTimer);
-    
-    monaco.languages.registerCompletionItemProvider('sql', {
-      triggerCharacters: ['.', ' '],
-      provideCompletionItems: function(model, position) {
-        var suggestions = [];
-        var textUntilPosition = model.getValueInRange({
-          startLineNumber: 1, startColumn: 1, 
-          endLineNumber: position.lineNumber, endColumn: position.column
-        });
-        
-        var words = textUntilPosition.trim().split(/[\s,]+/);
-        var lastWord = words[words.length - 1] || '';
-        
-        if (lastWord.includes('.')) {
-          var tableNamePart = lastWord.split('.')[0].replace(/["']/g, '');
-          if (currentConnection && currentConnection.tables) {
-            var targetTable = currentConnection.tables.find(function(t) { return t.name === tableNamePart; });
-            if (targetTable && targetTable.columns) {
-              targetTable.columns.forEach(function(col) {
-                suggestions.push({
-                  label: col.name,
-                  kind: monaco.languages.CompletionItemKind.Field,
-                  detail: col.type || 'Column',
-                  insertText: col.name
-                });
-              });
-            }
-          }
-        } else {
-          if (currentConnection && currentConnection.tables) {
-            currentConnection.tables.forEach(function(tbl) {
-              suggestions.push({
-                label: tbl.name,
-                kind: monaco.languages.CompletionItemKind.Class,
-                detail: 'Database Table',
-                insertText: tbl.name
-              });
-            });
-          }
-          
-          var keywords = ['SELECT', 'FROM', 'WHERE', 'JOIN', 'LEFT JOIN', 'GROUP BY', 'ORDER BY', 'LIMIT', 'INSERT', 'UPDATE', 'DELETE'];
-          keywords.forEach(function(kw) {
-            suggestions.push({
-              label: kw,
-              kind: monaco.languages.CompletionItemKind.Keyword,
-              insertText: kw
-            });
-          });
-        }
-        return { suggestions: suggestions };
-      }
-    });
-
-    var currentGlobalTheme = document.documentElement.getAttribute('data-theme') || 'dark';
-    monacoEditor = monaco.editor.create(document.getElementById('monacoContainer'),{
-      value:'-- Write your SQL query here\nSELECT * FROM information_schema.tables LIMIT 10;',
-      language:'sql',
-      theme: currentGlobalTheme === 'dark' ? 'vs-dark' : 'vs',
-      fontSize:14,
-      fontFamily:'JetBrains Mono, monospace',
-      minimap:{enabled:false},
-      scrollBeyondLastLine:false,
-      automaticLayout:true,
-      padding:{top:16},
-      lineNumbers:'on',
-      roundedSelection:true,
-      renderLineHighlight:'all',
-      suggestOnTriggerCharacters:true,
-      quickSuggestions: { other: true, comments: false, strings: false }
-    });
-    monacoEditorEngine = true;
+// ========== MONACO EDITOR ==========
+require.config({paths:{'vs':'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs'}});
+require(['vs/editor/editor.main'],function(){
+  monacoEditor = monaco.editor.create(document.getElementById('monacoContainer'),{
+    value:'-- Write your SQL query here\nSELECT * FROM information_schema.tables LIMIT 10;',
+    language:'sql',
+    theme:'vs-dark',
+    fontSize:14,
+    fontFamily:'JetBrains Mono, monospace',
+    minimap:{enabled:false},
+    scrollBeyondLastLine:false,
+    automaticLayout:true,
+    padding:{top:16},
+    lineNumbers:'on',
+    roundedSelection:true,
+    renderLineHighlight:'all',
+    suggestOnTriggerCharacters:true,
+    quickSuggestions:true
   });
-} catch(err) {
-  console.error("Monaco core assembly failed:", err);
+});
+
+// ========== AUTH ==========
+async function initAuth(){
+  try{
+    var sess = await sb.auth.getSession();
+    var user = sess.data.session ? sess.data.session.user : null;
+    if(user){
+      var name = user.user_metadata && user.user_metadata.full_name ? user.user_metadata.full_name : user.email;
+      var initials = name.split(' ').map(function(n){return n[0]}).join('').substring(0,2).toUpperCase();
+      document.getElementById('userName').textContent = name;
+      document.getElementById('userAvatar').textContent = initials;
+      document.getElementById('userPill').style.display = 'flex';
+      document.getElementById('logoutBtn').style.display = 'inline-flex';
+    }
+    sb.auth.onAuthStateChange(function(event, session){
+      if(event === 'SIGNED_OUT') window.location.reload();
+    });
+  }catch(err){console.error('Auth error:',err)}
+}
+async function handleLogout(){
+  await sb.auth.signOut();
+  window.location.reload();
 }
 
+// ========== UI FUNCTIONS ==========
 function openConnectPanel(){
   document.getElementById('connectOverlay').classList.add('active');
   document.getElementById('connectPanel').classList.add('active');
@@ -773,7 +806,7 @@ function closeSaveModal(){
 }
 function downloadQuery(){
   var name = document.getElementById('queryFileName').value || 'query.sql';
-  var content = safeGetValue();
+  var content = monacoEditor ? monacoEditor.getValue() : '';
   var blob = new Blob([content],{type:'text/plain'});
   var url = URL.createObjectURL(blob);
   var a = document.createElement('a');
@@ -785,12 +818,13 @@ function downloadQuery(){
   showToast('Query Saved', name + ' downloaded to your system', 'success');
 }
 
+// ========== TOAST ==========
 function showToast(title, message, type){
   type = type || 'info';
   var icons = {
-    info:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
-    success:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
-    error:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+    info:'<<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
+    success:'<<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+    error:'<<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
   };
   var toast = document.createElement('div');
   toast.className = 'toast ' + type;
@@ -804,7 +838,47 @@ function showToast(title, message, type){
   },5000);
 }
 
+// ========== CREDENTIAL FORMS ==========
 var currentDbType = null;
+function renderField(f, prefix){
+  prefix = prefix || 'field_';
+  if(f.type === 'checkbox'){
+    return '<div class="form-group"><label class="checkbox"><input type="checkbox" id="'+prefix+f.name+'"'+(f.value?' checked':'')+'> '+f.label+'</label></div>';
+  } else if(f.type === 'select'){
+    var opts = f.options.map(function(o){return '<option value="'+o+'"'+(o===f.value?' selected':'')+'>'+o+'</option>'}).join('');
+    return '<div class="form-group"><label>'+f.label+'</label><select id="'+prefix+f.name+'">'+opts+'</select></div>';
+  } else if(f.type === 'textarea'){
+    return '<div class="form-group"><label>'+f.label+(f.required?' *':'')+'</label><textarea id="'+prefix+f.name+'" placeholder="'+(f.placeholder||'')+'" rows="'+(f.rows||3)+'">'+(f.value||'')+'</textarea></div>';
+  } else {
+    return '<div class="form-group"><label>'+f.label+(f.required?' *':'')+'</label><input type="'+f.type+'" id="'+prefix+f.name+'" placeholder="'+(f.placeholder||'')+'" value="'+(f.value||'')+'"'+(f.required?' required':'')+'></div>';
+  }
+}
+
+function renderAuthFields(){
+  var schema = dbSchemas[currentDbType];
+  if(!schema || !schema.authMethods) return;
+  var sel = document.getElementById('auth_method');
+  var method = sel ? sel.value : Object.keys(schema.authMethods)[0];
+  var authCfg = schema.authMethods[method];
+  var html = '';
+  if(authCfg.note){
+    html += '<div style="padding:12px 14px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:var(--radius);color:#f59e0b;font-size:0.85rem;margin-bottom:16px">'+authCfg.note+'</div>';
+  }
+  authCfg.fields.forEach(function(f){
+    html += renderField(f, 'auth_');
+  });
+  document.getElementById('authFieldsContainer').innerHTML = html;
+
+  // Disable buttons if auth method is unsupported (has note + no fields)
+  var unsupported = authCfg.note && authCfg.fields.length === 0;
+  var testBtn = document.querySelector('.connect-actions button:first-child');
+  var saveBtn = document.querySelector('.connect-actions button.btn-primary');
+  if(testBtn) testBtn.disabled = unsupported;
+  if(saveBtn) saveBtn.disabled = unsupported;
+  if(testBtn) testBtn.style.opacity = unsupported ? '0.5' : '1';
+  if(saveBtn) saveBtn.style.opacity = unsupported ? '0.5' : '1';
+}
+
 function showCredForm(dbType){
   currentDbType = dbType;
   var schema = dbSchemas[dbType];
@@ -812,34 +886,85 @@ function showCredForm(dbType){
   document.querySelectorAll('.tab-content').forEach(function(t){t.style.display='none'});
   document.getElementById('credForm').classList.add('active');
   document.getElementById('credTitle').textContent = 'Connect to ' + schema.title;
-  
+
   var html = '';
-  schema.fields.forEach(function(f){
-    if(f.type === 'textarea'){
-      html += '<div class="form-group"><label>'+f.label+(f.required?' *':'')+'</label><textarea id="field_'+f.name+'" placeholder="'+(f.placeholder||'')+'" rows="'+(f.rows||3)+'"></textarea></div>';
-    } else {
-      html += '<div class="form-group"><label>'+f.label+(f.required?' *':'')+'</label><input type="'+f.type+'" id="field_'+f.name+'" placeholder="'+(f.placeholder||'')+'" value="'+(f.value||'')+'"'+(f.required?' required':'')+'></div>';
-    }
+
+  // Render base fields (server, database, port)
+  (schema.baseFields || []).forEach(function(f){
+    html += renderField(f);
   });
+
+  // Render auth method dropdown
+  var authMethods = schema.authMethods || {};
+  var methodKeys = Object.keys(authMethods);
+  if(methodKeys.length > 1){
+    html += '<div class="form-group"><label>Authentication Method</label><select id="auth_method" onchange="renderAuthFields()">';
+    methodKeys.forEach(function(k){
+      html += '<option value="'+k+'">'+authMethods[k].label+'</option>';
+    });
+    html += '</select></div>';
+  } else if(methodKeys.length === 1){
+    html += '<input type="hidden" id="auth_method" value="'+methodKeys[0]+'">';
+  }
+
+  // Container for conditional auth fields
+  html += '<div id="authFieldsContainer"></div>';
+
+  // Render extras (SSL toggle etc.)
+  (schema.extras || []).forEach(function(f){
+    html += renderField(f);
+  });
+
+  html += '<div class="form-group"><label>Connection Name (for saving)</label><input type="text" id="conn_name" placeholder="My Production DB"></div>';
   document.getElementById('credFields').innerHTML = html;
   document.getElementById('testStatus').className = 'test-status';
   document.getElementById('testStatus').innerHTML = '';
+
+  // Render initial auth fields
+  renderAuthFields();
 }
 
 function collectCredentials(){
   var schema = dbSchemas[currentDbType];
   var creds = {};
   var missing = [];
-  schema.fields.forEach(function(f){
-    var el = document.getElementById('field_'+f.name);
+
+  function collectField(f, prefix){
+    prefix = prefix || 'field_';
+    var el = document.getElementById(prefix+f.name);
     if(!el) return;
-    creds[f.name] = el.value.trim(); 
-    if(f.required && !creds[f.name]) missing.push(f.label);
-  });
-  if(missing.length > 0){showToast('Missing Parameters','Please resolve: '+missing.join(', '),'error'); return null}
+    if(f.type === 'checkbox'){
+      creds[f.name] = el.checked;
+    } else {
+      creds[f.name] = el.value.trim();
+      if(f.required && !creds[f.name]) missing.push(f.label);
+    }
+  }
+
+  // Base fields
+  (schema.baseFields || []).forEach(function(f){ collectField(f); });
+
+  // Auth method
+  var methodEl = document.getElementById('auth_method');
+  var method = methodEl ? methodEl.value : Object.keys(schema.authMethods || {})[0];
+  creds._auth_method = method;
+  var authCfg = (schema.authMethods || {})[method];
+  if(authCfg && authCfg.note && authCfg.fields.length === 0){
+    showToast('Unsupported','This authentication method is not yet supported. Please choose another.','error');
+    return null;
+  }
+  if(authCfg){
+    authCfg.fields.forEach(function(f){ collectField(f, 'auth_'); });
+  }
+
+  // Extras
+  (schema.extras || []).forEach(function(f){ collectField(f); });
+
+  if(missing.length > 0){showToast('Missing Fields','Please fill: '+missing.join(', '),'error'); return null;}
   return creds;
 }
 
+// ========== CONNECTION TEST & SAVE ==========
 async function testConnection(){
   var status = document.getElementById('testStatus');
   var spinner = document.getElementById('testSpinner');
@@ -847,26 +972,19 @@ async function testConnection(){
   var creds = collectCredentials();
   if(!creds) return;
   spinner.style.display = 'inline-block';
-  btnText.textContent = 'Verifying...';
+  btnText.textContent = 'Testing...';
   status.className = 'test-status loading show';
-  status.innerHTML = '<span class="spinner"></span> Executing environment network handshake...';
+  status.innerHTML = '<span class="spinner"></span> Testing connection...';
   try{
     var res = await fetch(API_BASE+'/api/test-connection',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:currentDbType,credentials:creds})});
-
-    var contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      var rawText = await res.text();
-      throw new Error('Server returned non-JSON response (status ' + res.status + '). Backend may be unavailable.');
-    }
-
     var data = await res.json();
     if(data.success){
       status.className = 'test-status success show';
-      status.innerHTML = '&#9989; Connection endpoint authenticated! '+(data.version||'');
-    } else {throw new Error(data.error||'Handshake refused')}
+      status.innerHTML = '&#9989; Connection successful! '+(data.version||'');
+    } else {throw new Error(data.error||'Unknown error')}
   }catch(err){
     status.className = 'test-status error show';
-    status.innerHTML = '&#10060; '+(err.message || 'Connection test failed');
+    status.innerHTML = '&#10060; '+err.message;
   }
   spinner.style.display = 'none';
   btnText.textContent = 'Test Connection';
@@ -877,7 +995,7 @@ async function saveAndConnect(){
   var btnText = document.getElementById('saveText');
   var creds = collectCredentials();
   if(!creds) return;
-  var connName = dbSchemas[currentDbType].title + ' Server';
+  var connName = document.getElementById('conn_name').value || (dbSchemas[currentDbType].title+' Connection');
   spinner.style.display = 'inline-block';
   btnText.textContent = 'Connecting...';
   try{
@@ -886,26 +1004,19 @@ async function saveAndConnect(){
       await sb.from('connections').insert({user_id:user.data.user.id,name:connName,type:currentDbType,credentials:creds,created_at:new Date().toISOString()});
     }
     var res = await fetch(API_BASE+'/api/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:currentDbType,credentials:creds})});
-
-    var contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      var rawText = await res.text();
-      throw new Error('Server returned non-JSON response (status ' + res.status + '). Backend may be unavailable.');
-    }
-
     var data = await res.json();
     if(data.success){
-      currentConnection = {type:currentDbType,name:connName,session:data.session_id,session_id:data.session_id,tables:data.schema||[]};
+      currentConnection = {type:currentDbType,name:connName,session:data.session_id};
       updateConnectionStatus(true,connName,currentDbType);
       closeConnectPanel();
       loadSchema();
-      showToast('Connected','Environment active on current session','success');
-    } else {throw new Error(data.error || 'Connection failed')}
+      showToast('Connected','Successfully connected to '+connName,'success');
+    } else {throw new Error(data.error)}
   }catch(err){
-    showToast('Connection Refused',err.message || 'Unknown error','error');
+    showToast('Connection Failed',err.message,'error');
   }
   spinner.style.display = 'none';
-  btnText.textContent = 'Connect to Server';
+  btnText.textContent = 'Connect & Save';
 }
 
 function updateConnectionStatus(online,name,type){
@@ -926,19 +1037,20 @@ function updateConnectionStatus(online,name,type){
   }
 }
 
+// ========== SAVED CONNECTIONS ==========
 async function loadSavedConnections(){
   var list = document.getElementById('savedList');
   try{
     var user = await sb.auth.getUser();
     if(!user.data.user){
-      list.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="icon">&#128273;</div><h3>Sign in to check environments</h3></div>';
+      list.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="icon">&#128273;</div><h3>Sign in to save connections</h3></div>';
       return;
     }
     var result = await sb.from('connections').select('*').eq('user_id',user.data.user.id).order('created_at',{ascending:false});
     if(result.error) throw result.error;
     var data = result.data;
     if(!data || data.length === 0){
-      list.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="icon">&#128193;</div><h3>No Environments</h3><p>Your saved server authentications appear here</p></div>';
+      list.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="icon">&#128193;</div><h3>No Saved Connections</h3><p>Your saved database connections will appear here</p></div>';
       return;
     }
     var icons = {postgresql:'&#128011;',mysql:'&#128024;',sqlserver:'&#128225;',oracle:'&#128302;',db2:'&#128190;',sqlite:'&#128230;',snowflake:'&#10052;',bigquery:'&#128270;',redshift:'&#9650;',databricks:'&#9889;',mongodb:'&#127811;',cassandra:'&#9733;',dynamodb:'&#9632;',cosmosdb:'&#9733;'};
@@ -951,7 +1063,7 @@ async function loadSavedConnections(){
     }).join('');
   }catch(err){
     console.error(err);
-    list.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="icon">&#9888;</div><h3>Ecosystem processing error</h3></div>';
+    list.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="icon">&#9888;</div><h3>Error loading connections</h3></div>';
   }
 }
 
@@ -960,35 +1072,26 @@ async function connectSaved(id){
     var result = await sb.from('connections').select('*').eq('id',id).single();
     if(result.error) throw result.error;
     var data = result.data;
+    currentConnection = {type:data.type,name:data.name,id:data.id};
     var res = await fetch(API_BASE+'/api/connect',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type:data.type,credentials:data.credentials})});
-
-    var contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      var rawText = await res.text();
-      throw new Error('Server returned non-JSON response (status ' + res.status + '). Backend may be unavailable.');
-    }
-
     var result2 = await res.json();
     if(result2.success){
-      currentConnection = {type:data.type,name:data.name,id:data.id,session:result2.session_id,session_id:result2.session_id,tables:result2.schema||[]};
       updateConnectionStatus(true,data.name,data.type);
       closeConnectPanel();
       loadSchema();
-      showToast('Connected','Re-established session context','success');
-    } else {
-      throw new Error(result2.error || 'Connection failed');
+      showToast('Connected','Reconnected to '+data.name,'success');
     }
   }catch(err){
-    showToast('Handshake Failed',err.message || 'Unknown error','error');
+    showToast('Connection Failed',err.message,'error');
   }
 }
 
 async function deleteConnection(id){
-  if(!confirm('Delete this environment token reference?')) return;
+  if(!confirm('Delete this saved connection?')) return;
   try{
     var result = await sb.from('connections').delete().eq('id',id);
     if(result.error) throw result.error;
-    showToast('Deleted','Token removed','success');
+    showToast('Deleted','Connection removed','success');
     loadSavedConnections();
   }catch(err){
     showToast('Error',err.message,'error');
@@ -1006,18 +1109,18 @@ function connectFile(type){
     formData.append('file',file);
     formData.append('type',type);
     try{
-      showToast('Uploading','Processing file storage array...','info');
+      showToast('Uploading','Uploading '+file.name+'...','info');
       var res = await fetch(API_BASE+'/api/upload-file',{method:'POST',body:formData});
       var data = await res.json();
       if(data.success){
-        currentConnection = {type:'file',name:file.name,format:type,tables:data.tables,session:data.session_id,session_id:data.session_id,table_name:data.tables[0]?data.tables[0].name:''};
+        currentConnection = {type:'file',name:file.name,format:type,tables:data.tables};
         updateConnectionStatus(true,file.name,type.toUpperCase());
         closeConnectPanel();
         renderFileSchema(data.tables);
-        showToast('File Processed',file.name+' ready','success');
+        showToast('File Loaded',file.name+' loaded successfully','success');
       }else{throw new Error(data.error)}
     }catch(err){
-      showToast('Processing Failed',err.message,'error');
+      showToast('Upload Failed',err.message,'error');
     }
   };
   input.click();
@@ -1025,10 +1128,10 @@ function connectFile(type){
 
 async function connectCloud(provider){
   var configs = {
-    s3:{title:'Amazon S3 Bucket',fields:[{name:'bucket',label:'Target S3 Bucket Name',req:true},{name:'region',label:'AWS Infrastructure Region',req:true},{name:'access_key',label:'IAM Access Key ID',req:true},{name:'secret_key',label:'IAM Secret Secret Management Key',type:'password',req:true}]},
-    gcs:{title:'Google Cloud Storage Bucket',fields:[{name:'bucket',label:'Target Storage Bucket Name',req:true},{name:'project',label:'GCP Core Project Identifier Name',req:true},{name:'credentials_json',label:'GCP Identity Account Service Key JSON',type:'textarea',rows:4,req:true}]},
-    azure:{title:'Azure Blob Storage Container',fields:[{name:'account',label:'Target Azure Storage Account Name',req:true},{name:'container',label:'Blob Destination Container Name',req:true},{name:'sas_token',label:'SAS Access Authorization Token',type:'password',req:true}]},
-    snowflake_stage:{title:'Snowflake Internal Engine Stage',fields:[{name:'account',label:'Snowflake Complete Identifier Endpoint',req:true},{name:'username',label:'Database Profile User',req:true},{name:'password',label:'Password',type:'password',req:true},{name:'stage',label:'Target Infrastructure Stage Reference Name',req:true}]}
+    s3:{title:'Amazon S3',fields:[{name:'bucket',label:'Bucket Name',req:true},{name:'region',label:'AWS Region',req:true},{name:'access_key',label:'Access Key ID',req:true},{name:'secret_key',label:'Secret Access Key',type:'password',req:true},{name:'prefix',label:'File Prefix/Path'}]},
+    gcs:{title:'Google Cloud Storage',fields:[{name:'bucket',label:'Bucket Name',req:true},{name:'project',label:'Project ID',req:true},{name:'credentials_json',label:'Service Account JSON',type:'textarea',rows:4,req:true}]},
+    azure:{title:'Azure Blob Storage',fields:[{name:'account',label:'Storage Account',req:true},{name:'container',label:'Container Name',req:true},{name:'sas_token',label:'SAS Token',type:'password',req:true}]},
+    snowflake_stage:{title:'Snowflake Stage',fields:[{name:'account',label:'Account',req:true},{name:'username',label:'Username',req:true},{name:'password',label:'Password',type:'password',req:true},{name:'warehouse',label:'Warehouse',req:true},{name:'database',label:'Database',req:true},{name:'stage',label:'Stage Name',req:true}]}
   };
   var cfg = configs[provider];
   if(!cfg) return;
@@ -1036,12 +1139,12 @@ async function connectCloud(provider){
   var html = '<div class="cred-header"><button class="back-btn" onclick="backToSources()">&larr; Back</button><h3>Connect to '+cfg.title+'</h3></div>';
   cfg.fields.forEach(function(f){
     if(f.type==='textarea'){
-      html += '<div class="form-group"><label>'+f.label+(f.req?' *':'')+'</label><textarea id="cloud_'+f.name+'" rows="'+(f.rows||3)+'"></textarea></div>';
+      html += '<div class="form-group"><label>'+f.label+(f.req?' *':'')+'</label><textarea id="cloud_'+f.name+'" rows="'+(f.rows||3)+'" style="width:100%;padding:10px 14px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:inherit;font-size:0.9rem;resize:vertical;outline:none"></textarea></div>';
     }else{
-      html += '<div class="form-group"><label>'+f.label+(f.req?' *':'')+'</label><input type="'+(f.type||'text')+'" id="cloud_'+f.name+'">';
+      html += '<div class="form-group"><label>'+f.label+(f.req?' *':'')+'</label><input type="'+(f.type||'text')+'" id="cloud_'+f.name+'" placeholder="'+(f.placeholder||'')+'"></div>';
     }
   });
-  html += '<div class="connect-actions"><button class="btn btn-ghost" onclick="testCloudConnection(\''+provider+'\')">Test Connection</button><button class="btn btn-primary" onclick="saveCloudConnection(\''+provider+'\')">Connect Target</button></div>';
+  html += '<div class="connect-actions"><button class="btn btn-ghost" onclick="testCloudConnection(\''+provider+'\')">Test Connection</button><button class="btn btn-primary" onclick="saveCloudConnection(\''+provider+'\')">Connect</button></div>';
 
   document.querySelectorAll('.tab-content').forEach(function(t){t.style.display='none'});
   var credForm = document.getElementById('credForm');
@@ -1052,15 +1155,15 @@ async function connectCloud(provider){
 }
 
 function collectCloudCreds(provider){
-  var configs = {s3:['bucket','region','access_key','secret_key'],gcs:['bucket','project','credentials_json'],azure:['account','container','sas_token'],snowflake_stage:['account','username','password','stage']};
+  var configs = {s3:['bucket','region','access_key','secret_key','prefix'],gcs:['bucket','project','credentials_json'],azure:['account','container','sas_token'],snowflake_stage:['account','username','password','warehouse','database','stage']};
   var fields = configs[provider];
   var creds = {provider:provider};
   var missing = [];
   fields.forEach(function(f){
     var el = document.getElementById('cloud_'+f);
-    if(el){creds[f] = el.value.trim(); if(!creds[f]) missing.push(f)}
+    if(el){creds[f] = el.value.trim(); if(!creds[f] && f!=='prefix') missing.push(f)}
   });
-  if(missing.length>0){showToast('Parameters Omitted','Please fulfill cloud parameters','error'); return null}
+  if(missing.length>0){showToast('Missing Fields','Please fill: '+missing.join(', '),'error'); return null}
   return creds;
 }
 
@@ -1069,20 +1172,13 @@ async function testCloudConnection(provider){
   var creds = collectCloudCreds(provider);
   if(!creds) return;
   status.className = 'test-status loading show';
-  status.innerHTML = '<span class="spinner"></span> Confirming cloud routing rules...';
+  status.innerHTML = '<span class="spinner"></span> Testing...';
   try{
-    var res = await fetch(API_BASE+'/api/test-cloud',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({creds})});
-
-    var contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      var rawText = await res.text();
-      throw new Error('Server returned non-JSON response (status ' + res.status + '). Backend may be unavailable.');
-    }
-
+    var res = await fetch(API_BASE+'/api/test-cloud',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(creds)});
     var data = await res.json();
     if(data.success){
       status.className = 'test-status success show';
-      status.innerHTML = '&#9989; Handshake successful!';
+      status.innerHTML = '&#9989; Connection successful!';
     }else{throw new Error(data.error)}
   }catch(err){
     status.className = 'test-status error show';
@@ -1094,54 +1190,39 @@ async function saveCloudConnection(provider){
   var creds = collectCloudCreds(provider);
   if(!creds) return;
   try{
-    var res = await fetch(API_BASE+'/api/connect-cloud',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({creds})});
-
-    var contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      var rawText = await res.text();
-      throw new Error('Server returned non-JSON response (status ' + res.status + '). Backend may be unavailable.');
-    }
-
+    var res = await fetch(API_BASE+'/api/connect-cloud',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(creds)});
     var data = await res.json();
     if(data.success){
-      currentConnection = {type:'cloud',provider:provider,name:creds.bucket||creds.account||creds.stage,tables:data.tables,session:data.session_id,session_id:data.session_id,table_name:data.tables[0]?data.tables[0].name:''};
+      currentConnection = {type:'cloud',provider:provider,name:creds.bucket||creds.account||creds.stage,tables:data.tables};
       updateConnectionStatus(true,currentConnection.name,provider.toUpperCase());
       closeConnectPanel();
       renderFileSchema(data.tables);
-      showToast('Connected','Cloud structure mapped successfully','success');
+      showToast('Connected','Cloud storage connected','success');
     }else{throw new Error(data.error)}
   }catch(err){
-    showToast('Handshake Terminated',err.message,'error');
+    showToast('Connection Failed',err.message,'error');
   }
 }
 
 async function loadSchema(){
   if(!currentConnection) return;
   var tree = document.getElementById('schemaTree');
-  tree.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-dim)"><span class="spinner"></span><br>Mapping runtime data catalogs...</div>';
+  tree.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-dim)"><span class="spinner"></span><br>Loading schema...</div>';
   try{
     var res = await fetch(API_BASE+'/api/schema?session='+encodeURIComponent(currentConnection.session||''));
-
-    var contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      var rawText = await res.text();
-      throw new Error('Server returned non-JSON response (status ' + res.status + '). Backend may be unavailable.');
-    }
-
     var data = await res.json();
     if(data.success){
-      currentConnection.tables = data.schema || [];
       renderSchemaTree(data.schema);
-    }else{throw new Error(data.error || 'Schema load failed')}
+    }else{throw new Error(data.error)}
   }catch(err){
-    tree.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="icon">&#9888;</div><h2>Catalog parsing error</h2><p>'+escapeHtml(err.message || 'Unknown error')+'</p></div>';
+    tree.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="icon">&#9888;</div><h3>Schema Error</h3><p>'+escapeHtml(err.message)+'</p></div>';
   }
 }
 
 function renderSchemaTree(schema){
   var tree = document.getElementById('schemaTree');
   if(!schema || schema.length === 0){
-    tree.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="icon">&#128451;</div><h3>No structured objects found</h3></div>';
+    tree.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="icon">&#128451;</div><h3>No Tables Found</h3></div>';
     return;
   }
   var html = '';
@@ -1152,11 +1233,11 @@ function renderSchemaTree(schema){
       html += '<div class="tree-item" onclick="toggleTree(this)" style="padding-left:20px"><span class="tree-icon">&#128193;</span><span>'+escapeHtml(sch.name)+'</span><span class="tree-chevron">&#9654;</span></div>';
       html += '<div class="tree-children">';
       (sch.tables||[]).forEach(function(tbl){
-        html += '<div class="tree-item" onclick="toggleTree(this);selectTable(\''+escapeHtml(db.name)+'\',\''+escapeHtml(sch.name)+'\',\''+escapeHtml(tbl.name)+'\', this)" style="padding-left:40px"><span class="tree-icon">&#128196;</span><span>'+escapeHtml(tbl.name)+'</span><span class="tree-chevron">&#9654;</span></div>';
+        html += '<div class="tree-item" onclick="toggleTree(this);selectTable(\''+escapeHtml(db.name)+'\',\''+escapeHtml(sch.name)+'\',\''+escapeHtml(tbl.name)+'\')" style="padding-left:40px"><span class="tree-icon">&#128196;</span><span>'+escapeHtml(tbl.name)+'</span><span class="tree-chevron">&#9654;</span></div>';
         html += '<div class="tree-children">';
         (tbl.columns||[]).forEach(function(col){
           var typeIcon = col.type && col.type.toLowerCase().includes('int') ? '&#123;' : col.type && (col.type.toLowerCase().includes('char')||col.type.toLowerCase().includes('text')) ? '&#8220;' : col.type && col.type.toLowerCase().includes('date') ? '&#128197;' : col.type && col.type.toLowerCase().includes('bool') ? '&#9744;' : '&#9679;';
-          html += '<div class="tree-item" style="padding-left:60px;font-size:0.8rem;color:var(--text-dim)" title="'+escapeHtml(col.type)+'" onclick="insertColumn(\''+escapeHtml(tbl.name)+'\',\''+escapeHtml(col.name)+'\', this)"><span class="tree-icon">'+typeIcon+'</span><span>'+escapeHtml(col.name)+'</span><span style="margin-left:auto;font-size:0.7rem;opacity:0.6">'+escapeHtml(col.type)+'</span></div>';
+          html += '<div class="tree-item" style="padding-left:60px;font-size:0.8rem;color:var(--text-dim)" title="'+escapeHtml(col.type)+'" onclick="insertColumn(\''+escapeHtml(tbl.name)+'\',\''+escapeHtml(col.name)+'\')"><span class="tree-icon">'+typeIcon+'</span><span>'+escapeHtml(col.name)+'</span><span style="margin-left:auto;font-size:0.7rem;opacity:0.6">'+escapeHtml(col.type)+'</span></div>';
         });
         html += '</div>';
       });
@@ -1170,15 +1251,15 @@ function renderSchemaTree(schema){
 function renderFileSchema(tables){
   var tree = document.getElementById('schemaTree');
   if(!tables || tables.length === 0){
-    tree.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="icon">&#128196;</div><h3>No Records</h3></div>';
+    tree.innerHTML = '<div class="empty-state" style="padding:40px 20px"><div class="icon">&#128196;</div><h3>No Tables</h3></div>';
     return;
   }
   var html = '<div class="tree-item" onclick="toggleTree(this)"><span class="tree-icon">&#128451;</span><span>Files</span><span class="tree-chevron">&#9654;</span></div><div class="tree-children">';
   tables.forEach(function(tbl){
-    html += '<div class="tree-item" onclick="toggleTree(this);selectTable(\'files\',\'default\',\''+escapeHtml(tbl.name)+'\', this)" style="padding-left:20px"><span class="tree-icon">&#128196;</span><span>'+escapeHtml(tbl.name)+'</span><span class="tree-chevron">&#9654;</span></div>';
+    html += '<div class="tree-item" onclick="toggleTree(this);selectTable(\'files\',\'default\',\''+escapeHtml(tbl.name)+'\')" style="padding-left:20px"><span class="tree-icon">&#128196;</span><span>'+escapeHtml(tbl.name)+'</span><span class="tree-chevron">&#9654;</span></div>';
     html += '<div class="tree-children">';
     (tbl.columns||[]).forEach(function(col){
-      html += '<div class="tree-item" style="padding-left:40px;font-size:0.8rem;color:var(--text-dim)" onclick="insertColumn(\''+escapeHtml(tbl.name)+'\',\''+escapeHtml(col.name)+'\', this)"><span class="tree-icon">&#9679;</span><span>'+escapeHtml(col.name)+'</span><span style="margin-left:auto;font-size:0.7rem;opacity:0.6">'+escapeHtml(col.type)+'</span></div>';
+      html += '<div class="tree-item" style="padding-left:40px;font-size:0.8rem;color:var(--text-dim)" onclick="insertColumn(\''+escapeHtml(tbl.name)+'\',\''+escapeHtml(col.name)+'\')"><span class="tree-icon">&#9679;</span><span>'+escapeHtml(col.name)+'</span><span style="margin-left:auto;font-size:0.7rem;opacity:0.6">'+escapeHtml(col.type)+'</span></div>';
     });
     html += '</div>';
   });
@@ -1186,28 +1267,30 @@ function renderFileSchema(tables){
   tree.innerHTML = html;
 }
 
-function toggleTree(targetEl){
-  targetEl.classList.toggle('active');
-  var chevron = targetEl.querySelector('.tree-chevron');
+function toggleTree(el){
+  el.classList.toggle('active');
+  var chevron = el.querySelector('.tree-chevron');
   if(chevron) chevron.classList.toggle('expanded');
-  var children = targetEl.nextElementSibling;
+  var children = el.nextElementSibling;
   if(children && children.classList.contains('tree-children')){
     children.classList.toggle('expanded');
   }
 }
 
-function selectTable(db,schema,table, elementItem){
+function selectTable(db,schema,table){
+  if(!monacoEditor) return;
   var sql = 'SELECT * FROM ';
   if(db && db !== 'files') sql += escapeIdentifier(db)+'.';
   if(schema && schema !== 'default') sql += escapeIdentifier(schema)+'.';
   sql += escapeIdentifier(table)+' LIMIT 100;';
-  safeSetValue(sql);
-  document.querySelectorAll('.schema-tree .tree-item').forEach(function(item){item.classList.remove('active')});
-  if(elementItem) elementItem.classList.add('active');
+  monacoEditor.setValue(sql);
+  document.querySelectorAll('.tree-item').forEach(function(item){item.classList.remove('active')});
+  event.currentTarget.classList.add('active');
 }
 
-function insertColumn(table,column, elementItem){
-  var current = safeGetValue();
+function insertColumn(table,column){
+  if(!monacoEditor) return;
+  var current = monacoEditor.getValue();
   var insert = escapeIdentifier(column);
   if(current.includes('SELECT * FROM')){
     current = current.replace('SELECT *', 'SELECT '+insert+', *');
@@ -1217,7 +1300,7 @@ function insertColumn(table,column, elementItem){
       current = current.slice(0,idx) + insert + ', ' + current.slice(idx);
     }
   }
-  safeSetValue(current);
+  monacoEditor.setValue(current);
 }
 
 function escapeIdentifier(name){
@@ -1226,26 +1309,19 @@ function escapeIdentifier(name){
 }
 
 async function executeQuery(){
-  if(!currentConnection){showToast('Session Scope Missing','Establish engine instance handshake context first','error'); return}
-  var sql = safeGetValue().trim();
-  if(!sql){showToast('Empty Command Input','Specify an absolute command query stream string','error'); return}
+  if(!currentConnection){showToast('No Connection','Please connect to a database first','error'); return}
+  if(!monacoEditor) return;
+  var sql = monacoEditor.getValue().trim();
+  if(!sql){showToast('Empty Query','Please enter a SQL query','error'); return}
   currentQuery = sql;
   var btn = document.getElementById('runBtn');
   var originalText = btn.innerHTML;
-  btn.innerHTML = '<span class="spinner"></span> Processing...';
+  btn.innerHTML = '<span class="spinner"></span> Running...';
   btn.disabled = true;
-  document.getElementById('resultsContent').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-dim)"><span class="spinner"></span><br>Processing statement transaction context...</div>';
+  document.getElementById('resultsContent').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-dim)"><span class="spinner"></span><br>Executing query...</div>';
   var startTime = performance.now();
-  
-  var payload = { query: sql };
-  if (currentConnection.type === 'file') {
-    payload.session_id = currentConnection.session_id || currentConnection.session || '';
-  } else {
-    payload.session = currentConnection.session || currentConnection.session_id || '';
-  }
-
   try{
-    var res = await fetch(API_BASE+'/api/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    var res = await fetch(API_BASE+'/api/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:currentConnection.session||'',query:sql})});
     var data = await res.json();
     var elapsed = ((performance.now()-startTime)/1000).toFixed(2);
     if(data.success){
@@ -1253,14 +1329,14 @@ async function executeQuery(){
       renderResults(queryResults,data.columns||[]);
       document.getElementById('queryTime').textContent = elapsed+'s';
       document.getElementById('rowCount').textContent = queryResults.length+' rows';
-      showToast('Execution Finished',queryResults.length+' rows parsed successfully inside '+elapsed+'s','success');
+      showToast('Query Complete',queryResults.length+' rows in '+elapsed+'s','success');
       document.getElementById('resultsArea').classList.remove('collapsed');
     }else{throw new Error(data.error)}
   }catch(err){
-    document.getElementById('resultsContent').innerHTML = '<div class="empty-state" style="height:200px"><div class="icon">&#9888;</div><h3>Statement execution failure</h3><p style="color:var(--danger);font-family:var(--font-mono);font-size:0.8rem;max-width:90%;word-break:break-word">'+escapeHtml(err.message)+'</p></div>';
+    document.getElementById('resultsContent').innerHTML = '<div class="empty-state" style="height:200px"><div class="icon">&#9888;</div><h3>Query Error</h3><p style="color:var(--danger);font-family:var(--font-mono);font-size:0.8rem;max-width:90%;word-break:break-word">'+escapeHtml(err.message)+'</p></div>';
     document.getElementById('queryTime').textContent = '';
     document.getElementById('rowCount').textContent = '';
-    showToast('Transaction Fault',err.message,'error');
+    showToast('Query Failed',err.message,'error');
   }
   btn.innerHTML = originalText;
   btn.disabled = false;
@@ -1269,7 +1345,7 @@ async function executeQuery(){
 function renderResults(rows,columns){
   var container = document.getElementById('resultsContent');
   if(!rows || rows.length === 0){
-    container.innerHTML = '<div class="empty-state" style="height:200px"><div class="icon">&#128202;</div><h3>Empty record array response</h3><p>Transaction dataset context returned 0 indices</p></div>';
+    container.innerHTML = '<div class="empty-state" style="height:200px"><div class="icon">&#128202;</div><h3>No Results</h3><p>Query returned 0 rows</p></div>';
     document.getElementById('pagination').style.display = 'none';
     return;
   }
@@ -1298,14 +1374,14 @@ function renderResults(rows,columns){
 }
 
 function formatSQL(){
-  var sql = safeGetValue();
-  if(!sql) return;
+  if(!monacoEditor) return;
+  var sql = monacoEditor.getValue();
   var keywords = ['SELECT','FROM','WHERE','JOIN','LEFT','RIGHT','INNER','OUTER','ON','GROUP','BY','ORDER','HAVING','LIMIT','OFFSET','UNION','ALL','INSERT','INTO','VALUES','UPDATE','SET','DELETE','CREATE','TABLE','ALTER','DROP','INDEX','VIEW','DATABASE','SCHEMA','AND','OR','NOT','NULL','IS','IN','BETWEEN','LIKE','EXISTS','CASE','WHEN','THEN','ELSE','END','AS','DISTINCT','COUNT','SUM','AVG','MIN','MAX'];
   var formatted = sql.replace(/\b('+keywords.join('|')+')\b/gi,function(m){return m.toUpperCase()});
   formatted = formatted.replace(/[ \t]*,[ \t]*/g,', ');
   formatted = formatted.replace(/[ \t]*;[ \t]*/g,';');
-  safeSetValue(formatted);
-  showToast('Formatted','Lexer updates applied','success');
+  monacoEditor.setValue(formatted);
+  showToast('Formatted','SQL keywords capitalized','success');
 }
 
 function escapeHtml(text){
@@ -1314,10 +1390,10 @@ function escapeHtml(text){
 }
 
 async function exportResults(format){
-  if(!queryResults || queryResults.length === 0){showToast('Dataset Null','Generate transaction metrics response context first','error'); return}
+  if(!queryResults || queryResults.length === 0){showToast('No Data','Run a query first','error'); return}
   try{
     var res = await fetch(API_BASE+'/api/export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({format:format,results:queryResults,query:currentQuery})});
-    if(!res.ok) throw new Error('Data export conversion error');
+    if(!res.ok) throw new Error('Export failed');
     var blob = await res.blob();
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
@@ -1325,9 +1401,9 @@ async function exportResults(format){
     a.download = 'export_'+new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.'+format;
     a.click();
     URL.revokeObjectURL(url);
-    showToast('Export Dispatching','Client file storage downloads routing active','success');
+    showToast('Exported','Download started','success');
   }catch(err){
-    showToast('Conversion Fault',err.message,'error');
+    showToast('Export Failed',err.message,'error');
   }
 }
 
@@ -1340,9 +1416,23 @@ async function sendAIQuery(){
   input.value = '';
   messages.scrollTop = messages.scrollHeight;
 
+  // Build real schema context from current connection
   var schemaContext = '';
   if(currentConnection){
-    schemaContext = 'Connected to: '+currentConnection.name+' ('+currentConnection.type+'). ';
+    schemaContext = 'Connection: '+currentConnection.name+' ('+currentConnection.type+'). ';
+    if(currentConnection.tables && currentConnection.tables.length > 0){
+      schemaContext += 'Available tables:\n';
+      currentConnection.tables.forEach(function(tbl){
+        var tableName = tbl.name || tbl;
+        schemaContext += '- ' + tableName;
+        if(tbl.columns && tbl.columns.length > 0){
+          var colNames = tbl.columns.map(function(c){return c.name + '(' + (c.type||'?') + ')'}).join(', ');
+          schemaContext += ' [' + colNames + ']';
+        }
+        schemaContext += '\n';
+      });
+      schemaContext += '\nIMPORTANT: Use ONLY the exact table names listed above. Do not invent table names.';
+    }
   }
 
   try{
@@ -1351,68 +1441,39 @@ async function sendAIQuery(){
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify({prompt:text, schema_context:schemaContext})
     });
-
-    // Handle non-JSON responses (e.g., error HTML pages from proxy/API gateway)
-    var contentType = res.headers.get('content-type') || '';
-    if (!contentType.includes('application/json')) {
-      var rawText = await res.text();
-      // Check if response contains GROQ_API_KEY error indication
-      if (rawText.includes('GROQ_API_KEY') || rawText.includes('console.groq.com')) {
-        messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#9888;</div><div class="ai-bubble"><strong>GROQ_API_KEY not configured.</strong><br><br>The AI backend requires a Groq API key to process natural language queries.<br><br>Get your free API key at <a href="https://console.groq.com" target="_blank" style="color:var(--accent-cyan)">console.groq.com</a> and configure it in your environment variables.</div></div>';
-      } else {
-        messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#9888;</div><div class="ai-bubble">The AI service returned an unexpected response. Please check that the GROQ_API_KEY is configured on the backend server.</div></div>';
-      }
-      messages.scrollTop = messages.scrollHeight;
-      return;
-    }
-
-    if (res.status === 429 || res.status === 403 || res.status === 503) {
-      showToast('AI Quota Limit', 'Free text-to-SQL layer processing constraints hit. Please retry in a moment.', 'warning');
-      messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#9888;</div><div class="ai-bubble">Free processing tier capacity constraints met. Please try executing your prompt again in a moment.</div></div>';
-      messages.scrollTop = messages.scrollHeight;
-      return;
-    }
-
     var data = await res.json();
+
     if(data.success && data.sql){
-      var html = '<div class="ai-message"><div class="ai-avatar">&#9888;</div><div class="ai-bubble">';
+      var html = '<div class="ai-message"><div class="ai-avatar">&#129302;</div><div class="ai-bubble">';
       html += '<div class="sql-label">Generated SQL</div><pre>'+escapeHtml(data.sql)+'</pre>';
       html += '<button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="applyAISQL(this)">Use This Query</button>';
       html += '<textarea style="display:none">'+escapeHtml(data.sql)+'</textarea>';
       html += '</div></div>';
       messages.innerHTML += html;
     } else {
-      messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#9888;</div><div class="ai-bubble">'+escapeHtml(data.detail || data.error || 'Could not generate SQL')+'</div></div>';
+      messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#129302;</div><div class="ai-bubble">'+escapeHtml(data.detail || data.error || 'Could not generate SQL')+'</div></div>';
     }
     messages.scrollTop = messages.scrollHeight;
   }catch(err){
-    messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#9888;</div><div class="ai-bubble">Error: '+escapeHtml(err.message)+'</div></div>';
+    messages.innerHTML += '<div class="ai-message"><div class="ai-avatar">&#129302;</div><div class="ai-bubble">Error: '+escapeHtml(err.message)+'</div></div>';
     messages.scrollTop = messages.scrollHeight;
   }
 }
+
 function applyAISQL(btn){
-  var containerBubble = btn.closest('.ai-bubble');
-  var textarea = containerBubble ? containerBubble.querySelector('textarea') : null;
-  if(textarea){
-    safeSetValue(textarea.value);
-    showToast('Applied','SQL injection string loaded inside code block','success');
+  var textarea = btn.nextElementSibling;
+  if(textarea && monacoEditor){
+    monacoEditor.setValue(textarea.value);
+    showToast('Applied','SQL query inserted into editor','success');
   }
 }
 
-async function handleLogout(){
-  try {
-    localStorage.clear();
-    sb.auth.signOut().catch(function(e){ console.log("Signout sync delayed", e); });
-  } catch(err) {
-    console.error(err);
-  } finally {
-    window.location.href = 'https://www.migranix.in';
-  }
+function changePage(dir){
+  // Not used in no-limit mode, but kept for compatibility
 }
-
-function changePage(dir){}
 
 document.addEventListener('DOMContentLoaded',function(){
+  initAuth();
   document.getElementById('aiInput').addEventListener('keypress',function(e){if(e.key==='Enter')sendAIQuery()});
 });
 </script>
