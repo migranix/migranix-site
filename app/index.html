@@ -1113,25 +1113,12 @@ function connectFile(type){
       var res = await fetch(API_BASE+'/api/upload-file',{method:'POST',body:formData});
       var data = await res.json();
       if(data.success){
-        var firstTable = data.tables && data.tables[0] ? data.tables[0].name : '';
-        currentConnection = {
-          type:'file',
-          name:file.name,
-          format:type,
-          tables:data.tables,
-          session_id:data.session_id,
-          session:data.session_id,
-          table_name:firstTable
-        };
+        currentConnection = {type:'file',name:file.name,format:type,tables:data.tables};
         updateConnectionStatus(true,file.name,type.toUpperCase());
         closeConnectPanel();
         renderFileSchema(data.tables);
-        showToast('File Loaded',file.name+' loaded as table: '+firstTable,'success');
-        // Auto-populate editor with a starter query
-        if(firstTable){
-          safeSetValue("-- File loaded! Your data is in table: "+firstTable+"\nSELECT * FROM "+firstTable+" LIMIT 100;");
-        }
-      }else{throw new Error(data.detail || data.error || 'Upload failed')}
+        showToast('File Loaded',file.name+' loaded successfully','success');
+      }else{throw new Error(data.error)}
     }catch(err){
       showToast('Upload Failed',err.message,'error');
     }
@@ -1323,7 +1310,8 @@ function escapeIdentifier(name){
 
 async function executeQuery(){
   if(!currentConnection){showToast('No Connection','Please connect to a database first','error'); return}
-  var sql = safeGetValue().trim();
+  if(!monacoEditor) return;
+  var sql = monacoEditor.getValue().trim();
   if(!sql){showToast('Empty Query','Please enter a SQL query','error'); return}
   currentQuery = sql;
   var btn = document.getElementById('runBtn');
@@ -1333,9 +1321,7 @@ async function executeQuery(){
   document.getElementById('resultsContent').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-dim)"><span class="spinner"></span><br>Executing query...</div>';
   var startTime = performance.now();
   try{
-    // Use whichever session field exists (session_id for files, session for databases)
-    var sessionVal = currentConnection.session_id || currentConnection.session || '';
-    var res = await fetch(API_BASE+'/api/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session_id:sessionVal,session:sessionVal,query:sql})});
+    var res = await fetch(API_BASE+'/api/query',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({session:currentConnection.session||'',query:sql})});
     var data = await res.json();
     var elapsed = ((performance.now()-startTime)/1000).toFixed(2);
     if(data.success){
@@ -1345,16 +1331,12 @@ async function executeQuery(){
       document.getElementById('rowCount').textContent = queryResults.length+' rows';
       showToast('Query Complete',queryResults.length+' rows in '+elapsed+'s','success');
       document.getElementById('resultsArea').classList.remove('collapsed');
-    }else{
-      // Backend returns errors in data.detail (FastAPI HTTPException)
-      throw new Error(data.detail || data.error || 'Unknown error');
-    }
+    }else{throw new Error(data.error)}
   }catch(err){
-    var errMsg = err.message || 'Query execution failed';
-    document.getElementById('resultsContent').innerHTML = '<div class="empty-state" style="height:200px"><div class="icon">&#9888;</div><h3>Query Error</h3><p style="color:var(--danger);font-family:var(--font-mono);font-size:0.85rem;max-width:90%;word-break:break-word;text-align:left;padding:0 20px">'+escapeHtml(errMsg)+'</p></div>';
+    document.getElementById('resultsContent').innerHTML = '<div class="empty-state" style="height:200px"><div class="icon">&#9888;</div><h3>Query Error</h3><p style="color:var(--danger);font-family:var(--font-mono);font-size:0.8rem;max-width:90%;word-break:break-word">'+escapeHtml(err.message)+'</p></div>';
     document.getElementById('queryTime').textContent = '';
     document.getElementById('rowCount').textContent = '';
-    showToast('Query Failed',errMsg,'error');
+    showToast('Query Failed',err.message,'error');
   }
   btn.innerHTML = originalText;
   btn.disabled = false;
