@@ -1,83 +1,151 @@
 """
-Migranix Backend API
-FastAPI service for universal database connectivity
-Deploy to Render: https://render.com
+Migranix Backend API — Universal Data Connector
+FastAPI service supporting 14 database/warehouse/NoSQL sources
 """
 
 import os
+import re
 import json
 import uuid
-import asyncio
+import io
 from datetime import datetime
 from typing import Optional, Dict, Any, List
-from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-# Database drivers — all optional, checked at connection time
-try:
-    import psycopg2
-except ImportError:
-    psycopg2 = None
+# ========== ALL OPTIONAL IMPORTS (graceful degradation) ==========
+try: import psycopg2
+except ImportError: psycopg2 = None
 
-try:
-    import pymysql
-except ImportError:
-    pymysql = None
+try: import pymysql
+except ImportError: pymysql = None
 
-try:
-    import pyodbc
-except ImportError:
-    pyodbc = None
+try: import pyodbc
+except ImportError: pyodbc = None
 
 import sqlite3
 
 try:
-    from sqlalchemy import create_engine, text, inspect, MetaData
+    from sqlalchemy import create_engine, text, inspect
     from sqlalchemy.pool import NullPool
+    from sqlalchemy.exc import SQLAlchemyError
 except ImportError:
     create_engine = None
     NullPool = None
+    SQLAlchemyError = Exception
 
-# Optional cloud drivers
-try:
-    import snowflake.connector
-except ImportError:
-    snowflake = None
+try: import snowflake.connector as snowflake_connector
+except ImportError: snowflake_connector = None
 
-try:
-    from google.cloud import bigquery
-except ImportError:
-    bigquery = None
+try: from google.cloud import bigquery as gcp_bigquery
+except ImportError: gcp_bigquery = None
 
-try:
-    import pymongo
-except ImportError:
-    pymongo = None
+try: from google.cloud import storage as gcp_storage
+except ImportError: gcp_storage = None
 
-try:
-    from cassandra.cluster import Cluster
-except ImportError:
-    Cluster = None
+try: import pymongo
+except ImportError: pymongo = None
 
-try:
-    import boto3
-except ImportError:
-    boto3 = None
+try: from cassandra.cluster import Cluster
+except ImportError: Cluster = None
+
+try: from cassandra.auth import PlainTextAuthProvider
+except ImportError: PlainTextAuthProvider = None
+
+try: import boto3
+except ImportError: boto3 = None
+
+try: from databricks import sql as databricks_sql
+except ImportError: databricks_sql = None
+
+try: from azure.storage.blob import BlobServiceClient
+except ImportError: BlobServiceClient = None
+
+try: from azure.cosmos import CosmosClient
+except ImportError: CosmosClient = None
+
+try: import oracledb as cx_Oracle   # python-oracledb thin mode — no Oracle Client needed
+except ImportError: cx_Oracle = None
+
+try: import ibm_db, ibm_db_sa
+except ImportError: ibm_db = None
+
+try: import fastavro
+except ImportError: fastavro = None
 
 import pandas as pd
-import io
+import httpx
 
-# ========== CONFIGURATION ==========
+# ========== CONFIG ==========
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
-ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "migranix-secret-key-32bytes!")
-
-# ========== SESSION STORE ==========
-# In production, use Redis. For Render free tier, in-memory dict with cleanup.
 connections: Dict[str, Dict[str, Any]] = {}
+
+# ========== POWER BI-STYLE ERROR FORMATTER ==========
+def power_bi_error(db_type: str, exc: Exception) -> dict:
+    """Convert any exception into a structured error matching Power BI's pattern."""
+    msg = str(exc)
+    low = msg.lower()
+    likely_cause = None
+    fix = None
+
+    if 'no module named' in low or 'cannot import name' in low:
+        likely_cause = f"The {db_type} driver is not installed on the server"
+        fix = "Contact support — driver missing"
+    elif 'connection refused' in low or 'could not connect' in low or 'failed to connect' in low or 'cannot reach' in low:
+        likely_cause = "Server unreachable from Migranix's cloud network"
+        fix = "Ensure the database has a PUBLIC endpoint and the firewall allows Render IPs. Localhost/private IPs will not work."
+    elif 'getaddrinfo' in low or 'no such host' in low or 'name or service not known' in low or 'nodename nor servname' in low:
+        likely_cause = "Hostname cannot be resolved"
+        fix = "Check the server address — typo or missing domain suffix"
+    elif 'timeout' in low or 'timed out' in low:
+        likely_cause = "Server did not respond"
+        fix = "Server may be down, firewalled, or behind a VPN that Migranix cannot reach"
+    elif 'authentication failed' in low or 'login failed' in low or 'password authentication' in low or 'incorrect password' in low:
+        likely_cause = "Username or password is incorrect"
+        fix = "Verify credentials in the database admin panel"
+    elif 'access denied' in low or 'permission denied' in low or 'insufficient privilege' in low:
+        likely_cause = "User lacks permission on this database"
+        fix = "Grant CONNECT / USAGE / SELECT privileges to your user"
+    elif 'ssl' in low or 'certificate' in low or 'tls' in low:
+        likely_cause = "SSL/TLS handshake failed"
+        fix = "Toggle the SSL setting or check server certificate validity"
+    elif ('database' in low and ('does not exist' in low or 'not exist' in low or 'unknown database' in low)) or 'no such file' in low:
+        likely_cause = "Database or file not found"
+        fix = "Verify the database/file name — case-sensitive on some servers"
+    elif 'role' in low and 'does not exist' in low:
+        likely_cause = "Role/user does not exist on the server"
+        fix = "Create the user first or check the username spelling"
+    elif 'odbc driver' in low and 'not found' in low:
+        likely_cause = "ODBC driver missing on server"
+        fix = "Contact support — ODBC driver needs reinstall"
+    elif 'service_name' in low or 'tns' in low:
+        likely_cause = "Oracle service name not recognized"
+        fix = "Verify the Service Name (not SID) — check listener.ora on the Oracle server"
+    elif 'invalid bucket name' in low or 'nosuchbucket' in low:
+        likely_cause = "S3 bucket name is wrong or doesn't exist"
+        fix = "Check exact bucket name in AWS console"
+    elif 'signatureversion' in low or 'signature does not match' in low:
+        likely_cause = "AWS credentials are wrong"
+        fix = "Re-generate access key / secret key in IAM"
+    else:
+        likely_cause = None
+        fix = None
+
+    return {
+        "message": f"Could not connect to {db_type}",
+        "details": msg[:500],
+        "likely_cause": likely_cause,
+        "fix": fix
+    }
+
+
+def raise_pbi(db_type: str, exc: Exception):
+    """Raise HTTPException with Power BI-style structured error."""
+    raise HTTPException(status_code=400, detail=power_bi_error(db_type, exc))
+
 
 # ========== PYDANTIC MODELS ==========
 class DBCredentials(BaseModel):
@@ -88,7 +156,7 @@ class QueryRequest(BaseModel):
     session: Optional[str] = None
     session_id: Optional[str] = None
     query: str
-    
+
     def get_session(self):
         return self.session_id or self.session or ""
 
@@ -109,312 +177,523 @@ class CloudCreds(BaseModel):
     account: Optional[str] = None
     container: Optional[str] = None
     sas_token: Optional[str] = None
-    warehouse: Optional[str] = None
-    database: Optional[str] = None
     stage: Optional[str] = None
     username: Optional[str] = None
     password: Optional[str] = None
 
+
+# ========== HELPERS ==========
+def _get(creds: dict, *keys, default=None):
+    """Try multiple keys, return first non-empty value, then default."""
+    for k in keys:
+        v = creds.get(k)
+        if v not in (None, "", " "):
+            return v
+    return default
+
+
+def _truthy(val) -> bool:
+    if isinstance(val, bool): return val
+    if isinstance(val, str): return val.lower() in ('true', '1', 'yes', 'on')
+    return bool(val)
+
+
 # ========== CONNECTION MANAGERS ==========
 class ConnectionManager:
+
     @staticmethod
-    def create_postgres(creds: dict) -> str:
-        dsn = f"postgresql://{creds['username']}:{creds['password']}@{creds['host']}:{creds.get('port',5432)}/{creds['database']}"
-        if creds.get('ssl'):
+    def create_postgresql(creds: dict):
+        host = _get(creds, 'host')
+        if not host: raise ValueError("Server is required")
+        port = _get(creds, 'port', default=5432)
+        database = _get(creds, 'database', default='postgres')
+        username = _get(creds, 'username')
+        password = _get(creds, 'password', default='')
+        if not username: raise ValueError("Username is required")
+
+        from urllib.parse import quote_plus
+        dsn = f"postgresql+psycopg2://{quote_plus(username)}:{quote_plus(password)}@{host}:{port}/{database}"
+        if _truthy(creds.get('ssl')):
             dsn += "?sslmode=require"
+        engine = create_engine(dsn, poolclass=NullPool, connect_args={"connect_timeout": 15})
+        return dsn, engine
+
+    @staticmethod
+    def create_mysql(creds: dict):
+        host = _get(creds, 'host')
+        if not host: raise ValueError("Server is required")
+        port = _get(creds, 'port', default=3306)
+        database = _get(creds, 'database', default='')
+        username = _get(creds, 'username')
+        password = _get(creds, 'password', default='')
+        if not username: raise ValueError("Username is required")
+
+        from urllib.parse import quote_plus
+        db_part = f"/{database}" if database else ""
+        dsn = f"mysql+pymysql://{quote_plus(username)}:{quote_plus(password)}@{host}:{port}{db_part}"
+        engine = create_engine(dsn, poolclass=NullPool, connect_args={"connect_timeout": 15})
+        return dsn, engine
+
+    @staticmethod
+    def create_sqlserver(creds: dict):
+        if pyodbc is None:
+            raise ImportError("pyodbc driver not installed")
+        host = _get(creds, 'host')
+        if not host: raise ValueError("Server is required")
+        port = _get(creds, 'port', default=1433)
+        database = _get(creds, 'database', default='master')
+        auth_type = _get(creds, 'auth_type', default='sql')
+        trust = 'yes' if _truthy(creds.get('trust_server_certificate')) else 'no'
+
+        driver = "{ODBC Driver 18 for SQL Server}"
+        base = f"DRIVER={driver};SERVER={host},{port};DATABASE={database};TrustServerCertificate={trust};Encrypt=yes;"
+
+        if auth_type == 'sql':
+            username = _get(creds, 'username')
+            password = _get(creds, 'password', default='')
+            if not username: raise ValueError("SQL Username is required")
+            odbc_str = base + f"UID={username};PWD={password};"
+        elif auth_type == 'aad_password':
+            username = _get(creds, 'aad_username')
+            password = _get(creds, 'aad_password', default='')
+            if not username: raise ValueError("Azure AD Username is required")
+            odbc_str = base + f"UID={username};PWD={password};Authentication=ActiveDirectoryPassword;"
+        elif auth_type == 'service_principal':
+            tenant_id = _get(creds, 'tenant_id')
+            client_id = _get(creds, 'client_id')
+            client_secret = _get(creds, 'client_secret')
+            if not (tenant_id and client_id and client_secret):
+                raise ValueError("Tenant ID, Client ID, and Client Secret are required")
+            odbc_str = base + f"UID={client_id}@{tenant_id};PWD={client_secret};Authentication=ActiveDirectoryServicePrincipal;"
+        else:
+            raise ValueError(f"Unknown SQL Server auth_type: {auth_type}")
+
+        from urllib.parse import quote_plus
+        dsn = f"mssql+pyodbc:///?odbc_connect={quote_plus(odbc_str)}"
         engine = create_engine(dsn, poolclass=NullPool)
         return dsn, engine
 
     @staticmethod
-    def create_mysql(creds: dict) -> str:
-        dsn = f"mysql+pymysql://{creds['username']}:{creds['password']}@{creds['host']}:{creds.get('port',3306)}/{creds['database']}"
+    def create_oracle(creds: dict):
+        if cx_Oracle is None:
+            raise ImportError("python-oracledb not installed")
+        host = _get(creds, 'host')
+        if not host: raise ValueError("Host is required")
+        port = _get(creds, 'port', default=1521)
+        service_name = _get(creds, 'service_name', 'service', default='ORCL')
+        username = _get(creds, 'username')
+        password = _get(creds, 'password', default='')
+        if not username: raise ValueError("System User is required")
+
+        # oracledb thin mode — no Oracle Instant Client needed
+        from urllib.parse import quote_plus
+        dsn = f"oracle+oracledb://{quote_plus(username)}:{quote_plus(password)}@{host}:{port}/?service_name={service_name}"
+        engine = create_engine(dsn, poolclass=NullPool,
+                               connect_args={"thick_mode": False})  # explicit thin mode
+        return dsn, engine
+
+    @staticmethod
+    def create_db2(creds: dict):
+        if ibm_db is None:
+            raise ImportError("ibm_db driver not installed")
+        host = _get(creds, 'host')
+        if not host: raise ValueError("Host is required")
+        port = _get(creds, 'port', default=50000)
+        database = _get(creds, 'database')
+        if not database: raise ValueError("Database is required")
+        username = _get(creds, 'username')
+        password = _get(creds, 'password', default='')
+        if not username: raise ValueError("Username is required")
+
+        from urllib.parse import quote_plus
+        dsn = f"db2+ibm_db://{quote_plus(username)}:{quote_plus(password)}@{host}:{port}/{database}"
         engine = create_engine(dsn, poolclass=NullPool)
         return dsn, engine
 
     @staticmethod
-    def create_sqlserver(creds: dict) -> str:
-        driver = creds.get('driver', 'ODBC Driver 17 for SQL Server')
-        dsn = f"mssql+pyodbc://{creds['username']}:{creds['password']}@{creds['host']}:{creds.get('port',1433)}/{creds['database']}?driver={driver.replace(' ', '+')}"
+    def create_sqlite(creds: dict):
+        filepath = _get(creds, 'filepath')
+        if not filepath: raise ValueError("File path is required")
+        dsn = f"sqlite:///{filepath}"
         engine = create_engine(dsn, poolclass=NullPool)
         return dsn, engine
 
     @staticmethod
-    def create_oracle(creds: dict) -> str:
-        dsn = f"oracle+cx_oracle://{creds['username']}:{creds['password']}@{creds['host']}:{creds.get('port',1521)}/?service_name={creds['service']}"
-        engine = create_engine(dsn, poolclass=NullPool)
-        return dsn, engine
-
-    @staticmethod
-    def create_db2(creds: dict) -> str:
-        dsn = f"db2+ibm_db://{creds['username']}:{creds['password']}@{creds['host']}:{creds.get('port',50000)}/{creds['database']}"
-        engine = create_engine(dsn, poolclass=NullPool)
-        return dsn, engine
-
-    @staticmethod
-    def create_sqlite(creds: dict) -> str:
-        dsn = f"sqlite:///{creds['filepath']}"
-        engine = create_engine(dsn, poolclass=NullPool)
-        return dsn, engine
-
-    @staticmethod
-    def create_snowflake(creds: dict) -> str:
-        if snowflake is None:
+    def create_snowflake(creds: dict):
+        if snowflake_connector is None:
             raise ImportError("snowflake-connector-python not installed")
-        conn = snowflake.connector.connect(
-            account=creds['account'],
-            user=creds['username'],
-            password=creds['password'],
-            warehouse=creds.get('warehouse'),
-            database=creds.get('database'),
-            schema=creds.get('schema'),
-            role=creds.get('role')
-        )
+        account = _get(creds, 'account')
+        if not account: raise ValueError("Account is required")
+        warehouse = _get(creds, 'warehouse')
+        if not warehouse: raise ValueError("Warehouse is required")
+
+        # Strip URL parts if user pasted full URL
+        account = account.replace('https://', '').replace('.snowflakecomputing.com', '').rstrip('/')
+
+        conn_args = {
+            'account': account,
+            'warehouse': warehouse,
+        }
+        if creds.get('database'): conn_args['database'] = creds['database']
+        if creds.get('schema'): conn_args['schema'] = creds['schema']
+        if creds.get('role'): conn_args['role'] = creds['role']
+
+        auth_type = _get(creds, 'auth_type', default='password')
+
+        if auth_type == 'password':
+            username = _get(creds, 'username')
+            password = _get(creds, 'password', default='')
+            if not username: raise ValueError("Username is required")
+            conn_args['user'] = username
+            conn_args['password'] = password
+        elif auth_type == 'keypair':
+            username = _get(creds, 'username')
+            private_key_pem = _get(creds, 'private_key')
+            if not username: raise ValueError("Username is required")
+            if not private_key_pem: raise ValueError("Private Key PEM is required")
+            try:
+                from cryptography.hazmat.primitives import serialization
+                passphrase = creds.get('private_key_passphrase') or None
+                pk = serialization.load_pem_private_key(
+                    private_key_pem.encode(),
+                    password=passphrase.encode() if passphrase else None
+                )
+                pkb = pk.private_bytes(
+                    encoding=serialization.Encoding.DER,
+                    format=serialization.PrivateFormat.PKCS8,
+                    encryption_algorithm=serialization.NoEncryption()
+                )
+                conn_args['user'] = username
+                conn_args['private_key'] = pkb
+            except Exception as e:
+                raise ValueError(f"Invalid private key: {e}")
+        elif auth_type == 'token':
+            token = _get(creds, 'token')
+            if not token: raise ValueError("OAuth Token is required")
+            conn_args['authenticator'] = 'oauth'
+            conn_args['token'] = token
+        else:
+            raise ValueError(f"Unknown Snowflake auth_type: {auth_type}")
+
+        conn = snowflake_connector.connect(**conn_args)
         return "snowflake", conn
 
     @staticmethod
-    def create_bigquery(creds: dict) -> str:
-        if bigquery is None:
+    def create_bigquery(creds: dict):
+        if gcp_bigquery is None:
             raise ImportError("google-cloud-bigquery not installed")
-        if creds.get('credentials_json'):
+        project = _get(creds, 'project')
+        if not project: raise ValueError("Project ID is required")
+
+        auth_type = _get(creds, 'auth_type', default='service_account')
+
+        if auth_type == 'service_account':
+            credentials_json = _get(creds, 'credentials_json')
+            if not credentials_json: raise ValueError("Service Account JSON is required")
             from google.oauth2 import service_account
-            info = json.loads(creds['credentials_json'])
+            try:
+                info = json.loads(credentials_json) if isinstance(credentials_json, str) else credentials_json
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Service Account JSON is invalid: {e}")
             credentials = service_account.Credentials.from_service_account_info(info)
-            client = bigquery.Client(project=creds['project'], credentials=credentials)
+            client = gcp_bigquery.Client(project=project, credentials=credentials)
+        elif auth_type == 'oauth_token':
+            from google.oauth2.credentials import Credentials as OAuthCreds
+            token = _get(creds, 'oauth_token')
+            if not token: raise ValueError("OAuth Token is required")
+            credentials = OAuthCreds(token=token)
+            client = gcp_bigquery.Client(project=project, credentials=credentials)
         else:
-            client = bigquery.Client(project=creds['project'])
+            raise ValueError(f"Unknown BigQuery auth_type: {auth_type}")
+
         return "bigquery", client
 
     @staticmethod
-    def create_redshift(creds: dict) -> str:
-        dsn = f"postgresql+psycopg2://{creds['username']}:{creds['password']}@{creds['host']}:{creds.get('port',5439)}/{creds['database']}"
-        engine = create_engine(dsn, poolclass=NullPool)
+    def create_redshift(creds: dict):
+        host = _get(creds, 'host')
+        if not host: raise ValueError("Host is required")
+        port = _get(creds, 'port', default=5439)
+        database = _get(creds, 'database', default='dev')
+        username = _get(creds, 'username')
+        password = _get(creds, 'password', default='')
+        if not username: raise ValueError("Username is required")
+
+        from urllib.parse import quote_plus
+        dsn = f"postgresql+psycopg2://{quote_plus(username)}:{quote_plus(password)}@{host}:{port}/{database}?sslmode=require"
+        engine = create_engine(dsn, poolclass=NullPool, connect_args={"connect_timeout": 15})
         return dsn, engine
 
     @staticmethod
-    def create_databricks(creds: dict) -> str:
-        from databricks import sql
-        conn = sql.connect(
-            server_hostname=creds['server_hostname'],
-            http_path=creds['http_path'],
-            access_token=creds['token']
-        )
+    def create_databricks(creds: dict):
+        if databricks_sql is None:
+            raise ImportError("databricks-sql-connector not installed")
+        host = _get(creds, 'server_hostname')
+        if not host: raise ValueError("Server Hostname is required")
+        http_path = _get(creds, 'http_path')
+        if not http_path: raise ValueError("HTTP Path is required")
+        token = _get(creds, 'token')
+        if not token: raise ValueError("Access Token is required")
+        catalog = _get(creds, 'catalog')
+        schema = _get(creds, 'schema')
+
+        kwargs = {
+            'server_hostname': host.replace('https://', '').rstrip('/'),
+            'http_path': http_path,
+            'access_token': token,
+        }
+        if catalog: kwargs['catalog'] = catalog
+        if schema: kwargs['schema'] = schema
+
+        conn = databricks_sql.connect(**kwargs)
         return "databricks", conn
 
     @staticmethod
-    def create_mongodb(creds: dict) -> str:
+    def create_mongodb(creds: dict):
         if pymongo is None:
             raise ImportError("pymongo not installed")
-        client = pymongo.MongoClient(creds['uri'])
-        db = client[creds.get('database', 'test')]
+        auth_type = _get(creds, 'auth_type', default='uri')
+
+        if auth_type == 'uri':
+            uri = _get(creds, 'uri')
+            if not uri: raise ValueError("Connection URI is required")
+            client = pymongo.MongoClient(uri, serverSelectionTimeoutMS=15000)
+        else:  # manual
+            host = _get(creds, 'host')
+            if not host: raise ValueError("Host is required")
+            port = int(_get(creds, 'port', default=27017))
+            username = _get(creds, 'username')
+            password = _get(creds, 'password', default='')
+            if username:
+                client = pymongo.MongoClient(host=host, port=port, username=username, password=password, serverSelectionTimeoutMS=15000)
+            else:
+                client = pymongo.MongoClient(host=host, port=port, serverSelectionTimeoutMS=15000)
+
+        # Force connection check
+        client.admin.command('ping')
+        db_name = _get(creds, 'database', default='admin')
+        db = client[db_name]
         return "mongodb", db
 
     @staticmethod
-    def create_cassandra(creds: dict) -> str:
+    def create_cassandra(creds: dict):
         if Cluster is None:
             raise ImportError("cassandra-driver not installed")
-        hosts = [h.strip() for h in creds['hosts'].split(',')]
-        cluster = Cluster(hosts, port=creds.get('port', 9042))
-        session = cluster.connect(creds.get('keyspace'))
+        hosts_str = _get(creds, 'hosts')
+        if not hosts_str: raise ValueError("Seed Nodes are required")
+        hosts = [h.strip() for h in hosts_str.split(',') if h.strip()]
+        port = int(_get(creds, 'port', default=9042))
+        keyspace = _get(creds, 'keyspace')
+        username = _get(creds, 'username')
+        password = _get(creds, 'password', default='')
+
+        if username and PlainTextAuthProvider:
+            auth = PlainTextAuthProvider(username=username, password=password)
+            cluster = Cluster(hosts, port=port, auth_provider=auth, connect_timeout=15)
+        else:
+            cluster = Cluster(hosts, port=port, connect_timeout=15)
+        session = cluster.connect(keyspace) if keyspace else cluster.connect()
         return "cassandra", session
 
     @staticmethod
-    def create_dynamodb(creds: dict) -> str:
+    def create_dynamodb(creds: dict):
         if boto3 is None:
             raise ImportError("boto3 not installed")
-        client = boto3.client(
-            'dynamodb',
-            region_name=creds['region'],
-            aws_access_key_id=creds['access_key'],
-            aws_secret_access_key=creds['secret_key']
-        )
+        region = _get(creds, 'region')
+        if not region: raise ValueError("AWS Region is required")
+        access_key = _get(creds, 'access_key')
+        secret_key = _get(creds, 'secret_key')
+        if not access_key: raise ValueError("Access Key is required")
+        if not secret_key: raise ValueError("Secret Key is required")
+
+        kwargs = dict(region_name=region, aws_access_key_id=access_key, aws_secret_access_key=secret_key)
+        session_token = _get(creds, 'session_token')
+        if session_token:
+            kwargs['aws_session_token'] = session_token
+
+        client = boto3.client('dynamodb', **kwargs)
+        # Sanity check
+        client.list_tables(Limit=1)
         return "dynamodb", client
 
     @staticmethod
-    def create_cosmosdb(creds: dict) -> str:
-        if pymongo is None:
-            raise ImportError("pymongo not installed")
-        client = pymongo.MongoClient(creds['uri'], ssl=True)
-        db = client[creds.get('database', 'test')]
-        return "cosmosdb", db
+    def create_cosmosdb(creds: dict):
+        uri = _get(creds, 'uri')
+        if not uri: raise ValueError("Endpoint URI is required")
+        auth_type = _get(creds, 'auth_type', default='key')
+
+        if CosmosClient is None:
+            raise ImportError("azure-cosmos not installed")
+
+        if auth_type == 'key':
+            key = _get(creds, 'key')
+            if not key: raise ValueError("Primary Key is required")
+            client = CosmosClient(uri, credential=key)
+        elif auth_type == 'token':
+            token = _get(creds, 'token')
+            if not token: raise ValueError("Bearer Token is required")
+            client = CosmosClient(uri, credential={'type': 'AccessToken', 'token': token})
+        else:
+            raise ValueError(f"Unknown Cosmos DB auth_type: {auth_type}")
+
+        # Sanity check
+        list(client.list_databases())
+        return "cosmosdb", client
+
 
 # ========== FASTAPI APP ==========
-app = FastAPI(title="Migranix API", version="2.0")
-
+app = FastAPI(title="Migranix API", version="2.1")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://migranix.in","https://www.migranix.in","http://localhost:3000"],
+    allow_origins=["https://migranix.in", "https://www.migranix.in", "http://localhost:3000", "http://localhost:5500"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ========== HEALTH CHECK ==========
+
 @app.get("/")
 async def root():
-    return {"status": "Migranix API v2.0", "timestamp": datetime.utcnow().isoformat()}
+    return {"status": "Migranix API v2.1", "timestamp": datetime.utcnow().isoformat()}
 
-# ========== CONNECTION ENDPOINTS ==========
+
+# ========== TEST CONNECTION ==========
 @app.post("/api/test-connection")
 async def test_connection(req: DBCredentials):
-    """Test database connection without saving"""
+    db_type = req.type
     try:
         manager = ConnectionManager()
-        creator = getattr(manager, f"create_{req.type}", None)
+        creator = getattr(manager, f"create_{db_type}", None)
         if not creator:
-            raise HTTPException(400, f"Unsupported database type: {req.type}")
+            raise ValueError(f"Unsupported database type: {db_type}")
 
         result = creator(req.credentials)
         if isinstance(result, tuple):
-            dsn, engine = result
-            with engine.connect() as conn:
-                conn.execute(text("SELECT 1"))
-            engine.dispose()
-        else:
-            pass
-
+            first, second = result
+            if isinstance(first, str) and second is not None and hasattr(second, 'connect'):
+                # SQLAlchemy engine
+                with second.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                second.dispose()
+            # Non-engine connections were already pinged inside their creators
         return {"success": True, "message": "Connection successful"}
+    except (ValueError, ImportError) as e:
+        raise HTTPException(400, detail=power_bi_error(db_type, e))
     except Exception as e:
-        raise HTTPException(400, detail=str(e))
+        raise HTTPException(400, detail=power_bi_error(db_type, e))
 
+
+# ========== CONNECT (creates session) ==========
 @app.post("/api/connect")
 async def connect(req: DBCredentials):
-    """Establish connection and return session ID"""
+    db_type = req.type
     try:
         manager = ConnectionManager()
-        creator = getattr(manager, f"create_{req.type}", None)
+        creator = getattr(manager, f"create_{db_type}", None)
         if not creator:
-            raise HTTPException(400, f"Unsupported database type: {req.type}")
+            raise ValueError(f"Unsupported database type: {db_type}")
 
         result = creator(req.credentials)
         session_id = str(uuid.uuid4())
 
         if isinstance(result, tuple):
-            dsn, engine = result
-            connections[session_id] = {
-                "type": req.type,
-                "engine": engine,
-                "dsn": dsn,
-                "created_at": datetime.utcnow().isoformat()
-            }
-        else:
-            conn_type, conn = result
-            connections[session_id] = {
-                "type": req.type,
-                "connection": conn,
-                "created_at": datetime.utcnow().isoformat()
-            }
-
+            first, second = result
+            if isinstance(first, str) and second is not None and hasattr(second, 'connect') and hasattr(second, 'dispose'):
+                connections[session_id] = {
+                    "type": db_type, "engine": second, "dsn": first,
+                    "created_at": datetime.utcnow().isoformat()
+                }
+            else:
+                connections[session_id] = {
+                    "type": db_type, "connection": second,
+                    "created_at": datetime.utcnow().isoformat()
+                }
         return {"success": True, "session_id": session_id}
+    except (ValueError, ImportError) as e:
+        raise HTTPException(400, detail=power_bi_error(db_type, e))
     except Exception as e:
-        raise HTTPException(400, detail=str(e))
+        raise HTTPException(400, detail=power_bi_error(db_type, e))
 
-# ========== SCHEMA ENDPOINTS ==========
+
+# ========== SCHEMA ==========
 @app.get("/api/schema")
 async def get_schema(session: str):
-    """Get database schema"""
     if session not in connections:
-        raise HTTPException(404, "Session not found")
-
+        raise HTTPException(404, detail={"message": "Session expired", "details": "Please reconnect", "likely_cause": "Server restarted or session timed out", "fix": "Click 'Connect to Data' again"})
     conn = connections[session]
+    db_type = conn.get("type", "")
     try:
         if "engine" in conn:
             engine = conn["engine"]
             inspector = inspect(engine)
             schema_data = []
-
-            if conn["type"] in ['postgresql', 'mysql', 'sqlserver', 'redshift']:
-                with engine.connect() as c:
-                    if conn["type"] == 'postgresql':
-                        result = c.execute(text("SELECT datname FROM pg_database WHERE datistemplate = false"))
-                        databases = [row[0] for row in result]
-                    elif conn["type"] == 'mysql':
-                        result = c.execute(text("SHOW DATABASES"))
-                        databases = [row[0] for row in result]
-                    else:
-                        databases = [conn["dsn"].split('/')[-1].split('?')[0]]
-            else:
-                databases = [conn["dsn"].split('/')[-1].split('?')[0]]
-
-            for db_name in databases[:5]:
-                db_info = {"name": db_name, "schemas": []}
-
+            try:
+                schemas = inspector.get_schema_names() or ['public']
+            except Exception:
+                schemas = ['public']
+            db_name = conn.get("dsn", "").split('/')[-1].split('?')[0] or db_type
+            db_info = {"name": db_name, "schemas": []}
+            for s in schemas[:10]:
                 try:
-                    schemas = inspector.get_schema_names() or ['public']
-                except:
-                    schemas = ['public']
-
-                for schema_name in schemas[:10]:
+                    tbls = inspector.get_table_names(schema=s)
+                except Exception:
+                    tbls = inspector.get_table_names()
+                s_info = {"name": s, "tables": []}
+                for t in tbls[:100]:
                     try:
-                        tables = inspector.get_table_names(schema=schema_name)
-                    except:
-                        tables = inspector.get_table_names()
-
-                    schema_info = {"name": schema_name, "tables": []}
-                    for table_name in tables[:50]:
-                        try:
-                            columns = inspector.get_columns(table_name, schema=schema_name)
-                        except:
-                            columns = inspector.get_columns(table_name)
-
-                        table_info = {
-                            "name": table_name,
-                            "columns": [{"name": col["name"], "type": str(col["type"])} for col in columns[:50]]
-                        }
-                        schema_info["tables"].append(table_info)
-
-                    db_info["schemas"].append(schema_info)
-
-                schema_data.append(db_info)
-
+                        cols = inspector.get_columns(t, schema=s)
+                    except Exception:
+                        cols = inspector.get_columns(t)
+                    s_info["tables"].append({
+                        "name": t,
+                        "columns": [{"name": c["name"], "type": str(c["type"])} for c in cols[:80]]
+                    })
+                db_info["schemas"].append(s_info)
+            schema_data.append(db_info)
             return {"success": True, "schema": schema_data}
         else:
-            return {"success": True, "schema": [{"name": conn["type"], "tables": []}]}
+            return {"success": True, "schema": [{"name": db_type, "tables": []}]}
     except Exception as e:
-        raise HTTPException(400, detail=str(e))
+        raise HTTPException(400, detail=power_bi_error(db_type, e))
 
-# ========== QUERY ENDPOINTS ==========
+
+# ========== QUERY ==========
 @app.post("/api/query")
 async def execute_query(req: QueryRequest):
-    """Execute SQL query and return results"""
-    session = req.get_session()
-    if not session:
-        raise HTTPException(400, "No session ID provided")
-    if session not in connections:
-        raise HTTPException(404, f"Session not found. Active sessions: {len(connections)}. Reconnect to your data.")
-
-    conn = connections[session]
+    sid = req.get_session()
+    if sid not in connections:
+        raise HTTPException(404, detail={"message": "Session expired", "details": "Please reconnect", "likely_cause": "Session timed out", "fix": "Reconnect to your data source"})
+    conn = connections[sid]
+    db_type = conn.get("type", "")
     try:
         if "engine" in conn:
             engine = conn["engine"]
             with engine.connect() as c:
                 result = c.execute(text(req.query))
-
                 if result.returns_rows:
                     columns = list(result.keys())
                     rows = [dict(zip(columns, row)) for row in result.fetchall()]
                     return {"success": True, "columns": columns, "results": rows}
                 else:
                     c.commit()
-                    return {"success": True, "columns": [], "results": [], "message": "Query executed successfully"}
+                    return {"success": True, "columns": [], "results": [], "message": "Query executed"}
         else:
-            raise HTTPException(400, "Query execution not supported for this connection type")
+            raise ValueError("Direct SQL not supported for this connection type (use the native query tool)")
     except HTTPException:
         raise
     except Exception as e:
-        # Return actual SQL error (e.g. "no such table: superstore_orders")
-        error_msg = str(e)
-        # Clean up SQLAlchemy verbose error format
-        if "(sqlite3." in error_msg:
-            error_msg = error_msg.split("(sqlite3.")[1].split(")")[1].strip() if ")" in error_msg.split("(sqlite3.")[1] else error_msg
-        raise HTTPException(400, detail=error_msg)
+        # Clean SQLAlchemy error noise
+        err_msg = str(e)
+        if "(sqlite3." in err_msg:
+            try: err_msg = err_msg.split("(sqlite3.")[1].split(")")[1].strip()
+            except: pass
+        raise HTTPException(400, detail=power_bi_error(db_type, type(e)(err_msg)))
 
-# ========== FILE UPLOAD ENDPOINTS ==========
+
+# ========== FILE UPLOAD ==========
 @app.post("/api/upload-file")
 async def upload_file(file: UploadFile = File(...), type: str = Form(...)):
-    """Upload and parse file (CSV, Excel, JSON, etc.)"""
     try:
         content = await file.read()
-
         if type == 'csv':
             df = pd.read_csv(io.BytesIO(content), low_memory=False, encoding_errors='replace')
         elif type == 'excel':
@@ -422,17 +701,16 @@ async def upload_file(file: UploadFile = File(...), type: str = Form(...)):
         elif type == 'json':
             try:
                 df = pd.read_json(io.BytesIO(content))
-            except:
+            except Exception:
                 raw = json.loads(content)
                 if isinstance(raw, list):
                     df = pd.json_normalize(raw, sep='_')
                 elif isinstance(raw, dict):
+                    nested_list = None
                     for v in raw.values():
                         if isinstance(v, list):
-                            df = pd.json_normalize(v, sep='_')
-                            break
-                    else:
-                        df = pd.json_normalize([raw], sep='_')
+                            nested_list = v; break
+                    df = pd.json_normalize(nested_list or [raw], sep='_')
                 else:
                     df = pd.DataFrame([raw])
         elif type == 'parquet':
@@ -440,443 +718,257 @@ async def upload_file(file: UploadFile = File(...), type: str = Form(...)):
         elif type == 'xml':
             df = pd.read_xml(io.BytesIO(content))
         elif type == 'avro':
-            try:
-                import fastavro
-                reader = fastavro.reader(io.BytesIO(content))
-                records = [r for r in reader]
-                df = pd.DataFrame(records)
-            except ImportError:
-                raise HTTPException(400, "Avro support not installed")
+            if fastavro is None: raise HTTPException(400, "Avro support not installed")
+            reader = fastavro.reader(io.BytesIO(content))
+            df = pd.DataFrame([r for r in reader])
         else:
             raise HTTPException(400, f"Unsupported file type: {type}")
 
         engine = create_engine("sqlite:///:memory:", poolclass=NullPool)
-        # Lowercase + sanitize the table name for case-insensitive queries
         raw_name = file.filename.rsplit('.', 1)[0]
-        table_name = raw_name.lower().replace('-', '_').replace(' ', '_').replace('.', '_')
-        # Remove any non-alphanumeric chars except underscore
-        import re
-        table_name = re.sub(r'[^a-z0-9_]', '', table_name)
+        table_name = re.sub(r'[^a-z0-9_]', '', raw_name.lower().replace('-', '_').replace(' ', '_').replace('.', '_'))
         if not table_name or table_name[0].isdigit():
             table_name = 't_' + table_name
         df.to_sql(table_name, engine, index=False)
 
         session_id = str(uuid.uuid4())
         connections[session_id] = {
-            "type": "file",
-            "engine": engine,
-            "tables": [table_name],
-            "table_name": table_name,
-            "created_at": datetime.utcnow().isoformat()
+            "type": "file", "engine": engine, "tables": [table_name],
+            "table_name": table_name, "created_at": datetime.utcnow().isoformat()
         }
-
-        columns = [{"name": col, "type": str(dtype)} for col, dtype in df.dtypes.items()]
         return {
-            "success": True,
-            "session_id": session_id,
-            "tables": [{"name": table_name, "columns": columns}]
+            "success": True, "session_id": session_id,
+            "tables": [{"name": table_name, "columns": [{"name": c, "type": str(d)} for c, d in df.dtypes.items()]}]
         }
+    except HTTPException: raise
     except Exception as e:
-        raise HTTPException(400, detail=str(e))
+        raise HTTPException(400, detail=power_bi_error("file", e))
 
-# ========== CLOUD STORAGE ENDPOINTS ==========
+
+# ========== CLOUD STORAGE ==========
 @app.post("/api/test-cloud")
 async def test_cloud(creds: CloudCreds):
-    """Test cloud storage connection"""
+    provider = creds.provider
     try:
-        if creds.provider == 's3' and boto3:
+        if provider == 's3':
+            if boto3 is None: raise ImportError("boto3 not installed")
             s3 = boto3.client('s3', aws_access_key_id=creds.access_key, aws_secret_access_key=creds.secret_key, region_name=creds.region)
             s3.list_objects_v2(Bucket=creds.bucket, Prefix=creds.prefix or '', MaxKeys=1)
-        elif creds.provider == 'gcs':
-            from google.cloud import storage
+        elif provider == 'gcs':
+            if gcp_storage is None: raise ImportError("google-cloud-storage not installed")
             if creds.credentials_json:
                 from google.oauth2 import service_account
                 info = json.loads(creds.credentials_json)
                 credentials = service_account.Credentials.from_service_account_info(info)
-                client = storage.Client(project=creds.project, credentials=credentials)
+                client = gcp_storage.Client(project=creds.project, credentials=credentials)
             else:
-                client = storage.Client(project=creds.project)
-            bucket = client.bucket(creds.bucket)
-            list(bucket.list_blobs(max_results=1))
-        elif creds.provider == 'azure':
-            from azure.storage.blob import BlobServiceClient
-            client = BlobServiceClient(account_url=f"https://{creds.account}.blob.core.windows.net", credential=creds.sas_token)
-            list(client.list_containers())
-        elif creds.provider == 'snowflake_stage':
-            if snowflake is None:
-                raise ImportError("snowflake-connector not installed")
-            conn = snowflake.connector.connect(
+                client = gcp_storage.Client(project=creds.project)
+            list(client.bucket(creds.bucket).list_blobs(max_results=1))
+        elif provider == 'azure':
+            if BlobServiceClient is None: raise ImportError("azure-storage-blob not installed")
+            url = f"https://{creds.account}.blob.core.windows.net"
+            client = BlobServiceClient(account_url=url, credential=creds.sas_token)
+            list(client.list_containers(results_per_page=1))
+        elif provider == 'snowflake_stage':
+            if snowflake_connector is None: raise ImportError("snowflake-connector-python not installed")
+            conn = snowflake_connector.connect(
                 account=creds.account, user=creds.username, password=creds.password,
-                warehouse=creds.warehouse, database=creds.database
             )
             conn.cursor().execute(f"LIST @{creds.stage}")
         else:
-            raise HTTPException(400, "Cloud provider not supported or library not installed")
-
+            raise ValueError(f"Unknown provider: {provider}")
         return {"success": True}
     except Exception as e:
-        raise HTTPException(400, detail=str(e))
+        raise HTTPException(400, detail=power_bi_error(provider, e))
+
 
 @app.post("/api/connect-cloud")
 async def connect_cloud(creds: CloudCreds):
-    """Connect to cloud storage"""
+    provider = creds.provider
     try:
         tables = []
-        if creds.provider == 's3' and boto3:
+        if provider == 's3' and boto3:
             s3 = boto3.client('s3', aws_access_key_id=creds.access_key, aws_secret_access_key=creds.secret_key, region_name=creds.region)
             response = s3.list_objects_v2(Bucket=creds.bucket, Prefix=creds.prefix or '')
             tables = [{"name": obj['Key'], "columns": []} for obj in response.get('Contents', [])[:50]]
-
         return {"success": True, "tables": tables}
     except Exception as e:
-        raise HTTPException(400, detail=str(e))
+        raise HTTPException(400, detail=power_bi_error(provider, e))
 
-# ========== EXPORT ENDPOINTS ==========
+
+# ========== EXPORT ==========
 @app.post("/api/export")
 async def export_data(req: ExportRequest):
-    """Export query results to various formats"""
     try:
         df = pd.DataFrame(req.results)
-
         if req.format == 'csv':
-            output = io.StringIO()
-            df.to_csv(output, index=False)
-            return StreamingResponse(
-                io.BytesIO(output.getvalue().encode()),
-                media_type="text/csv",
-                headers={"Content-Disposition": f"attachment; filename=export.csv"}
-            )
+            out = io.StringIO(); df.to_csv(out, index=False)
+            return StreamingResponse(io.BytesIO(out.getvalue().encode()), media_type="text/csv",
+                                     headers={"Content-Disposition": "attachment; filename=export.csv"})
         elif req.format == 'json':
-            output = io.BytesIO(df.to_json(orient='records').encode())
-            return StreamingResponse(output, media_type="application/json")
+            out = io.BytesIO(df.to_json(orient='records').encode())
+            return StreamingResponse(out, media_type="application/json")
         elif req.format == 'excel':
-            output = io.BytesIO()
-            df.to_excel(output, index=False, engine='openpyxl')
-            output.seek(0)
-            return StreamingResponse(output, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            out = io.BytesIO(); df.to_excel(out, index=False, engine='openpyxl'); out.seek(0)
+            return StreamingResponse(out, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         elif req.format == 'parquet':
-            output = io.BytesIO()
-            df.to_parquet(output, index=False)
-            output.seek(0)
-            return StreamingResponse(output, media_type="application/octet-stream")
-        else:
-            raise HTTPException(400, "Unsupported format")
+            out = io.BytesIO(); df.to_parquet(out, index=False); out.seek(0)
+            return StreamingResponse(out, media_type="application/octet-stream")
+        raise ValueError("Unsupported format")
     except Exception as e:
-        raise HTTPException(400, detail=str(e))
+        raise HTTPException(400, detail=power_bi_error("export", e))
 
-# ========== AI FEATURES (Groq — Free) ==========
 
+# ========== AI FEATURES (Groq) ==========
 async def call_ai(prompt, system_prompt="", max_tokens=2048):
-    """Call Groq API (Llama 3.3 70B — free tier)"""
-    import httpx
     key = GROQ_API_KEY
     if not key:
-        raise HTTPException(400, "GROQ_API_KEY not configured. Get free key at console.groq.com")
-
+        raise HTTPException(400, detail={"message": "AI not configured", "details": "GROQ_API_KEY not set", "likely_cause": "Server config", "fix": "Set GROQ_API_KEY in Render env vars"})
     messages = []
-    if system_prompt:
-        messages.append({"role": "system", "content": system_prompt})
+    if system_prompt: messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": prompt})
-
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(
             "https://api.groq.com/openai/v1/chat/completions",
             headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-            json={
-                "model": "llama-3.3-70b-versatile",
-                "messages": messages,
-                "temperature": 0.1,
-                "max_tokens": max_tokens
-            }
+            json={"model": "llama-3.3-70b-versatile", "messages": messages, "temperature": 0.1, "max_tokens": max_tokens}
         )
         data = resp.json()
         if resp.status_code != 200:
-            error_msg = data.get("error", {}).get("message", "Groq API error")
-            raise HTTPException(400, error_msg)
+            raise HTTPException(400, detail=power_bi_error("Groq AI", Exception(data.get("error", {}).get("message", "Groq API error"))))
+        return data.get("choices", [{}])[0].get("message", {}).get("content", "")
 
-        text_response = data.get("choices", [{}])[0].get("message", {}).get("content", "")
-        return text_response
 
 @app.post("/api/ai-sql")
 async def generate_sql(request: dict):
-    """Generate SQL from natural language using Groq"""
     prompt = request.get("prompt", "")
     schema_context = request.get("schema_context", "")
-
-    system = f"""You are an expert SQL assistant. Convert natural language to SQL.
-{('Database schema: ' + schema_context) if schema_context else ''}
-Rules:
-- Return ONLY the SQL query, nothing else — no markdown, no backticks, no explanation
-- Use standard SQL syntax
-- Use proper aliases for readability
-- If intent is unclear, make reasonable assumptions"""
-
-    sql = await call_ai(prompt, system)
-    sql = sql.strip()
+    system = f"""Convert natural language to SQL. {('Schema: ' + schema_context) if schema_context else ''}
+Rules: Return ONLY the SQL, no markdown/explanation. Use standard SQL syntax."""
+    sql = (await call_ai(prompt, system)).strip()
     if sql.startswith("```"): sql = sql.split("\n", 1)[1] if "\n" in sql else sql[3:]
     if sql.endswith("```"): sql = sql[:-3]
-    sql = sql.strip()
+    return {"success": True, "sql": sql.strip()}
 
-    return {"success": True, "sql": sql}
-
-@app.post("/api/ai-profile")
-async def ai_data_profile(request: dict):
-    """AI-powered data profiling — analyzes uploaded data and generates insights"""
-    session_id = request.get("session_id", "")
-    table_name = request.get("table_name", "")
-
-    if session_id not in connections:
-        raise HTTPException(400, "No active connection")
-
-    conn = connections[session_id]
-
-    try:
-        if conn["type"] == "file":
-            engine = conn["engine"]
-            with engine.connect() as c:
-                count_result = c.execute(text(f"SELECT COUNT(*) FROM '{table_name}'"))
-                total_rows = count_result.fetchone()[0]
-
-                cols_result = c.execute(text(f"PRAGMA table_info('{table_name}')"))
-                columns = [{"name": r[1], "type": r[2]} for r in cols_result.fetchall()]
-
-                sample_result = c.execute(text(f"SELECT * FROM '{table_name}' LIMIT 20"))
-                sample_cols = list(sample_result.keys())
-                sample_rows = [dict(zip(sample_cols, row)) for row in sample_result.fetchall()]
-
-                null_counts = {}
-                for col in columns:
-                    null_result = c.execute(text(f"SELECT COUNT(*) FROM '{table_name}' WHERE \"{col['name']}\" IS NULL"))
-                    null_counts[col["name"]] = null_result.fetchone()[0]
-
-                distinct_counts = {}
-                for col in columns:
-                    try:
-                        dist_result = c.execute(text(f"SELECT COUNT(DISTINCT \"{col['name']}\") FROM '{table_name}'"))
-                        distinct_counts[col["name"]] = dist_result.fetchone()[0]
-                    except:
-                        distinct_counts[col["name"]] = -1
-        else:
-            raise HTTPException(400, "AI profiling currently supports file uploads. Database profiling coming soon.")
-
-        col_summary = "\n".join([f"- {c['name']} ({c['type']}): {null_counts.get(c['name'],0)} nulls, {distinct_counts.get(c['name'],0)} distinct values" for c in columns])
-        sample_str = json.dumps(sample_rows[:5], indent=2, default=str)
-
-        prompt = f"""Analyze this dataset and provide a comprehensive data quality report.
-
-Table: {table_name}
-Total rows: {total_rows}
-Columns ({len(columns)}):
-{col_summary}
-
-Sample data (first 5 rows):
-{sample_str}
-
-Provide your analysis in this exact JSON format (no markdown, no backticks):
-{{
-  "quality_score": <0-100 integer>,
-  "summary": "<2-3 sentence overview>",
-  "column_analysis": [
-    {{
-      "column": "<name>",
-      "detected_type": "<actual data type like email, phone, date, currency, name, id, etc>",
-      "issues": ["<issue 1>", "<issue 2>"],
-      "suggestion": "<cleaning recommendation>"
-    }}
-  ],
-  "data_issues": [
-    {{
-      "severity": "high|medium|low",
-      "issue": "<description>",
-      "affected_rows": <estimated count>,
-      "fix": "<recommended action>"
-    }}
-  ],
-  "cleaning_sql": ["<SQL statement 1 to fix issues>", "<SQL statement 2>"]
-}}"""
-
-        result = await call_ai(prompt, "You are a data quality expert. Respond ONLY with valid JSON, no markdown.")
-
-        result = result.strip()
-        if result.startswith("```"): result = result.split("\n", 1)[1]
-        if result.endswith("```"): result = result[:-3]
-        result = result.strip()
-
-        try:
-            profile = json.loads(result)
-        except:
-            profile = {"quality_score": 0, "summary": result, "column_analysis": [], "data_issues": [], "cleaning_sql": []}
-
-        profile["total_rows"] = total_rows
-        profile["total_columns"] = len(columns)
-        profile["columns"] = columns
-        profile["null_counts"] = null_counts
-        profile["distinct_counts"] = distinct_counts
-
-        return {"success": True, "profile": profile}
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(400, str(e))
 
 @app.post("/api/ai-explain")
-async def ai_explain_query(request: dict):
-    """Explain what a SQL query does in plain English"""
+async def ai_explain(request: dict):
     sql = request.get("sql", "")
-    if not sql:
-        raise HTTPException(400, "No SQL provided")
-
-    result = await call_ai(
-        f"Explain this SQL query in simple English that a non-technical business person can understand:\n\n{sql}",
-        "You are a data expert. Explain SQL queries clearly and concisely. Use bullet points."
-    )
+    if not sql: raise HTTPException(400, "No SQL provided")
+    result = await call_ai(f"Explain this SQL in plain English:\n\n{sql}", "You are a data expert.")
     return {"success": True, "explanation": result}
 
+
 @app.post("/api/ai-optimize")
-async def ai_optimize_query(request: dict):
-    """Suggest optimizations for a SQL query"""
+async def ai_optimize(request: dict):
     sql = request.get("sql", "")
-    schema_context = request.get("schema_context", "")
-    if not sql:
-        raise HTTPException(400, "No SQL provided")
-
-    result = await call_ai(
-        f"""Optimize this SQL query for better performance.
-{('Schema: ' + schema_context) if schema_context else ''}
-
-Original query:
-{sql}
-
-Provide:
-1. The optimized SQL query
-2. Brief explanation of what you changed and why
-3. Estimated performance improvement""",
-        "You are a database performance expert."
-    )
+    if not sql: raise HTTPException(400, "No SQL provided")
+    result = await call_ai(f"Optimize this SQL:\n{sql}\n\nProvide: 1) Optimized SQL 2) Explanation 3) Performance estimate", "You are a database performance expert.")
     return {"success": True, "optimization": result}
 
+
 @app.post("/api/ai-clean")
-async def ai_clean_data(request: dict):
-    """AI-powered automatic data cleaning"""
-    session_id = request.get("session_id", "")
+async def ai_clean(request: dict):
+    sid = request.get("session_id", "")
     table_name = request.get("table_name", "")
-
-    if session_id not in connections:
-        raise HTTPException(400, "No active connection")
-
-    conn = connections[session_id]
-
+    if sid not in connections: raise HTTPException(400, "No active connection")
+    conn = connections[sid]
+    if conn["type"] != "file":
+        raise HTTPException(400, "Auto-clean only works on uploaded files")
     try:
-        if conn["type"] != "file":
-            raise HTTPException(400, "Auto-clean only works on uploaded files for safety")
-
+        import numpy as np
         engine = conn["engine"]
-        import pandas as pd_local
-
-        df = pd_local.read_sql(f"SELECT * FROM '{table_name}'", engine)
-        original_rows = len(df)
-        original_cols = len(df.columns)
+        df = pd.read_sql(f"SELECT * FROM '{table_name}'", engine)
+        orig_rows, orig_cols = len(df), len(df.columns)
         changes = []
-
         for col in df.select_dtypes(include=['object']).columns:
             before = df[col].copy()
             df[col] = df[col].str.strip()
-            trimmed = (before != df[col]).sum()
-            if trimmed > 0:
-                changes.append(f"Trimmed whitespace in '{col}': {trimmed} values")
-
-        import numpy as np
-        null_strings = ['NA', 'N/A', 'null', 'NULL', 'None', 'none', '-', '', 'undefined', 'nil', '#N/A', 'NaN']
+            n = (before != df[col]).sum()
+            if n > 0: changes.append(f"Trimmed whitespace in '{col}': {n} values")
+        nulls = ['NA', 'N/A', 'null', 'NULL', 'None', 'none', '-', '', 'undefined', 'nil', '#N/A', 'NaN']
         for col in df.select_dtypes(include=['object']).columns:
-            mask = df[col].isin(null_strings)
+            mask = df[col].isin(nulls)
             if mask.sum() > 0:
                 df.loc[mask, col] = np.nan
-                changes.append(f"Converted {mask.sum()} null-like values to NULL in '{col}'")
-
-        empty_rows = df.isnull().all(axis=1).sum()
-        if empty_rows > 0:
-            df = df.dropna(how='all')
-            changes.append(f"Removed {empty_rows} completely empty rows")
-
+                changes.append(f"Converted {mask.sum()} null-like values in '{col}'")
+        empty = df.isnull().all(axis=1).sum()
+        if empty > 0: df = df.dropna(how='all'); changes.append(f"Removed {empty} empty rows")
         dupes = df.duplicated().sum()
-        if dupes > 0:
-            df = df.drop_duplicates()
-            changes.append(f"Removed {dupes} duplicate rows")
-
+        if dupes > 0: df = df.drop_duplicates(); changes.append(f"Removed {dupes} duplicate rows")
         for col in df.select_dtypes(include=['object']).columns:
             try:
-                converted = pd_local.to_numeric(df[col], errors='coerce')
-                non_null = df[col].notna().sum()
-                if non_null > 0 and converted.notna().sum() / non_null >= 0.85:
-                    df[col] = converted
-                    changes.append(f"Converted '{col}' from text to numeric")
-            except:
-                pass
-
-        for col in df.select_dtypes(include=['object']).columns:
-            try:
-                sample = df[col].dropna().head(20)
-                converted = pd_local.to_datetime(sample, errors='coerce', infer_datetime_format=True)
-                if converted.notna().sum() / len(sample) >= 0.8:
-                    df[col] = pd_local.to_datetime(df[col], errors='coerce', infer_datetime_format=True)
-                    changes.append(f"Converted '{col}' from text to datetime")
-            except:
-                pass
-
-        cleaned_table = f"{table_name}_cleaned"
-        df.to_sql(cleaned_table, engine, index=False, if_exists='replace')
-
-        return {
-            "success": True,
-            "original_rows": original_rows,
-            "cleaned_rows": len(df),
-            "removed_rows": original_rows - len(df),
-            "original_columns": original_cols,
-            "changes": changes,
-            "cleaned_table": cleaned_table,
-            "message": f"Data cleaned! {len(changes)} improvements made. Query the cleaned data from table '{cleaned_table}'"
-        }
-    except HTTPException:
-        raise
+                converted = pd.to_numeric(df[col], errors='coerce')
+                if df[col].notna().sum() > 0 and converted.notna().sum() / df[col].notna().sum() >= 0.85:
+                    df[col] = converted; changes.append(f"Converted '{col}' to numeric")
+            except: pass
+        cleaned = f"{table_name}_cleaned"
+        df.to_sql(cleaned, engine, index=False, if_exists='replace')
+        return {"success": True, "original_rows": orig_rows, "cleaned_rows": len(df),
+                "removed_rows": orig_rows - len(df), "original_columns": orig_cols,
+                "changes": changes, "cleaned_table": cleaned}
     except Exception as e:
-        raise HTTPException(400, str(e))
+        raise HTTPException(400, detail=power_bi_error("clean", e))
+
+
+@app.post("/api/ai-profile")
+async def ai_profile(request: dict):
+    sid = request.get("session_id", "")
+    table = request.get("table_name", "")
+    if sid not in connections: raise HTTPException(400, "No active connection")
+    conn = connections[sid]
+    if conn["type"] != "file":
+        raise HTTPException(400, "AI profiling supports file uploads only")
+    try:
+        engine = conn["engine"]
+        with engine.connect() as c:
+            total = c.execute(text(f"SELECT COUNT(*) FROM '{table}'")).fetchone()[0]
+            cols_info = [{"name": r[1], "type": r[2]} for r in c.execute(text(f"PRAGMA table_info('{table}')")).fetchall()]
+            sample = c.execute(text(f"SELECT * FROM '{table}' LIMIT 5"))
+            sample_rows = [dict(zip(list(sample.keys()), row)) for row in sample.fetchall()]
+        col_summary = "\n".join([f"- {c['name']} ({c['type']})" for c in cols_info])
+        prompt = f"""Profile this dataset. Return ONLY valid JSON:
+Table: {table}, Rows: {total}, Columns:
+{col_summary}
+Sample: {json.dumps(sample_rows[:3], default=str)}
+
+{{
+  "quality_score": <0-100>,
+  "summary": "<overview>",
+  "column_analysis": [{{"column": "name", "detected_type": "...", "issues": [], "suggestion": "..."}}],
+  "data_issues": [{{"severity": "high|medium|low", "issue": "...", "affected_rows": 0, "fix": "..."}}],
+  "cleaning_sql": ["..."]
+}}"""
+        result = (await call_ai(prompt, "You are a data quality expert. Return ONLY JSON.")).strip()
+        if result.startswith("```"): result = result.split("\n", 1)[1]
+        if result.endswith("```"): result = result[:-3]
+        try: profile = json.loads(result.strip())
+        except: profile = {"quality_score": 0, "summary": result, "column_analysis": [], "data_issues": [], "cleaning_sql": []}
+        profile.update({"total_rows": total, "total_columns": len(cols_info), "columns": cols_info})
+        return {"success": True, "profile": profile}
+    except HTTPException: raise
+    except Exception as e:
+        raise HTTPException(400, detail=power_bi_error("profile", e))
+
 
 @app.post("/api/ai-migration-plan")
 async def ai_migration_plan(request: dict):
-    """Generate a migration plan from source to target"""
-    source_type = request.get("source_type", "")
-    target_type = request.get("target_type", "Snowflake")
-    schema_info = request.get("schema_info", "")
-    row_count = request.get("row_count", "unknown")
-
-    prompt = f"""Generate a detailed data migration plan:
-
-Source: {source_type}
-Target: {target_type}
-Schema: {schema_info}
-Estimated rows: {row_count}
-
-Provide a comprehensive plan including:
-1. Pre-migration checklist (5-7 items)
-2. Schema mapping recommendations
-3. Data type conversions needed
-4. Estimated timeline
-5. Risk assessment (high/medium/low risks)
-6. Post-migration validation steps
-7. SQL scripts for creating the target tables
-
-Format as clean, readable text with headers and bullet points."""
-
-    result = await call_ai(prompt, "You are a senior data migration architect with 15 years of experience. Provide practical, actionable migration plans.")
+    src = request.get("source_type", "")
+    tgt = request.get("target_type", "Snowflake")
+    info = request.get("schema_info", "")
+    prompt = f"""Create migration plan from {src} to {tgt}. Schema: {info}
+Include: 1) Pre-migration checklist 2) Schema mapping 3) Type conversions 4) Timeline 5) Risk assessment 6) Validation steps 7) Target DDL."""
+    result = await call_ai(prompt, "You are a senior data migration architect.")
     return {"success": True, "plan": result}
 
-# ========== CLEANUP ==========
+
 @app.on_event("shutdown")
 async def shutdown():
     for conn in connections.values():
-        if "engine" in conn:
-            conn["engine"].dispose()
+        try:
+            if "engine" in conn: conn["engine"].dispose()
+        except: pass
+
 
 if __name__ == "__main__":
     import uvicorn
