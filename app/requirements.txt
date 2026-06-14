@@ -1,25 +1,32 @@
 # ============================================================
 # Migranix Backend — All 14 database drivers
-# For Hetzner CX22+ (2vCPU / 4GB RAM)
 # ============================================================
-# Web framework
+
+# ---- Web framework ----
 fastapi==0.111.0
 uvicorn[standard]==0.29.0
 pydantic==2.7.1
 python-multipart==0.0.9
 httpx==0.27.0
 
+# ---- DATA PROCESSING (pin first — others depend on this) ----
+pandas==2.2.2
+openpyxl==3.1.2
+pyarrow==16.0.0
+lxml==5.2.2
+fastavro==1.9.4
+
 # ---- RELATIONAL DATABASES ----
-psycopg2-binary==2.9.9          # PostgreSQL + Redshift
-PyMySQL==1.1.1                   # MySQL / MariaDB
-pyodbc==5.1.0                    # SQL Server (needs ODBC Driver in Dockerfile)
-SQLAlchemy==2.0.30               # ORM / query layer for all relational DBs
-# Oracle (python-oracledb) excluded — not available on this platform
-# ibm-db excluded — requires proprietary IBM client libs
+psycopg2-binary==2.9.9
+PyMySQL==1.1.1
+pyodbc==5.1.0
+SQLAlchemy==2.0.30
+# Oracle excluded — python-oracledb not available on this platform
+# IBM DB2 excluded — requires proprietary IBM client libs
 
 # ---- CLOUD WAREHOUSES ----
 snowflake-connector-python==3.10.0
-databricks-sql-connector==3.1.0
+databricks-sql-connector==2.9.3
 google-cloud-bigquery==3.25.0
 google-auth==2.29.0
 google-cloud-storage==2.17.0
@@ -29,16 +36,9 @@ pymongo==4.7.2
 cassandra-driver==3.29.1
 
 # ---- CLOUD STORAGE & EVENTS ----
-boto3==1.34.129                  # AWS: DynamoDB + S3
-azure-storage-blob==12.20.0      # Azure Blob Storage
-azure-cosmos==4.7.0              # Azure Cosmos DB
+boto3==1.34.129
+azure-storage-blob==12.20.0
+azure-cosmos==4.7.0
 
-# ---- ENCRYPTION (Snowflake key-pair auth) ----
+# ---- ENCRYPTION ----
 cryptography==42.0.7
-
-# ---- DATA PROCESSING ----
-pandas==2.2.2
-openpyxl==3.1.2
-pyarrow==16.0.0
-lxml==5.2.2
-fastavro==1.9.4
