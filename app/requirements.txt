@@ -2,7 +2,6 @@
 # Migranix Backend — All 14 database drivers
 # For Hetzner CX22+ (2vCPU / 4GB RAM)
 # ============================================================
-
 # Web framework
 fastapi==0.111.0
 uvicorn[standard]==0.29.0
@@ -14,10 +13,9 @@ httpx==0.27.0
 psycopg2-binary==2.9.9          # PostgreSQL + Redshift
 PyMySQL==1.1.1                   # MySQL / MariaDB
 pyodbc==5.1.0                    # SQL Server (needs ODBC Driver in Dockerfile)
-python-oracledb==2.1.0           # Oracle — thin mode, no Instant Client needed!
+python-oracledb>=1.4.0           # Oracle — thin mode, no Instant Client needed!
 SQLAlchemy==2.0.30               # ORM / query layer for all relational DBs
 # ibm-db and ibm-db-sa not included — IBM DB2 needs proprietary IBM client libs
-# that are not freely distributable; show a clear error when attempted
 
 # ---- CLOUD WAREHOUSES ----
 snowflake-connector-python==3.10.0
