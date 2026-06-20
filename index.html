@@ -1,742 +1,300 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Migranix - Data Migration for Indian SMEs</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        :root {
-            --primary: #2563eb; --primary-dark: #1d4ed8; --secondary: #0f172a;
-            --accent: #06b6d4; --text: #1e293b; --text-light: #64748b;
-            --bg: #ffffff; --bg-light: #f8fafc; --border: #e2e8f0;
-            --error: #ef4444; --success: #22c55e;
-        }
-        body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: var(--text); line-height: 1.6; overflow-x: hidden; }
-        nav { position: fixed; top: 0; width: 100%; background: rgba(255,255,255,0.95); backdrop-filter: blur(10px); z-index: 1000; border-bottom: 1px solid var(--border); transition: all 0.3s ease; }
-        .nav-container { max-width: 1200px; margin: 0 auto; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
-        .logo { font-size: 1.5rem; font-weight: 800; color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 0.5rem; }
-        .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, var(--primary), var(--accent)); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; }
-        .nav-links { display: flex; gap: 2rem; align-items: center; }
-        .nav-links a { text-decoration: none; color: var(--text); font-weight: 500; font-size: 0.95rem; transition: color 0.3s; position: relative; cursor: pointer; }
-        .nav-links a:hover { color: var(--primary); }
-        .nav-links a::after { content: ''; position: absolute; bottom: -4px; left: 0; width: 0; height: 2px; background: var(--primary); transition: width 0.3s; }
-        .nav-links a:hover::after { width: 100%; }
-        .btn { padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: all 0.3s; border: none; font-size: 0.95rem; text-decoration: none; display: inline-block; }
-        .btn-primary { background: var(--primary); color: white; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2); }
-        .btn-primary:hover { background: var(--primary-dark); transform: translateY(-2px); box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.3); }
-        .btn-outline { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
-        .btn-outline:hover { background: var(--primary); color: white; }
-        .btn-danger { background: var(--error); color: white; padding: 0.5rem 1rem; font-size: 0.875rem; }
-        .btn-danger:hover { background: #dc2626; }
-        .mobile-menu-btn { display: none; background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text); }
-        .user-profile { display: flex; align-items: center; gap: 0.75rem; }
-        .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent)); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.875rem; }
-        .user-name { font-weight: 600; font-size: 0.9rem; color: var(--text); }
-        .auth-modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
-        .auth-modal-overlay.active { display: flex; }
-        .auth-modal { background: white; border-radius: 20px; max-width: 480px; width: 90%; max-height: 90vh; overflow-y: auto; position: relative; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); animation: modalSlideIn 0.3s ease; }
-        @keyframes modalSlideIn { from { opacity: 0; transform: translateY(-30px) scale(0.95); } to { opacity: 1; transform: translateY(0) scale(1); } }
-        .auth-modal-header { padding: 2rem 2rem 0; text-align: center; }
-        .auth-modal-header h2 { font-size: 1.75rem; font-weight: 800; color: var(--secondary); margin-bottom: 0.5rem; }
-        .auth-modal-header p { color: var(--text-light); font-size: 0.95rem; }
-        .auth-tabs { display: flex; padding: 0 2rem; margin-top: 1.5rem; border-bottom: 2px solid var(--border); }
-        .auth-tab { flex: 1; padding: 0.875rem; background: none; border: none; font-family: inherit; font-size: 1rem; font-weight: 600; color: var(--text-light); cursor: pointer; position: relative; transition: color 0.3s; }
-        .auth-tab.active { color: var(--primary); }
-        .auth-tab.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 3px; background: var(--primary); border-radius: 3px 3px 0 0; }
-        .auth-tab:hover { color: var(--primary); }
-        .auth-form-container { padding: 1.5rem 2rem 2rem; }
-        .auth-form { display: none; }
-        .auth-form.active { display: block; animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        .form-group { margin-bottom: 1.25rem; }
-        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; font-size: 0.9rem; color: var(--text); }
-        .form-group input, .form-group select { width: 100%; padding: 0.875rem 1rem; border: 2px solid var(--border); border-radius: 10px; font-family: inherit; font-size: 0.95rem; transition: all 0.3s; background: var(--bg-light); }
-        .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); background: white; box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
-        .form-group input.error { border-color: var(--error); }
-        .form-group .error-message { color: var(--error); font-size: 0.8rem; margin-top: 0.375rem; display: none; }
-        .form-group .error-message.visible { display: block; }
-        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
-        .password-strength { margin-top: 0.5rem; height: 4px; border-radius: 2px; background: var(--border); overflow: hidden; display: none; }
-        .password-strength.visible { display: block; }
-        .password-strength-bar { height: 100%; width: 0; transition: all 0.3s; border-radius: 2px; }
-        .password-strength-text { font-size: 0.75rem; margin-top: 0.25rem; color: var(--text-light); }
-        .checkbox-group { display: flex; align-items: flex-start; gap: 0.75rem; margin-bottom: 1.25rem; }
-        .checkbox-group input[type="checkbox"] { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--primary); cursor: pointer; }
-        .checkbox-group label { font-size: 0.875rem; color: var(--text-light); cursor: pointer; line-height: 1.4; }
-        .checkbox-group label a { color: var(--primary); text-decoration: none; }
-        .btn-full { width: 100%; padding: 0.875rem; font-size: 1rem; }
-        .btn-full:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
-        .auth-divider { display: flex; align-items: center; gap: 1rem; margin: 1.5rem 0; color: var(--text-light); font-size: 0.875rem; }
-        .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-        .social-login { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-        .social-btn { display: flex; align-items: center; justify-content: center; gap: 0.5rem; padding: 0.75rem; border: 2px solid var(--border); border-radius: 10px; background: white; font-family: inherit; font-size: 0.9rem; font-weight: 500; color: var(--text); cursor: pointer; transition: all 0.3s; }
-        .social-btn:hover { border-color: var(--primary); background: var(--bg-light); }
-        .social-btn svg { width: 20px; height: 20px; }
-        .close-modal-btn { position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 1.75rem; cursor: pointer; color: var(--text-light); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; transition: all 0.3s; z-index: 10; }
-        .close-modal-btn:hover { background: var(--bg-light); color: var(--text); }
-        .toast-container { position: fixed; top: 100px; right: 2rem; z-index: 3000; display: flex; flex-direction: column; gap: 0.75rem; }
-        .toast { padding: 1rem 1.5rem; border-radius: 12px; color: white; font-weight: 500; font-size: 0.95rem; display: flex; align-items: center; gap: 0.75rem; box-shadow: 0 10px 25px rgba(0,0,0,0.15); animation: toastSlideIn 0.4s ease; max-width: 400px; }
-        .toast.success { background: var(--success); } .toast.error { background: var(--error); } .toast.info { background: var(--primary); }
-        @keyframes toastSlideIn { from { opacity: 0; transform: translateX(100px); } to { opacity: 1; transform: translateX(0); } }
-        .toast.hiding { animation: toastSlideOut 0.3s ease forwards; }
-        @keyframes toastSlideOut { to { opacity: 0; transform: translateX(100px); } }
-        .dashboard-section { display: none; padding: 8rem 2rem 4rem; background: var(--bg-light); min-height: 100vh; }
-        .dashboard-section.active { display: block; }
-        .dashboard-container { max-width: 1200px; margin: 0 auto; }
-        .dashboard-header { margin-bottom: 2rem; }
-        .dashboard-header h1 { font-size: 2rem; font-weight: 800; color: var(--secondary); }
-        .dashboard-header p { color: var(--text-light); margin-top: 0.5rem; }
-        .dashboard-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem; }
-        .dashboard-card { background: white; padding: 1.5rem; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--border); }
-        .dashboard-card .card-label { font-size: 0.875rem; color: var(--text-light); margin-bottom: 0.5rem; }
-        .dashboard-card .card-value { font-size: 1.75rem; font-weight: 800; color: var(--secondary); }
-        .dashboard-card .card-change { font-size: 0.8rem; margin-top: 0.25rem; font-weight: 600; }
-        .dashboard-card .card-change.positive { color: var(--success); }
-        .spinner { width: 20px; height: 20px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.8s linear infinite; display: inline-block; vertical-align: middle; margin-right: 0.5rem; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .hero { margin-top: 80px; padding: 6rem 2rem; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #f8fafc 100%); position: relative; overflow: hidden; }
-        .hero::before { content: ''; position: absolute; top: -50%; right: -20%; width: 800px; height: 800px; background: radial-gradient(circle, rgba(37,99,235,0.08) 0%, transparent 70%); animation: pulse 8s ease-in-out infinite; }
-        @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.5; } 50% { transform: scale(1.1); opacity: 0.8; } }
-        .hero-container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; align-items: center; position: relative; z-index: 1; }
-        .hero-content h1 { font-size: 3.5rem; font-weight: 800; line-height: 1.1; margin-bottom: 1.5rem; background: linear-gradient(135deg, var(--secondary), var(--primary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .hero-content p { font-size: 1.25rem; color: var(--text-light); margin-bottom: 2rem; max-width: 500px; }
-        .hero-cta { display: flex; gap: 1rem; margin-bottom: 3rem; }
-        .hero-stats { display: flex; gap: 2rem; }
-        .stat-item { text-align: center; } .stat-number { font-size: 2rem; font-weight: 800; color: var(--primary); display: block; } .stat-label { font-size: 0.875rem; color: var(--text-light); }
-        .hero-visual { position: relative; }
-        .hero-card { background: white; border-radius: 16px; padding: 2rem; box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1); transform: perspective(1000px) rotateY(-5deg) rotateX(5deg); transition: transform 0.5s ease; border: 1px solid var(--border); }
-        .hero-card:hover { transform: perspective(1000px) rotateY(0deg) rotateX(0deg); }
-        .data-flow { display: flex; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
-        .data-source { flex: 1; background: var(--bg-light); border-radius: 8px; padding: 1rem; text-align: center; border: 2px dashed var(--border); }
-        .arrow { color: var(--primary); font-size: 1.5rem; animation: bounce 1.5s infinite; }
-        @keyframes bounce { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(5px); } }
-        .data-dest { flex: 1; background: linear-gradient(135deg, var(--primary), var(--accent)); border-radius: 8px; padding: 1rem; text-align: center; color: white; box-shadow: 0 4px 6px rgba(37,99,235,0.2); }
-        .progress-bar { height: 8px; background: var(--bg-light); border-radius: 4px; overflow: hidden; margin-top: 1rem; }
-        .progress-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--primary), var(--accent)); border-radius: 4px; animation: fillProgress 3s ease-out forwards; }
-        @keyframes fillProgress { to { width: 92%; } }
-        .features { padding: 6rem 2rem; background: white; }
-        .section-header { text-align: center; max-width: 600px; margin: 0 auto 4rem; }
-        .section-header h2 { font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; color: var(--secondary); }
-        .section-header p { color: var(--text-light); font-size: 1.125rem; }
-        .features-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
-        .feature-card { padding: 2rem; border-radius: 16px; background: var(--bg-light); border: 1px solid var(--border); transition: all 0.3s ease; position: relative; overflow: hidden; }
-        .feature-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, var(--primary), var(--accent)); transform: scaleX(0); transition: transform 0.3s; }
-        .feature-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1); }
-        .feature-card:hover::before { transform: scaleX(1); }
-        .feature-icon { width: 48px; height: 48px; background: linear-gradient(135deg, var(--primary), var(--accent)); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: white; font-size: 1.25rem; margin-bottom: 1.5rem; }
-        .feature-card h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.75rem; }
-        .feature-card p { color: var(--text-light); font-size: 0.95rem; line-height: 1.6; }
-        .how-it-works { padding: 6rem 2rem; background: linear-gradient(180deg, var(--bg-light) 0%, white 100%); }
-        .steps-container { max-width: 1000px; margin: 0 auto; display: flex; justify-content: space-between; position: relative; }
-        .steps-container::before { content: ''; position: absolute; top: 40px; left: 10%; right: 10%; height: 2px; background: linear-gradient(90deg, var(--primary), var(--accent)); z-index: 0; }
-        .step { text-align: center; position: relative; z-index: 1; flex: 1; max-width: 200px; }
-        .step-number { width: 80px; height: 80px; background: white; border: 3px solid var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 800; color: var(--primary); margin: 0 auto 1.5rem; transition: all 0.3s; }
-        .step:hover .step-number { background: var(--primary); color: white; transform: scale(1.1); }
-        .step h3 { font-size: 1.125rem; font-weight: 700; margin-bottom: 0.5rem; } .step p { font-size: 0.875rem; color: var(--text-light); }
-        .pricing { padding: 6rem 2rem; background: white; }
-        .pricing-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
-        .pricing-card { border: 2px solid var(--border); border-radius: 16px; padding: 2.5rem 2rem; text-align: center; transition: all 0.3s; position: relative; }
-        .pricing-card.popular { border-color: var(--primary); transform: scale(1.05); box-shadow: 0 20px 40px -10px rgba(37,99,235,0.15); }
-        .popular-badge { position: absolute; top: -12px; left: 50%; transform: translateX(-50%); background: linear-gradient(135deg, var(--primary), var(--accent)); color: white; padding: 0.25rem 1rem; border-radius: 20px; font-size: 0.875rem; font-weight: 600; }
-        .pricing-card h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; }
-        .price { font-size: 3rem; font-weight: 800; color: var(--secondary); margin: 1.5rem 0; } .price span { font-size: 1rem; color: var(--text-light); font-weight: 400; }
-        .pricing-features { list-style: none; margin: 2rem 0; text-align: left; }
-        .pricing-features li { padding: 0.75rem 0; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; }
-        .pricing-features li::before { content: '✓'; color: var(--primary); font-weight: 800; }
-        .testimonials { padding: 6rem 2rem; background: var(--bg-light); }
-        .testimonials-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; }
-        .testimonial-card { background: white; padding: 2rem; border-radius: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); transition: all 0.3s; }
-        .testimonial-card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1); }
-        .stars { color: #fbbf24; margin-bottom: 1rem; font-size: 1.25rem; }
-        .testimonial-text { color: var(--text); font-style: italic; margin-bottom: 1.5rem; line-height: 1.6; }
-        .testimonial-author { display: flex; align-items: center; gap: 1rem; }
-        .author-avatar { width: 48px; height: 48px; border-radius: 50%; background: linear-gradient(135deg, var(--primary), var(--accent)); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; }
-        .author-info h4 { font-weight: 700; font-size: 0.95rem; } .author-info p { font-size: 0.875rem; color: var(--text-light); }
-        .cta { padding: 6rem 2rem; background: linear-gradient(135deg, var(--secondary) 0%, #1e3a5f 100%); color: white; text-align: center; position: relative; overflow: hidden; }
-        .cta::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
-        .cta-content { position: relative; z-index: 1; max-width: 700px; margin: 0 auto; }
-        .cta h2 { font-size: 2.5rem; font-weight: 800; margin-bottom: 1rem; }
-        .cta p { font-size: 1.25rem; opacity: 0.9; margin-bottom: 2rem; }
-        .cta .btn-primary { background: white; color: var(--primary); font-size: 1.125rem; padding: 1rem 2.5rem; }
-        .cta .btn-primary:hover { background: var(--bg-light); transform: translateY(-2px); }
-        footer { background: var(--secondary); color: white; padding: 4rem 2rem 2rem; }
-        .footer-grid { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 3rem; margin-bottom: 3rem; }
-        .footer-brand .logo { color: white; margin-bottom: 1rem; display: inline-flex; }
-        .footer-brand p { color: #94a3b8; font-size: 0.95rem; line-height: 1.6; max-width: 300px; }
-        .footer-links h4 { font-size: 1rem; font-weight: 700; margin-bottom: 1.5rem; color: white; }
-        .footer-links ul { list-style: none; } .footer-links li { margin-bottom: 0.75rem; }
-        .footer-links a { color: #94a3b8; text-decoration: none; font-size: 0.95rem; transition: color 0.3s; }
-        .footer-links a:hover { color: white; }
-        .footer-bottom { max-width: 1200px; margin: 0 auto; padding-top: 2rem; border-top: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; color: #94a3b8; font-size: 0.875rem; }
-        .social-links { display: flex; gap: 1rem; }
-        .social-links a { width: 36px; height: 36px; background: #334155; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; text-decoration: none; transition: all 0.3s; }
-        .social-links a:hover { background: var(--primary); transform: translateY(-3px); }
-        .fade-in { opacity: 0; transform: translateY(30px); transition: all 0.8s ease; }
-        .fade-in.visible { opacity: 1; transform: translateY(0); }
-        @media (max-width: 968px) {
-            .hero-container { grid-template-columns: 1fr; text-align: center; }
-            .hero-content h1 { font-size: 2.5rem; } .hero-cta { justify-content: center; } .hero-stats { justify-content: center; }
-            .features-grid, .pricing-grid, .testimonials-grid, .footer-grid { grid-template-columns: 1fr; }
-            .pricing-card.popular { transform: scale(1); }
-            .steps-container { flex-direction: column; gap: 3rem; } .steps-container::before { display: none; }
-            .nav-links { display: none; } .mobile-menu-btn { display: block; }
-            .footer-grid { grid-template-columns: 1fr 1fr; } .dashboard-grid { grid-template-columns: repeat(2, 1fr); }
-            .form-row { grid-template-columns: 1fr; } .social-login { grid-template-columns: 1fr; }
-        }
-        @media (max-width: 640px) {
-            .hero-content h1 { font-size: 2rem; } .section-header h2 { font-size: 1.75rem; }
-            .footer-grid { grid-template-columns: 1fr; } .footer-bottom { flex-direction: column; gap: 1rem; text-align: center; }
-            .dashboard-grid { grid-template-columns: 1fr; }
-            .auth-modal { width: 95%; max-height: 95vh; }
-            .auth-modal-header, .auth-tabs, .auth-form-container { padding-left: 1.25rem; padding-right: 1.25rem; }
-        }
-        .mobile-menu { display: none; position: fixed; top: 70px; left: 0; right: 0; background: white; padding: 2rem; box-shadow: 0 10px 20px rgba(0,0,0,0.1); z-index: 999; flex-direction: column; gap: 1.5rem; }
-        .mobile-menu.active { display: flex; }
-        .mobile-menu a { text-decoration: none; color: var(--text); font-weight: 500; font-size: 1.125rem; }
-        html { scroll-behavior: smooth; }
-    </style>
-<link rel="icon" type="image/svg+xml" href="favicon.svg"/>
-<meta name="description" content="Migranix cleans, validates and migrates your business data to Snowflake or cloud. Built for Indian SMEs. Starting Rs.4,999/month."/>
-<meta name="keywords" content="data migration India, data cleaning, Snowflake migration, SME data engineering, migranix"/>
-<meta property="og:title" content="Migranix — Data Migration for Indian SMEs"/>
-<meta property="og:description" content="Clean, validate and migrate your data to Snowflake or cloud. Built for Indian SMEs."/>
-<meta property="og:url" content="https://www.migranix.in"/>
-<meta property="og:type" content="website"/>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Migranix — Universal Data Migration to Snowflake</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--primary:#2563eb;--primary-dark:#1d4ed8;--accent:#06b6d4;--purple:#8b5cf6;--green:#10b981;--text:#1e293b;--text-light:#64748b;--bg:#ffffff;--bg-light:#f8fafc;--border:#e2e8f0}
+body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;color:var(--text);line-height:1.6;overflow-x:hidden}
+a{text-decoration:none;color:inherit}
+nav{position:fixed;top:0;width:100%;background:rgba(255,255,255,0.96);backdrop-filter:blur(10px);z-index:1000;border-bottom:1px solid var(--border)}
+.nav-inner{max-width:1200px;margin:0 auto;padding:1rem 2rem;display:flex;justify-content:space-between;align-items:center}
+.logo{font-size:1.4rem;font-weight:800;color:var(--primary);display:flex;align-items:center;gap:.5rem}
+.logo-icon{width:32px;height:32px;background:linear-gradient(135deg,var(--primary),var(--accent));border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:.9rem}
+.nav-links{display:flex;gap:2rem;align-items:center}
+.nav-links a{font-weight:500;color:var(--text);font-size:.95rem;transition:color .2s}
+.nav-links a:hover{color:var(--primary)}
+.btn{padding:.7rem 1.4rem;border-radius:8px;font-weight:600;cursor:pointer;transition:all .2s;border:none;font-size:.95rem;display:inline-block}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(37,99,235,.25)}
+.btn-primary:hover{background:var(--primary-dark);transform:translateY(-1px)}
+.btn-outline{background:transparent;color:var(--primary);border:2px solid var(--primary)}
+.btn-outline:hover{background:var(--primary);color:#fff}
+.btn-large{padding:.9rem 2rem;font-size:1rem}
+.hero{padding:10rem 2rem 5rem;text-align:center;background:linear-gradient(135deg,#eff6ff 0%,#f0fdf4 50%,#faf5ff 100%)}
+.hero-badge{display:inline-flex;align-items:center;gap:.5rem;background:#dbeafe;color:var(--primary);padding:.4rem 1rem;border-radius:999px;font-size:.85rem;font-weight:600;margin-bottom:1.5rem}
+.hero h1{font-size:3.2rem;font-weight:800;line-height:1.2;margin-bottom:1.2rem;max-width:800px;margin-left:auto;margin-right:auto}
+.hero h1 span{background:linear-gradient(135deg,var(--primary),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero p{font-size:1.15rem;color:var(--text-light);max-width:620px;margin:0 auto 2.5rem}
+.hero-btns{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}
+.hero-stats{display:flex;gap:3rem;justify-content:center;margin-top:4rem;flex-wrap:wrap}
+.stat{text-align:center}
+.stat-num{font-size:2.2rem;font-weight:800;color:var(--primary)}
+.stat-label{color:var(--text-light);font-size:.9rem}
+.sources-bar{background:#0f172a;padding:1.2rem 2rem}
+.sources-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:1.5rem;flex-wrap:wrap;justify-content:center}
+.source-tag{color:#94a3b8;font-size:.82rem;font-weight:500;padding:.3rem .8rem;border:1px solid #334155;border-radius:6px}
+section{padding:5rem 2rem}
+.container{max-width:1200px;margin:0 auto}
+.section-label{display:inline-block;color:var(--primary);font-weight:700;font-size:.82rem;text-transform:uppercase;letter-spacing:.08em;margin-bottom:.8rem}
+.section-title{font-size:2.2rem;font-weight:800;margin-bottom:1rem}
+.section-sub{color:var(--text-light);font-size:1.05rem;max-width:560px}
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:1.5rem;margin-top:3rem}
+.feature-card{background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:2rem;transition:all .2s;position:relative;overflow:hidden}
+.feature-card:hover{border-color:var(--primary);box-shadow:0 8px 30px rgba(37,99,235,.1);transform:translateY(-2px)}
+.feature-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--primary),var(--accent));opacity:0;transition:opacity .2s}
+.feature-card:hover::before{opacity:1}
+.feature-icon{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin-bottom:1.2rem}
+.feature-card h3{font-size:1.1rem;font-weight:700;margin-bottom:.6rem}
+.feature-card p{color:var(--text-light);font-size:.93rem;line-height:1.6}
+.feature-tags{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:1rem}
+.ftag{font-size:.75rem;padding:.25rem .6rem;border-radius:6px;font-weight:600}
+.sources-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-top:2.5rem}
+.source-card{background:#fff;border:1.5px solid var(--border);border-radius:12px;padding:1.2rem 1.5rem;display:flex;align-items:center;gap:.8rem;transition:all .2s}
+.source-card:hover{border-color:var(--primary);box-shadow:0 4px 15px rgba(37,99,235,.1)}
+.source-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;flex-shrink:0}
+.source-name{font-weight:600;font-size:.9rem}
+.source-type{font-size:.75rem;color:var(--text-light)}
+.pipeline-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1.5rem;margin-top:3rem}
+.pipeline-step{background:#fff;border:1.5px solid var(--border);border-radius:14px;padding:1.5rem;text-align:center}
+.step-num{width:40px;height:40px;border-radius:999px;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto .8rem;font-size:.95rem}
+.pipeline-step h4{font-weight:700;margin-bottom:.4rem}
+.pipeline-step p{font-size:.85rem;color:var(--text-light)}
+.cta{background:linear-gradient(135deg,var(--primary),#1e40af);padding:5rem 2rem;text-align:center;color:#fff}
+.cta h2{font-size:2.5rem;font-weight:800;margin-bottom:1rem}
+.cta p{font-size:1.1rem;opacity:.85;margin-bottom:2.5rem}
+.cta .btn-primary{background:#fff;color:var(--primary);font-size:1.05rem;padding:1rem 2.5rem}
+footer{background:#0f172a;color:#94a3b8;padding:3rem 2rem 2rem}
+.footer-inner{max-width:1200px;margin:0 auto}
+.footer-top{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:2rem;margin-bottom:2rem}
+.footer-logo{color:#fff;font-size:1.2rem;font-weight:800}
+.footer-links{display:flex;gap:1.5rem;flex-wrap:wrap}
+.footer-links a{color:#94a3b8;font-size:.9rem}
+.footer-links a:hover{color:#fff}
+.footer-bottom{border-top:1px solid #1e293b;padding-top:1.5rem;font-size:.85rem;display:flex;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
+@media(max-width:768px){.hero h1{font-size:2rem}.nav-links{display:none}.hero-stats{gap:1.5rem}.stat-num{font-size:1.6rem}}
+</style>
 </head>
 <body>
-    <div class="toast-container" id="toastContainer"></div>
-    <nav id="navbar"><div class="nav-container"><a href="#" class="logo" onclick="goHome(event)"><div class="logo-icon">M</div>Migranix</a><div class="nav-links" id="navLinks"><a href="#features">Features</a><a href="#how-it-works">How It Works</a><a href="#pricing">Pricing</a><a href="#testimonials">Testimonials</a><a href="#" onclick="openAuthModal('login', event)">Log In</a><a href="#" class="btn btn-primary" onclick="openAuthModal('signup', event)">Get Started</a></div><button class="mobile-menu-btn" onclick="toggleMenu()">☰</button></div></nav>
-    <div class="mobile-menu" id="mobileMenu"><a href="#features" onclick="toggleMenu()">Features</a><a href="#how-it-works" onclick="toggleMenu()">How It Works</a><a href="#pricing" onclick="toggleMenu()">Pricing</a><a href="#testimonials" onclick="toggleMenu()">Testimonials</a><a href="#" onclick="openAuthModal('login', event); toggleMenu();">Log In</a><a href="#" class="btn btn-primary" onclick="openAuthModal('signup', event); toggleMenu();">Get Started</a></div>
-
-    <!-- Auth Modal -->
-    <div class="auth-modal-overlay" id="authModalOverlay"><div class="auth-modal"><button class="close-modal-btn" onclick="closeAuthModal()">×</button><div class="auth-modal-header"><div class="logo-icon" style="margin:0 auto 1rem;width:48px;height:48px;font-size:1.5rem">M</div><h2 id="authModalTitle">Welcome Back</h2><p id="authModalSubtitle">Sign in to your Migranix account</p></div>
-    <div class="auth-tabs"><button class="auth-tab active" id="loginTab" onclick="switchAuthTab('login')">Log In</button><button class="auth-tab" id="signupTab" onclick="switchAuthTab('signup')">Sign Up</button></div>
-    <div class="auth-form-container">
-        <form class="auth-form active" id="loginForm" onsubmit="handleLogin(event)"><div class="form-group"><label for="loginEmail">Email Address</label><input type="email" id="loginEmail" placeholder="you@company.com" required autocomplete="email"><span class="error-message" id="loginEmailError">Please enter a valid email address</span></div><div class="form-group"><label for="loginPassword">Password</label><input type="password" id="loginPassword" placeholder="Enter your password" required autocomplete="current-password"><span class="error-message" id="loginPasswordError">Password must be at least 6 characters</span></div><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem"><div class="checkbox-group" style="margin-bottom:0"><input type="checkbox" id="rememberMe"><label for="rememberMe">Remember me</label></div><a href="#" style="font-size:0.875rem;color:var(--primary);text-decoration:none" onclick="showForgotPassword(event)">Forgot password?</a></div><button type="submit" class="btn btn-primary btn-full" id="loginSubmitBtn"><span id="loginBtnText">Log In</span></button><div class="auth-divider">or continue with</div><div class="social-login"><button type="button" class="social-btn" onclick="socialLogin('google')"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Google</button><button type="button" class="social-btn" onclick="socialLogin('linkedin_oidc')"><svg viewBox="0 0 24 24"><path fill="#0A66C2" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</button></div></form>
-
-        <form class="auth-form" id="signupForm" onsubmit="handleSignup(event)"><div class="form-row"><div class="form-group"><label for="signupFirstName">First Name</label><input type="text" id="signupFirstName" placeholder="John" required autocomplete="given-name"><span class="error-message" id="signupFirstNameError">First name is required</span></div><div class="form-group"><label for="signupLastName">Last Name</label><input type="text" id="signupLastName" placeholder="Doe" required autocomplete="family-name"><span class="error-message" id="signupLastNameError">Last name is required</span></div></div><div class="form-group"><label for="signupEmail">Email Address</label><input type="email" id="signupEmail" placeholder="you@company.com" required autocomplete="email"><span class="error-message" id="signupEmailError">Please enter a valid email address</span></div><div class="form-group"><label for="signupCompany">Company Name</label><input type="text" id="signupCompany" placeholder="Your Company Pvt. Ltd." required><span class="error-message" id="signupCompanyError">Company name is required</span></div><div class="form-group"><label for="signupPassword">Password</label><input type="password" id="signupPassword" placeholder="Create a strong password" required autocomplete="new-password" oninput="checkPasswordStrength(this.value)"><div class="password-strength" id="passwordStrength"><div class="password-strength-bar" id="passwordStrengthBar"></div></div><div class="password-strength-text" id="passwordStrengthText"></div><span class="error-message" id="signupPasswordError">Password must be at least 8 characters with uppercase, lowercase, and number</span></div><div class="form-group"><label for="signupConfirmPassword">Confirm Password</label><input type="password" id="signupConfirmPassword" placeholder="Confirm your password" required autocomplete="new-password"><span class="error-message" id="signupConfirmPasswordError">Passwords do not match</span></div><div class="form-group"><label for="signupPlan">Select Plan</label><select id="signupPlan" required><option value="">Choose your plan...</option><option value="starter">Starter - Rs.4,999/month</option><option value="professional">Professional - Rs.14,999/month</option><option value="enterprise">Enterprise - Custom</option></select><span class="error-message" id="signupPlanError">Please select a plan</span></div><div class="checkbox-group"><input type="checkbox" id="termsAgree" required><label for="termsAgree">I agree to the <a href="#" onclick="event.preventDefault()">Terms of Service</a> and <a href="#" onclick="event.preventDefault()">Privacy Policy</a></label></div><button type="submit" class="btn btn-primary btn-full" id="signupSubmitBtn"><span id="signupBtnText">Create Account</span></button><div class="auth-divider">or sign up with</div><div class="social-login"><button type="button" class="social-btn" onclick="socialLogin('google')"><svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>Google</button><button type="button" class="social-btn" onclick="socialLogin('linkedin_oidc')"><svg viewBox="0 0 24 24"><path fill="#0A66C2" d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>LinkedIn</button></div></form>
-    </div></div></div>
-
-    <!-- Forgot Password Modal -->
-    <div class="auth-modal-overlay" id="forgotPasswordOverlay"><div class="auth-modal" style="max-width:420px"><button class="close-modal-btn" onclick="closeForgotPassword()">×</button><div class="auth-modal-header"><div class="logo-icon" style="margin:0 auto 1rem;width:48px;height:48px;font-size:1.5rem">M</div><h2>Reset Password</h2><p>Enter your email and we'll send you reset instructions</p></div><div class="auth-form-container"><form id="forgotPasswordForm" onsubmit="handleForgotPassword(event)"><div class="form-group"><label for="forgotEmail">Email Address</label><input type="email" id="forgotEmail" placeholder="you@company.com" required><span class="error-message" id="forgotEmailError">Please enter a valid email address</span></div><button type="submit" class="btn btn-primary btn-full" id="forgotSubmitBtn"><span id="forgotBtnText">Send Reset Link</span></button><p style="text-align:center;margin-top:1rem;font-size:0.9rem"><a href="#" style="color:var(--primary);text-decoration:none" onclick="backToLogin(event)">← Back to Log In</a></p></form></div></div></div>
-
-    <!-- Main Content -->
-    <div id="mainContent">
-        <section class="hero"><div class="hero-container"><div class="hero-content"><h1>Data Migration Made Simple for Indian SMEs</h1><p>We clean, validate, and migrate your business data to Snowflake or the cloud. Zero downtime, complete accuracy, built for Indian businesses.</p><div class="hero-cta"><a href="#" class="btn btn-primary" onclick="openAuthModal('signup', event)">Start Free Trial</a><a href="#how-it-works" class="btn btn-outline">Learn More</a></div><div class="hero-stats"><div class="stat-item"><span class="stat-number">15+</span><span class="stat-label">Databases Supported</span></div><div class="stat-item"><span class="stat-number">99.9%</span><span class="stat-label">Accuracy</span></div><div class="stat-item"><span class="stat-number">4hr</span><span class="stat-label">Response Time</span></div></div></div><div class="hero-visual"><div class="hero-card"><div class="data-flow"><div class="data-source"><div style="font-size:2rem;margin-bottom:0.5rem">&#128190;</div><div style="font-weight:600;font-size:0.875rem">Your Data</div><div style="font-size:0.75rem;color:var(--text-light)">MySQL, Oracle, Excel</div></div><div class="arrow">→</div><div class="data-dest"><div style="font-size:2rem;margin-bottom:0.5rem">☁️</div><div style="font-weight:600;font-size:0.875rem">Snowflake</div><div style="font-size:0.75rem;opacity:0.9">Cloud Ready</div></div></div><div style="display:flex;justify-content:space-between;font-size:0.875rem;margin-bottom:0.5rem"><span>Migration Progress</span><span style="color:var(--primary);font-weight:600">92%</span></div><div class="progress-bar"><div class="progress-fill"></div></div><div style="display:flex;gap:1rem;margin-top:1.5rem;font-size:0.875rem"><div style="flex:1;background:var(--bg-light);padding:0.75rem;border-radius:8px;text-align:center"><div style="font-weight:700;color:var(--primary)">2.4M</div><div style="font-size:0.75rem;color:var(--text-light)">Records</div></div><div style="flex:1;background:var(--bg-light);padding:0.75rem;border-radius:8px;text-align:center"><div style="font-weight:700;color:var(--primary)">0</div><div style="font-size:0.75rem;color:var(--text-light)">Errors</div></div><div style="flex:1;background:var(--bg-light);padding:0.75rem;border-radius:8px;text-align:center"><div style="font-weight:700;color:var(--primary)">4.2h</div><div style="font-size:0.75rem;color:var(--text-light)">Time</div></div></div></div></div></div></section>
-
-        <section class="features" id="features"><div class="section-header fade-in"><h2>Everything You Need for Seamless Migration</h2><p>From legacy systems to modern cloud warehouses, we handle the entire migration lifecycle.</p></div><div class="features-grid"><div class="feature-card fade-in"><div class="feature-icon">🧹</div><h3>Data Cleaning</h3><p>Automatic detection and correction of inconsistencies, duplicates, and errors before migration.</p></div><div class="feature-card fade-in"><div class="feature-icon">✅</div><h3>Validation Engine</h3><p>Multi-layer validation ensures 99.9% data accuracy with automated checksums.</p></div><div class="feature-card fade-in"><div class="feature-icon">🔄</div><h3>Zero Downtime</h3><p>Live migration keeps your business running while we transfer data in the background.</p></div><div class="feature-card fade-in"><div class="feature-icon">🔐</div><h3>Enterprise Security</h3><p>End-to-end encryption, SOC 2 compliance, and India-specific data residency.</p></div><div class="feature-card fade-in"><div class="feature-icon">📊</div><h3>Real-time Dashboard</h3><p>Monitor migration progress and data quality from a centralized dashboard.</p></div><div class="feature-card fade-in"><div class="feature-icon">🤝</div><h3>Dedicated Support</h3><p>Indian timezone support with engineers who understand local business contexts.</p></div></div></section>
-
-        <section class="how-it-works" id="how-it-works"><div class="section-header fade-in"><h2>Migration in 4 Simple Steps</h2><p>Our proven methodology ensures clean, accurate data migration every time.</p></div><div class="steps-container fade-in"><div class="step"><div class="step-number">1</div><h3>Discovery</h3><p>Analyze your data landscape, volume, and complexity</p></div><div class="step"><div class="step-number">2</div><h3>Clean & Prep</h3><p>Automated cleaning and schema mapping</p></div><div class="step"><div class="step-number">3</div><h3>Migrate</h3><p>Secure, encrypted transfer with tracking</p></div><div class="step"><div class="step-number">4</div><h3>Validate</h3><p>Comprehensive testing and sign-off</p></div></div></section>
-
-        <section class="pricing" id="pricing"><div class="section-header fade-in"><h2>Simple, Transparent Pricing</h2><p>Built for Indian SMEs. No hidden costs.</p></div><div class="pricing-grid"><div class="pricing-card fade-in"><h3>Starter</h3><div class="price">Rs.4,999<span>/month</span></div><p style="color:var(--text-light);font-size:0.875rem">Perfect for small businesses</p><ul class="pricing-features"><li>Up to 100K records/month</li><li>Basic data cleaning</li><li>Email support</li><li>Standard encryption</li><li>Weekly reports</li></ul><a href="#" class="btn btn-outline" style="width:100%" onclick="openAuthModal('signup',event)">Get Started</a></div><div class="pricing-card popular fade-in"><div class="popular-badge">Most Popular</div><h3>Professional</h3><div class="price">Rs.14,999<span>/month</span></div><p style="color:var(--text-light);font-size:0.875rem">For growing enterprises</p><ul class="pricing-features"><li>Up to 1M records/month</li><li>Advanced validation engine</li><li>Priority phone support</li><li>SOC 2 compliance</li><li>Real-time dashboard</li><li>Zero-downtime migration</li></ul><a href="#" class="btn btn-primary" style="width:100%" onclick="openAuthModal('signup',event)">Get Started</a></div><div class="pricing-card fade-in"><h3>Enterprise</h3><div class="price">Custom</div><p style="color:var(--text-light);font-size:0.875rem">For large-scale operations</p><ul class="pricing-features"><li>Unlimited records</li><li>Custom integrations</li><li>Dedicated engineer</li><li>On-premise option</li><li>SLA guarantees</li><li>24/7 support</li></ul><a href="#" class="btn btn-outline" style="width:100%" onclick="openAuthModal('signup',event)">Contact Sales</a></div></div></section>
-
-        <section class="testimonials" id="testimonials"><div class="section-header fade-in"><h2>What Our Clients Experience</h2><p>Results from our data migration projects across Indian SMEs.</p></div><div class="testimonials-grid"><div class="testimonial-card fade-in"><div class="stars">★★★★★</div><p class="testimonial-text">"Migrated our 10-year-old ERP data to Snowflake in just 48 hours. The validation engine caught errors we didn't even know existed."</p><div class="testimonial-author"><div class="author-avatar">RK</div><div class="author-info"><h4>Rajesh K.</h4><p>CTO, Manufacturing Company</p></div></div></div><div class="testimonial-card fade-in"><div class="stars">★★★★★</div><p class="testimonial-text">"Zero disruption to our retail operations across 15 stores during migration. The team handled everything professionally."</p><div class="testimonial-author"><div class="author-avatar">SP</div><div class="author-info"><h4>Sneha P.</h4><p>Operations Director, Retail Chain</p></div></div></div><div class="testimonial-card fade-in"><div class="stars">★★★★★</div><p class="testimonial-text">"They understood GST data structures and Indian regulatory requirements perfectly. Highly recommended for Indian businesses."</p><div class="testimonial-author"><div class="author-avatar">AM</div><div class="author-info"><h4>Arun M.</h4><p>Founder, Financial Consulting</p></div></div></div></div></section>
-
-        <section class="cta" id="contact"><div class="cta-content fade-in"><h2>Ready to Modernize Your Data?</h2><p>Get a free consultation with our data migration experts. We'll analyze your current setup and provide a migration plan — no commitment.</p><div style="display:flex;gap:1rem;justify-content:center;flex-wrap:wrap"><a href="mailto:support@migranix.in?subject=Free Consultation Request&body=Hi Migranix team,%0A%0AI'm interested in a data migration consultation.%0A%0ACompany:%0ACurrent database:%0ATarget system:%0AApproximate data size:%0A%0APlease contact me to discuss." class="btn btn-primary">Email Us for Free Consultation</a><a href="#" class="btn btn-outline" style="border-color:white;color:white" onclick="openAuthModal('signup',event)">Start Free Trial</a></div><p style="font-size:0.9rem;opacity:0.7;margin-top:1.5rem">support@migranix.in · Response within 4 hours (IST)</p></div></section>
-
-        <footer><div class="footer-grid"><div class="footer-brand"><a href="#" class="logo"><div class="logo-icon">M</div>Migranix</a><p>India's most trusted data migration partner for SMEs. We clean, validate, and migrate your business data to modern cloud warehouses.</p><p style="margin-top:1rem;font-size:0.875rem"><a href="mailto:support@migranix.in" style="color:#60a5fa;text-decoration:none">support@migranix.in</a></p></div><div class="footer-links"><h4>Product</h4><ul><li><a href="#features">Features</a></li><li><a href="#pricing">Pricing</a></li><li><a href="#how-it-works">How It Works</a></li><li><a href="#testimonials">Testimonials</a></li></ul></div><div class="footer-links"><h4>Company</h4><ul><li><a href="mailto:support@migranix.in">Contact Us</a></li><li><a href="mailto:careers@migranix.in">Careers</a></li><li><a href="#contact">Book a Demo</a></li></ul></div><div class="footer-links"><h4>Legal</h4><ul><li><a href="mailto:support@migranix.in?subject=Privacy Policy Request">Privacy Policy</a></li><li><a href="mailto:support@migranix.in?subject=Terms of Service Request">Terms of Service</a></li></ul></div></div><div class="footer-bottom"><div>© 2026 Migranix Technologies Pvt. Ltd. · support@migranix.in</div><div class="social-links"><a href="https://x.com" target="_blank">X</a><a href="https://linkedin.com" target="_blank">in</a></div></div></footer>
+<nav>
+  <div class="nav-inner">
+    <a href="/" class="logo"><div class="logo-icon">M</div>Migranix</a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#sources">Sources</a>
+      <a href="#pipeline">Pipeline</a>
+      <a href="#ddl">DDL Generator</a>
     </div>
-
-    <!-- Dashboard -->
-    <div class="dashboard-section" id="dashboardSection"><div class="dashboard-container"><div class="dashboard-header"><h1>Welcome back, <span id="dashboardUserName">User</span>!</h1><p>Your Migranix workspace. Use "Connect to App" to start querying your data.</p></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem">
-    <div style="background:white;border-radius:16px;padding:2rem;border:1px solid var(--border)"><h3 style="font-size:1.25rem;font-weight:700;margin-bottom:1.5rem;color:var(--secondary)">Account Information</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem"><div><div style="font-size:0.875rem;color:var(--text-light);margin-bottom:0.25rem">Full Name</div><div style="font-weight:600" id="accountName">--</div></div><div><div style="font-size:0.875rem;color:var(--text-light);margin-bottom:0.25rem">Email</div><div style="font-weight:600" id="accountEmail">--</div></div><div><div style="font-size:0.875rem;color:var(--text-light);margin-bottom:0.25rem">Company</div><div style="font-weight:600" id="accountCompany">--</div></div><div><div style="font-size:0.875rem;color:var(--text-light);margin-bottom:0.25rem">Member Since</div><div style="font-weight:600" id="accountDate">--</div></div></div></div>
-    <div style="background:white;border-radius:16px;padding:2rem;border:1px solid var(--border)"><h3 style="font-size:1.25rem;font-weight:700;margin-bottom:1.5rem;color:var(--secondary)">Quick Actions</h3><div style="display:flex;flex-direction:column;gap:1rem"><a href="/app" class="btn btn-primary" style="text-align:center;padding:1rem" onclick="localStorage.removeItem('mx_left_at')">🔌 Connect to Data Platform</a><a href="mailto:support@migranix.in?subject=Migration Support" class="btn btn-outline" style="text-align:center;padding:1rem">📧 Contact Support</a></div><p style="color:var(--text-light);font-size:0.85rem;margin-top:1rem;text-align:center">Plan: <span id="userPlan" style="font-weight:700;color:var(--primary)">Starter</span></p></div>
+    <div style="display:flex;gap:.8rem">
+      <a href="https://migranix-app.onrender.com" class="btn btn-outline">Sign In</a>
+      <a href="https://migranix-app.onrender.com" class="btn btn-primary">Launch App</a>
     </div>
-    <div style="background:white;border-radius:16px;padding:2rem;border:1px solid var(--border)"><h3 style="font-size:1.25rem;font-weight:700;margin-bottom:1rem;color:var(--secondary)">Getting Started</h3><div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1rem"><div style="padding:1.5rem;background:var(--bg-light);border-radius:12px;text-align:center"><div style="font-size:2rem;margin-bottom:0.5rem">1️⃣</div><h4 style="font-size:0.95rem;margin-bottom:0.25rem">Connect</h4><p style="font-size:0.8rem;color:var(--text-light)">Click "Connect to Data Platform" to open the IDE</p></div><div style="padding:1.5rem;background:var(--bg-light);border-radius:12px;text-align:center"><div style="font-size:2rem;margin-bottom:0.5rem">2️⃣</div><h4 style="font-size:0.95rem;margin-bottom:0.25rem">Upload or Connect</h4><p style="font-size:0.8rem;color:var(--text-light)">Upload CSV/Excel or connect to your database</p></div><div style="padding:1.5rem;background:var(--bg-light);border-radius:12px;text-align:center"><div style="font-size:2rem;margin-bottom:0.5rem">3️⃣</div><h4 style="font-size:0.95rem;margin-bottom:0.25rem">Query & Export</h4><p style="font-size:0.8rem;color:var(--text-light)">Write SQL, analyze data, export results</p></div></div></div>
-    </div></div>
-
-    <script>
-        // ==================== SUPABASE AUTHENTICATION SYSTEM ====================
-        // Replaces localStorage auth with real Supabase auth
-        // Both root index.html and app/index.html now share the same session
-
-        var SUPA_URL = 'https://yxwlgwaalghvskulhmey.supabase.co';
-        var SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl4d2xnd2FhbGdodnNrdWxobWV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4ODEwODYsImV4cCI6MjA5NDQ1NzA4Nn0.QOZphIHDIebIkSX23LPjQXtr-iICT9dapzYMw11HBTw';
-        var sb = window.supabase.createClient(SUPA_URL, SUPA_KEY);
-
-        /* ── 10-SECOND WINDOW-CLOSE TIMEOUT ── */
-        var CLOSE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
-        document.addEventListener('visibilitychange', function(){
-            if(document.visibilityState === 'hidden') localStorage.setItem('mx_left_at', Date.now().toString());
-            if(document.visibilityState === 'visible'){
-                var left = localStorage.getItem('mx_left_at');
-                if(left && (Date.now() - parseInt(left)) > CLOSE_TIMEOUT){
-                    localStorage.removeItem('mx_left_at');
-                    sb.auth.signOut();
-                    window.location.reload();
-                }
-                localStorage.removeItem('mx_left_at');
-            }
-        });
-
-        // ==================== GET CURRENT USER FROM SUPABASE ====================
-
-        async function getCurrentUser() {
-            try {
-                var sess = await sb.auth.getSession();
-                if (!sess.data.session) return null;
-                var user = sess.data.session.user;
-                var meta = user.user_metadata || {};
-                return {
-                    id: user.id,
-                    email: user.email,
-                    firstName: meta.full_name ? meta.full_name.split(' ')[0] : (meta.firstName || user.email.split('@')[0]),
-                    lastName: meta.full_name ? meta.full_name.split(' ').slice(1).join(' ') : (meta.lastName || ''),
-                    company: meta.company || '',
-                    plan: meta.plan || 'starter',
-                    createdAt: user.created_at,
-                    lastLogin: new Date().toISOString()
-                };
-            } catch(e) {
-                console.error('Auth error:', e);
-                return null;
-            }
-        }
-
-        // ==================== UI STATE MANAGEMENT ====================
-
-        async function updateNavForAuth() {
-            var user = await getCurrentUser();
-            var navLinks = document.getElementById('navLinks');
-            var mobileMenu = document.getElementById('mobileMenu');
-
-            if (user) {
-                var initials = ((user.firstName || '?')[0] + (user.lastName || '?')[0]).toUpperCase();
-                var navHTML = '<a href="#dashboard" onclick="showDashboard(event)">Dashboard</a>' +
-                    '<a href="/app" class="btn btn-primary" style="padding: 0.5rem 1.25rem; font-size: 0.875rem;" onclick="localStorage.removeItem(\'mx_left_at\')">Connect to App</a>' +
-                    '<div class="user-profile">' +
-                    '<div class="user-avatar">' + initials + '</div>' +
-                    '<span class="user-name">' + user.firstName + '</span>' +
-                    '</div>' +
-                    '<a href="#" class="btn btn-danger" onclick="handleLogout(event)">Log Out</a>';
-                navLinks.innerHTML = navHTML;
-
-                mobileMenu.innerHTML = '<a href="#dashboard" onclick="showDashboard(event); toggleMenu();">Dashboard</a>' +
-                    '<a href="/app" class="btn btn-primary" style="width:100%;text-align:center;" onclick="localStorage.removeItem(\'mx_left_at\'); toggleMenu();">Connect to App</a>' +
-                    '<div style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0;">' +
-                    '<div class="user-avatar">' + initials + '</div>' +
-                    '<span style="font-weight: 600;">' + user.firstName + ' ' + user.lastName + '</span>' +
-                    '</div>' +
-                    '<a href="#" class="btn btn-danger" style="text-align: center;" onclick="handleLogout(event); toggleMenu();">Log Out</a>';
-            } else {
-                navLinks.innerHTML = '<a href="#features">Features</a>' +
-                    '<a href="#how-it-works">How It Works</a>' +
-                    '<a href="#pricing">Pricing</a>' +
-                    '<a href="#testimonials">Testimonials</a>' +
-                    '<a href="#" onclick="openAuthModal(\'login\', event)">Log In</a>' +
-                    '<a href="#" class="btn btn-primary" onclick="openAuthModal(\'signup\', event)">Get Started</a>';
-
-                mobileMenu.innerHTML = '<a href="#features" onclick="toggleMenu()">Features</a>' +
-                    '<a href="#how-it-works" onclick="toggleMenu()">How It Works</a>' +
-                    '<a href="#pricing" onclick="toggleMenu()">Pricing</a>' +
-                    '<a href="#testimonials" onclick="toggleMenu()">Testimonials</a>' +
-                    '<a href="#" onclick="openAuthModal(\'login\', event); toggleMenu();">Log In</a>' +
-                    '<a href="#" class="btn btn-primary" onclick="openAuthModal(\'signup\', event); toggleMenu();">Get Started</a>';
-            }
-        }
-
-        async function showDashboard(event) {
-            if (event) event.preventDefault();
-            var user = await getCurrentUser();
-            if (!user) {
-                showToast('Please log in to access the dashboard', 'error');
-                openAuthModal('login');
-                return;
-            }
-
-            document.getElementById('mainContent').style.display = 'none';
-            document.getElementById('dashboardSection').classList.add('active');
-
-            document.getElementById('dashboardUserName').textContent = user.firstName;
-            document.getElementById('accountName').textContent = user.firstName + ' ' + user.lastName;
-            document.getElementById('accountEmail').textContent = user.email;
-            document.getElementById('accountCompany').textContent = user.company || 'Not set';
-            document.getElementById('accountDate').textContent = new Date(user.createdAt).toLocaleDateString('en-IN', {
-                year: 'numeric', month: 'long', day: 'numeric'
-            });
-            document.getElementById('userPlan').textContent = (user.plan || 'starter').charAt(0).toUpperCase() + (user.plan || 'starter').slice(1);
-
-            window.scrollTo(0, 0);
-        }
-
-        function goHome(event) {
-            if (event) event.preventDefault();
-            document.getElementById('mainContent').style.display = 'block';
-            document.getElementById('dashboardSection').classList.remove('active');
-            window.scrollTo(0, 0);
-        }
-
-        // ==================== AUTH MODAL ====================
-
-        function openAuthModal(tab, event) {
-            if (event) event.preventDefault();
-            document.getElementById('authModalOverlay').classList.add('active');
-            document.body.style.overflow = 'hidden';
-            switchAuthTab(tab);
-        }
-
-        function closeAuthModal() {
-            document.getElementById('authModalOverlay').classList.remove('active');
-            document.body.style.overflow = 'auto';
-            clearAllErrors();
-        }
-
-        function switchAuthTab(tab) {
-            var loginTab = document.getElementById('loginTab');
-            var signupTab = document.getElementById('signupTab');
-            var loginForm = document.getElementById('loginForm');
-            var signupForm = document.getElementById('signupForm');
-            var modalTitle = document.getElementById('authModalTitle');
-            var modalSubtitle = document.getElementById('authModalSubtitle');
-
-            clearAllErrors();
-
-            if (tab === 'login') {
-                loginTab.classList.add('active');
-                signupTab.classList.remove('active');
-                loginForm.classList.add('active');
-                signupForm.classList.remove('active');
-                modalTitle.textContent = 'Welcome Back';
-                modalSubtitle.textContent = 'Sign in to your Migranix account';
-            } else {
-                loginTab.classList.remove('active');
-                signupTab.classList.add('active');
-                loginForm.classList.remove('active');
-                signupForm.classList.add('active');
-                modalTitle.textContent = 'Create Account';
-                modalSubtitle.textContent = 'Start your data migration journey';
-            }
-        }
-
-        // ==================== FORM VALIDATION ====================
-
-        function showError(fieldId, show) {
-            var field = document.getElementById(fieldId);
-            var error = document.getElementById(fieldId + 'Error');
-            if (field && error) {
-                if (show) { field.classList.add('error'); error.classList.add('visible'); }
-                else { field.classList.remove('error'); error.classList.remove('visible'); }
-            }
-        }
-
-        function clearAllErrors() {
-            document.querySelectorAll('.error').forEach(function(el) { el.classList.remove('error'); });
-            document.querySelectorAll('.error-message').forEach(function(el) { el.classList.remove('visible'); });
-        }
-
-        function validateEmail(email) {
-            return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-        }
-
-        function validatePassword(password) {
-            return password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /[0-9]/.test(password);
-        }
-
-        function checkPasswordStrength(password) {
-            var strengthBar = document.getElementById('passwordStrengthBar');
-            var strengthText = document.getElementById('passwordStrengthText');
-            var strengthContainer = document.getElementById('passwordStrength');
-
-            if (!password) { strengthContainer.classList.remove('visible'); return; }
-            strengthContainer.classList.add('visible');
-
-            var strength = 0;
-            if (password.length >= 8) strength++;
-            if (password.length >= 12) strength++;
-            if (/[A-Z]/.test(password)) strength++;
-            if (/[a-z]/.test(password)) strength++;
-            if (/[0-9]/.test(password)) strength++;
-            if (/[^A-Za-z0-9]/.test(password)) strength++;
-
-            var colors = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e'];
-            var labels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong', 'Very Strong'];
-            var width = Math.min((strength / 6) * 100, 100);
-            var index = Math.min(strength, 5);
-
-            strengthBar.style.width = width + '%';
-            strengthBar.style.background = colors[index - 1] || colors[0];
-            strengthText.textContent = labels[index] || 'Very Weak';
-            strengthText.style.color = colors[index - 1] || colors[0];
-        }
-
-        // ==================== LOGIN HANDLER (SUPABASE) ====================
-
-        async function handleLogin(event) {
-            event.preventDefault();
-            clearAllErrors();
-
-            var email = document.getElementById('loginEmail').value.trim();
-            var password = document.getElementById('loginPassword').value;
-            var hasError = false;
-
-            if (!validateEmail(email)) { showError('loginEmail', true); hasError = true; }
-            if (password.length < 6) { showError('loginPassword', true); hasError = true; }
-            if (hasError) return;
-
-            var btn = document.getElementById('loginSubmitBtn');
-            var btnText = document.getElementById('loginBtnText');
-            btn.disabled = true;
-            btnText.innerHTML = '<span class="spinner"></span> Logging in...';
-
-            var result = await sb.auth.signInWithPassword({ email: email, password: password });
-
-            if (result.error) {
-                var errMsg = result.error.message;
-                if (errMsg.includes('Invalid login')) {
-                    showError('loginEmail', true);
-                    document.getElementById('loginEmailError').textContent = 'Invalid email or password';
-                    showError('loginPassword', true);
-                    document.getElementById('loginPasswordError').textContent = 'Check your credentials and try again';
-                } else {
-                    showError('loginEmail', true);
-                    document.getElementById('loginEmailError').textContent = errMsg;
-                }
-                btn.disabled = false;
-                btnText.textContent = 'Log In';
-                return;
-            }
-
-            // Success
-            await updateNavForAuth();
-            closeAuthModal();
-            showToast('Welcome back!', 'success');
-            document.getElementById('loginForm').reset();
-            btn.disabled = false;
-            btnText.textContent = 'Log In';
-            showDashboard();
-        }
-
-        // ==================== SIGNUP HANDLER (SUPABASE) ====================
-
-        async function handleSignup(event) {
-            event.preventDefault();
-            clearAllErrors();
-
-            var firstName = document.getElementById('signupFirstName').value.trim();
-            var lastName = document.getElementById('signupLastName').value.trim();
-            var email = document.getElementById('signupEmail').value.trim();
-            var company = document.getElementById('signupCompany').value.trim();
-            var password = document.getElementById('signupPassword').value;
-            var confirmPassword = document.getElementById('signupConfirmPassword').value;
-            var plan = document.getElementById('signupPlan').value;
-            var termsAgree = document.getElementById('termsAgree').checked;
-            var hasError = false;
-
-            if (!firstName) { showError('signupFirstName', true); hasError = true; }
-            if (!lastName) { showError('signupLastName', true); hasError = true; }
-            if (!validateEmail(email)) { showError('signupEmail', true); hasError = true; }
-            if (!company) { showError('signupCompany', true); hasError = true; }
-            if (!validatePassword(password)) { showError('signupPassword', true); hasError = true; }
-            if (password !== confirmPassword) { showError('signupConfirmPassword', true); hasError = true; }
-            if (!plan) { showError('signupPlan', true); hasError = true; }
-            if (!termsAgree) { showToast('Please agree to the Terms of Service', 'error'); hasError = true; }
-            if (hasError) return;
-
-            var btn = document.getElementById('signupSubmitBtn');
-            var btnText = document.getElementById('signupBtnText');
-            btn.disabled = true;
-            btnText.innerHTML = '<span class="spinner"></span> Creating account...';
-
-            var result = await sb.auth.signUp({
-                email: email,
-                password: password,
-                options: {
-                    data: {
-                        full_name: firstName + ' ' + lastName,
-                        firstName: firstName,
-                        lastName: lastName,
-                        company: company,
-                        plan: plan
-                    },
-                    emailRedirectTo: 'https://www.migranix.in'
-                }
-            });
-
-            if (result.error) {
-                showError('signupEmail', true);
-                document.getElementById('signupEmailError').textContent = result.error.message;
-                btn.disabled = false;
-                btnText.textContent = 'Create Account';
-                return;
-            }
-
-            // Check if email confirmation is required
-            if (result.data.user && !result.data.session) {
-                showToast('Account created! Check your email to verify, then log in.', 'success');
-                closeAuthModal();
-            } else {
-                await updateNavForAuth();
-                closeAuthModal();
-                showToast('Account created! Welcome, ' + firstName + '!', 'success');
-                showDashboard();
-            }
-
-            document.getElementById('signupForm').reset();
-            document.getElementById('passwordStrength').classList.remove('visible');
-            btn.disabled = false;
-            btnText.textContent = 'Create Account';
-        }
-
-        // ==================== LOGOUT HANDLER ====================
-
-        async function handleLogout(event) {
-            if (event) event.preventDefault();
-            await sb.auth.signOut();
-            localStorage.removeItem('mx_left_at');
-            await updateNavForAuth();
-            document.getElementById('mainContent').style.display = 'block';
-            document.getElementById('dashboardSection').classList.remove('active');
-            showToast('You have been logged out successfully', 'info');
-            window.scrollTo(0, 0);
-        }
-
-        // ==================== FORGOT PASSWORD (SUPABASE) ====================
-
-        function showForgotPassword(event) {
-            if (event) event.preventDefault();
-            closeAuthModal();
-            document.getElementById('forgotPasswordOverlay').classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeForgotPassword() {
-            document.getElementById('forgotPasswordOverlay').classList.remove('active');
-            document.body.style.overflow = 'auto';
-        }
-
-        function backToLogin(event) {
-            if (event) event.preventDefault();
-            closeForgotPassword();
-            openAuthModal('login');
-        }
-
-        async function handleForgotPassword(event) {
-            event.preventDefault();
-            clearAllErrors();
-
-            var email = document.getElementById('forgotEmail').value.trim();
-            if (!validateEmail(email)) { showError('forgotEmail', true); return; }
-
-            var btn = document.getElementById('forgotSubmitBtn');
-            var btnText = document.getElementById('forgotBtnText');
-            btn.disabled = true;
-            btnText.innerHTML = '<span class="spinner"></span> Sending...';
-
-            var result = await sb.auth.resetPasswordForEmail(email, {
-                redirectTo: 'https://www.migranix.in'
-            });
-
-            // Always show success (security — don't reveal if email exists)
-            showToast('If an account exists with this email, a reset link has been sent.', 'success');
-            closeForgotPassword();
-            document.getElementById('forgotPasswordForm').reset();
-            btn.disabled = false;
-            btnText.textContent = 'Send Reset Link';
-        }
-
-        // ==================== SOCIAL LOGIN (SUPABASE OAUTH) ====================
-
-        async function socialLogin(provider) {
-            showToast('Connecting to ' + provider + '...', 'info');
-            localStorage.removeItem('mx_left_at');
-
-            var result = await sb.auth.signInWithOAuth({
-                provider: provider,
-                options: { redirectTo: 'https://www.migranix.in' }
-            });
-
-            if (result.error) {
-                showToast('Login failed: ' + result.error.message, 'error');
-            }
-            // Supabase handles the redirect automatically
-        }
-
-        // ==================== TOAST NOTIFICATIONS ====================
-
-        function showToast(message, type) {
-            type = type || 'info';
-            var container = document.getElementById('toastContainer');
-            var toast = document.createElement('div');
-            toast.className = 'toast ' + type;
-            var icons = { success: '✓', error: '✗', info: 'ℹ' };
-            toast.innerHTML = '<span style="font-size: 1.25rem;">' + icons[type] + '</span><span>' + message + '</span>';
-            container.appendChild(toast);
-            setTimeout(function() {
-                toast.classList.add('hiding');
-                setTimeout(function() { toast.remove(); }, 300);
-            }, 4000);
-        }
-
-        // ==================== MOBILE MENU ====================
-
-        function toggleMenu() {
-            document.getElementById('mobileMenu').classList.toggle('active');
-        }
-
-        // ==================== SCROLL ANIMATIONS ====================
-
-        var observerOptions = { threshold: 0.1, rootMargin: '0px 0px -50px 0px' };
-        var observer = new IntersectionObserver(function(entries) {
-            entries.forEach(function(entry) {
-                if (entry.isIntersecting) entry.target.classList.add('visible');
-            });
-        }, observerOptions);
-        document.querySelectorAll('.fade-in').forEach(function(el) { observer.observe(el); });
-
-        window.addEventListener('scroll', function() {
-            var navbar = document.getElementById('navbar');
-            if (window.scrollY > 50) navbar.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.1)';
-            else navbar.style.boxShadow = 'none';
-        });
-
-        document.getElementById('authModalOverlay').addEventListener('click', function(e) {
-            if (e.target === document.getElementById('authModalOverlay')) closeAuthModal();
-        });
-
-        document.getElementById('forgotPasswordOverlay').addEventListener('click', function(e) {
-            if (e.target === document.getElementById('forgotPasswordOverlay')) closeForgotPassword();
-        });
-
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape') { closeAuthModal(); closeForgotPassword(); }
-        });
-
-        // ==================== INITIALIZATION ====================
-
-        (async function() {
-            // Check timeout
-            var left = localStorage.getItem('mx_left_at');
-            if (left && (Date.now() - parseInt(left)) > CLOSE_TIMEOUT) {
-                localStorage.removeItem('mx_left_at');
-                await sb.auth.signOut();
-            }
-
-            await updateNavForAuth();
-
-            // Check if user is logged in — show dashboard
-            var user = await getCurrentUser();
-            if (user) {
-                showDashboard();
-            }
-
-            // Listen for auth state changes (e.g. after Google OAuth redirect)
-            sb.auth.onAuthStateChange(async function(event, session) {
-                if (event === 'SIGNED_IN' && session) {
-                    await updateNavForAuth();
-                    showDashboard();
-                }
-                if (event === 'SIGNED_OUT') {
-                    await updateNavForAuth();
-                    document.getElementById('mainContent').style.display = 'block';
-                    document.getElementById('dashboardSection').classList.remove('active');
-                }
-            });
-        })();
-
-    </script>
+  </div>
+</nav>
+<section class="hero">
+  <div class="hero-badge">🚀 Universal Legacy to Snowflake Migration Platform</div>
+  <h1>Migrate Any Data Source<br>to <span>Snowflake</span> in Minutes</h1>
+  <p>Connect to 24+ sources including SQL databases, SAP systems, and ERP platforms. Generate production-ready Snowflake DDLs and run automated pipelines with full CDC support.</p>
+  <div class="hero-btns">
+    <a href="https://migranix-app.onrender.com" class="btn btn-primary btn-large">Launch App Free</a>
+    <a href="#features" class="btn btn-outline btn-large">See Features</a>
+  </div>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-num">24+</div><div class="stat-label">Data Sources</div></div>
+    <div class="stat"><div class="stat-num">6</div><div class="stat-label">ERP Systems</div></div>
+    <div class="stat"><div class="stat-num">4</div><div class="stat-label">SAP Systems</div></div>
+    <div class="stat"><div class="stat-num">100%</div><div class="stat-label">No-Code</div></div>
+  </div>
+</section>
+<div class="sources-bar">
+  <div class="sources-inner">
+    <span style="color:#64748b;font-size:.8rem;font-weight:600">CONNECTS TO</span>
+    <span class="source-tag">SQL Server</span><span class="source-tag">PostgreSQL</span><span class="source-tag">MySQL</span><span class="source-tag">Oracle</span>
+    <span class="source-tag">SAP HANA</span><span class="source-tag">SAP ECC</span><span class="source-tag">S/4HANA</span><span class="source-tag">SAP BW</span>
+    <span class="source-tag">Oracle EBS</span><span class="source-tag">Dynamics 365</span><span class="source-tag">NetSuite</span><span class="source-tag">Workday</span>
+    <span class="source-tag">Snowflake</span><span class="source-tag">BigQuery</span><span class="source-tag">Databricks</span><span class="source-tag">MongoDB</span>
+  </div>
+</div>
+<section id="features" style="background:var(--bg-light)">
+  <div class="container">
+    <div class="section-label">Platform Features</div>
+    <h2 class="section-title">Everything You Need to Migrate Legacy Data</h2>
+    <p class="section-sub">From one-time bulk loads to real-time continuous replication — Migranix handles it all.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#dbeafe">❄️</div>
+        <h3>Snowflake DDL Generator</h3>
+        <p>Auto-generate CREATE TABLE statements with correct type mappings, primary keys, cluster keys, NOT NULL and DEFAULT values for every source system.</p>
+        <div class="feature-tags">
+          <span class="ftag" style="background:#dbeafe;color:#1d4ed8">SQL Server</span>
+          <span class="ftag" style="background:#d1fae5;color:#065f46">Oracle</span>
+          <span class="ftag" style="background:#ede9fe;color:#5b21b6">SAP / ERP</span>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#d1fae5">🔄</div>
+        <h3>Full Load and Incremental Sync</h3>
+        <p>One-time full loads or incremental syncs using watermark columns. Auto-detects best watermark column and primary keys. Batched for large tables.</p>
+        <div class="feature-tags">
+          <span class="ftag" style="background:#d1fae5;color:#065f46">Full Load</span>
+          <span class="ftag" style="background:#fef3c7;color:#92400e">Incremental</span>
+          <span class="ftag" style="background:#dbeafe;color:#1d4ed8">Auto-detect Keys</span>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#ede9fe">📡</div>
+        <h3>Log-Based CDC</h3>
+        <p>True Change Data Capture using SQL Server transaction logs and PostgreSQL logical replication. Only replicate changed rows with zero impact on source.</p>
+        <div class="feature-tags">
+          <span class="ftag" style="background:#ede9fe;color:#5b21b6">SQL Server CDC</span>
+          <span class="ftag" style="background:#dbeafe;color:#1d4ed8">PostgreSQL WAL</span>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#fef3c7">🏭</div>
+        <h3>SAP Integration</h3>
+        <p>Connect to all SAP systems. HANA via hdbcli, ECC/S4 via RFC. 90+ pre-mapped SAP tables with business-friendly names like VBAK to SALES_ORDER_HEADER.</p>
+        <div class="feature-tags">
+          <span class="ftag" style="background:#d1fae5;color:#065f46">SAP HANA</span>
+          <span class="ftag" style="background:#dbeafe;color:#1d4ed8">ECC / S4HANA</span>
+          <span class="ftag" style="background:#fef3c7;color:#92400e">BW / BW4</span>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#fee2e2">🏢</div>
+        <h3>ERP Systems</h3>
+        <p>49 pre-built entity mappings across 6 ERP platforms. Oracle EBS, Oracle Cloud, Dynamics 365, Dynamics On-Prem, NetSuite, and Workday — all with curated DDLs.</p>
+        <div class="feature-tags">
+          <span class="ftag" style="background:#fee2e2;color:#991b1b">Oracle EBS</span>
+          <span class="ftag" style="background:#dbeafe;color:#1d4ed8">Dynamics 365</span>
+          <span class="ftag" style="background:#fef3c7;color:#92400e">NetSuite</span>
+          <span class="ftag" style="background:#d1fae5;color:#065f46">Workday</span>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#d1fae5">⏱️</div>
+        <h3>Scheduled Pipelines</h3>
+        <p>Set cron or interval schedules. Pipelines run automatically in the background. Monitor logs, check stats, and pause or edit schedules from the UI.</p>
+        <div class="feature-tags">
+          <span class="ftag" style="background:#d1fae5;color:#065f46">Cron Schedules</span>
+          <span class="ftag" style="background:#dbeafe;color:#1d4ed8">Interval (15m/1h)</span>
+          <span class="ftag" style="background:#ede9fe;color:#5b21b6">Live Monitoring</span>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#dbeafe">✅</div>
+        <h3>Data Reconciliation</h3>
+        <p>Automatic row count comparison and numeric column checksum validation after every load. Get instant pass or fail with full discrepancy details.</p>
+        <div class="feature-tags">
+          <span class="ftag" style="background:#d1fae5;color:#065f46">Row Count Check</span>
+          <span class="ftag" style="background:#dbeafe;color:#1d4ed8">Checksum Validation</span>
+        </div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon" style="background:#ede9fe">🤖</div>
+        <h3>AI SQL Assistant</h3>
+        <p>Powered by Groq llama-3.3-70b. Generate SQL from natural language, explain queries, optimize slow queries, and get full migration plan recommendations.</p>
+        <div class="feature-tags">
+          <span class="ftag" style="background:#ede9fe;color:#5b21b6">SQL Generation</span>
+          <span class="ftag" style="background:#fef3c7;color:#92400e">Query Optimizer</span>
+          <span class="ftag" style="background:#d1fae5;color:#065f46">Migration Plans</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<section id="sources">
+  <div class="container">
+    <div class="section-label">Data Sources</div>
+    <h2 class="section-title">Connect to Any Source</h2>
+    <p class="section-sub">24+ connectors covering relational databases, cloud warehouses, NoSQL, SAP systems, and ERP platforms.</p>
+    <div class="sources-grid">
+      <div class="source-card"><div class="source-icon" style="background:#dbeafe;color:#1d4ed8">SS</div><div><div class="source-name">SQL Server</div><div class="source-type">Relational DB</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#d1fae5;color:#065f46">PG</div><div><div class="source-name">PostgreSQL</div><div class="source-type">Relational DB</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#fef3c7;color:#92400e">MY</div><div><div class="source-name">MySQL / MariaDB</div><div class="source-type">Relational DB</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#fee2e2;color:#991b1b">OR</div><div><div class="source-name">Oracle</div><div class="source-type">Relational DB</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#dbeafe;color:#1d4ed8">❄️</div><div><div class="source-name">Snowflake</div><div class="source-type">Cloud Warehouse</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#fef3c7;color:#92400e">BQ</div><div><div class="source-name">BigQuery</div><div class="source-type">Cloud Warehouse</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#fee2e2;color:#991b1b">DB</div><div><div class="source-name">Databricks</div><div class="source-type">Cloud Warehouse</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#d1fae5;color:#065f46;font-size:.7rem">HANA</div><div><div class="source-name">SAP HANA</div><div class="source-type">SAP System</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#dbeafe;color:#1d4ed8;font-size:.7rem">ECC</div><div><div class="source-name">SAP ECC / R3</div><div class="source-type">SAP System</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#ede9fe;color:#5b21b6;font-size:.7rem">S/4</div><div><div class="source-name">SAP S/4HANA</div><div class="source-type">SAP System</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#fef3c7;color:#92400e">BW</div><div><div class="source-name">SAP BW / BW4</div><div class="source-type">SAP System</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#fee2e2;color:#991b1b;font-size:.65rem">EBS</div><div><div class="source-name">Oracle EBS</div><div class="source-type">ERP System</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#fee2e2;color:#991b1b;font-size:.6rem">ERP</div><div><div class="source-name">Oracle ERP Cloud</div><div class="source-type">ERP System</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#dbeafe;color:#1d4ed8;font-size:.65rem">D365</div><div><div class="source-name">Dynamics 365</div><div class="source-type">ERP System</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#dbeafe;color:#1d4ed8;font-size:.65rem">AX</div><div><div class="source-name">Dynamics On-Prem</div><div class="source-type">ERP System</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#fef3c7;color:#92400e">NS</div><div><div class="source-name">NetSuite</div><div class="source-type">ERP System</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#d1fae5;color:#065f46">WD</div><div><div class="source-name">Workday</div><div class="source-type">ERP System</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#d1fae5;color:#065f46">🍃</div><div><div class="source-name">MongoDB</div><div class="source-type">NoSQL</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#ede9fe;color:#5b21b6">CS</div><div><div class="source-name">Cassandra</div><div class="source-type">NoSQL</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#fef3c7;color:#92400e">DY</div><div><div class="source-name">DynamoDB</div><div class="source-type">AWS NoSQL</div></div></div>
+      <div class="source-card"><div class="source-icon" style="background:#dbeafe;color:#1d4ed8">CZ</div><div><div class="source-name">Cosmos DB</div><div class="source-type">Azure NoSQL</div></div></div>
+    </div>
+  </div>
+</section>
+<section id="pipeline" style="background:var(--bg-light)">
+  <div class="container">
+    <div class="section-label">Pipeline Engine</div>
+    <h2 class="section-title">Four Ways to Move Your Data</h2>
+    <p class="section-sub">From one-time migrations to real-time CDC — pick the right mode for your use case.</p>
+    <div class="pipeline-steps">
+      <div class="pipeline-step"><div class="step-num">1</div><h4>Full Load</h4><p>Extract all rows, truncate target, reload. Best for initial migration or small tables. Batched for large datasets.</p></div>
+      <div class="pipeline-step"><div class="step-num">2</div><h4>Incremental</h4><p>Sync only changed rows using a watermark column like updated_at. Auto-detects best column and primary keys.</p></div>
+      <div class="pipeline-step"><div class="step-num">3</div><h4>CDC — SQL Server</h4><p>Read SQL Server transaction logs via fn_cdc_get_all_changes. Tracks LSN position. Captures INSERT, UPDATE, and DELETE.</p></div>
+      <div class="pipeline-step"><div class="step-num">4</div><h4>CDC — PostgreSQL</h4><p>Logical replication using pg_logical_slot_get_changes and wal2json. Creates publication and slot automatically.</p></div>
+    </div>
+  </div>
+</section>
+<section id="ddl">
+  <div class="container">
+    <div class="section-label">DDL Generator</div>
+    <h2 class="section-title">Production-Ready Snowflake DDLs</h2>
+    <p class="section-sub">Auto-generate CREATE TABLE statements with correct types, PKs, cluster keys, NOT NULL, and DEFAULT values for every source.</p>
+    <div style="background:#0f172a;border-radius:16px;padding:2rem;margin-top:2.5rem;overflow-x:auto">
+      <div style="color:#64748b;font-size:.8rem;margin-bottom:1rem">-- Generated by Migranix for SQL Server source</div>
+      <pre style="color:#e2e8f0;font-family:monospace;font-size:.88rem;line-height:1.7">CREATE OR REPLACE TABLE MY_DB.PUBLIC.SALES_ORDER_HEADER (
+  ORDER_ID       NUMBER(10,0)      NOT NULL,
+  CUSTOMER_ID    NUMBER(10,0)      NOT NULL,
+  ORDER_DATE     TIMESTAMP_NTZ     NOT NULL,
+  STATUS         VARCHAR(50)       NOT NULL  DEFAULT 'pending',
+  TOTAL_AMOUNT   NUMBER(18,4),
+  CONSTRAINT PK_SALES_ORDER_HEADER PRIMARY KEY (ORDER_ID)
+)
+CLUSTER BY (ORDER_DATE);
+
+-- SAP VBAK mapped automatically to SALES_ORDER_HEADER</pre>
+    </div>
+  </div>
+</section>
+<section class="cta">
+  <div class="container">
+    <h2>Start Migrating to Snowflake Today</h2>
+    <p>Connect your source, generate DDLs, and run your first pipeline in under 10 minutes.</p>
+    <a href="https://migranix-app.onrender.com" class="btn btn-primary btn-large">Launch Migranix Free</a>
+  </div>
+</section>
+<footer>
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div>
+        <div class="footer-logo">Migranix</div>
+        <div style="margin-top:.5rem;font-size:.88rem">Universal data migration platform for Indian SMEs</div>
+      </div>
+      <div class="footer-links">
+        <a href="https://migranix-app.onrender.com">Launch App</a>
+        <a href="#features">Features</a>
+        <a href="#sources">Sources</a>
+        <a href="mailto:hello@migranix.in">Contact</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>2026 Migranix. Built for Indian SMEs.</span>
+      <span>migranix.in</span>
+    </div>
+  </div>
+</footer>
 </body>
-</html>
+                                                  </html>
