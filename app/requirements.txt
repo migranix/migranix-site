@@ -47,3 +47,4 @@ supabase==2.16.0
 python-dateutil==2.9.0.post0
 tzlocal==5.4.3
 requests==2.34.2
+stripe==10.12.0
