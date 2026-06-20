@@ -1,9 +1,9 @@
-# Migranix Backend — Render.com Docker deployment
+# Migranix Backend — Render.com
 FROM python:3.11-slim
 
 WORKDIR /app
 
-# System packages: gcc for C extensions + ODBC for SQL Server
+# System packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
         gcc g++ curl gnupg2 unixodbc-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -18,7 +18,7 @@ RUN curl -sSL https://packages.microsoft.com/keys/microsoft.asc \
     && ACCEPT_EULA=Y apt-get install -y --no-install-recommends msodbcsql18 \
     && rm -rf /var/lib/apt/lists/*
 
-# Python deps (installed BEFORE copying app code for better layer caching)
+# Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
