@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: migranix-api
+    runtime: docker
+    dockerfilePath: app/Dockerfile
+    dockerContext: app
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: PORT
+        value: 8000
+    healthCheckPath: /
+    autoDeploy: true
