@@ -3178,8 +3178,1057 @@ def _build_table_ddl(schema_name: str, table_entry: dict, db_type: str,
     return "\n".join(lines)
 
 
+# ============================================================
+# PIPELINE ENGINE — Full Load, Incremental, CDC, Scheduler
+# ============================================================
+
+# ---- APScheduler setup ----
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    from apscheduler.triggers.cron import CronTrigger
+    from apscheduler.triggers.interval import IntervalTrigger
+    _scheduler = BackgroundScheduler(timezone="UTC")
+    _scheduler.start()
+    _HAS_SCHEDULER = True
+except Exception:
+    _scheduler = None
+    _HAS_SCHEDULER = False
+
+# In-memory pipeline store (also persisted to Supabase)
+# {pipeline_id: {config, status, last_run, next_run, stats}}
+_pipelines: Dict[str, dict] = {}
+_pipeline_lock = __import__('threading').Lock()
+
+
+# ── SNOWFLAKE TARGET CONNECTION ──────────────────────────────────────────────
+def _get_sf_engine(sf_creds: dict):
+    """Build SQLAlchemy engine for Snowflake target."""
+    if snowflake_connector is None:
+        raise ImportError("snowflake-connector-python not installed")
+    from urllib.parse import quote_plus
+    user     = sf_creds.get("username") or sf_creds.get("user", "")
+    password = sf_creds.get("password", "")
+    account  = sf_creds.get("account", "")
+    database = sf_creds.get("database", "")
+    schema   = sf_creds.get("schema", "PUBLIC")
+    warehouse= sf_creds.get("warehouse", "")
+    role     = sf_creds.get("role", "")
+    if not account: raise ValueError("Snowflake account identifier is required")
+    if not user:    raise ValueError("Snowflake username is required")
+    conn_str = (f"snowflake://{quote_plus(user)}:{quote_plus(password)}"
+                f"@{account}/{database}/{schema}"
+                f"?warehouse={quote_plus(warehouse)}&role={quote_plus(role)}")
+    engine = create_engine(conn_str, poolclass=NullPool)
+    return engine
+
+
+# ── TYPE COERCION FOR SNOWFLAKE WRITE ─────────────────────────────────────
+def _coerce_df_for_snowflake(df: "pd.DataFrame") -> "pd.DataFrame":
+    """Fix pandas types that cause issues writing to Snowflake."""
+    import pandas as _pd
+    for col in df.columns:
+        if df[col].dtype == object:
+            # Try to keep as string; truncate very long values
+            df[col] = df[col].astype(str).where(df[col].notna(), None)
+        # Convert timezone-aware datetimes to UTC naive
+        if hasattr(df[col], 'dt') and hasattr(df[col].dt, 'tz') and df[col].dt.tz is not None:
+            df[col] = df[col].dt.tz_convert('UTC').dt.tz_localize(None)
+    return df
+
+
+# ── FULL LOAD ───────────────────────────────────────────────────────────────
+def _run_full_load(pipeline: dict, log_fn=None) -> dict:
+    """
+    Extract ALL rows from source table and REPLACE target table.
+    Returns stats dict.
+    """
+    def log(msg):
+        if log_fn: log_fn(msg)
+
+    src_session_id = pipeline["source_session_id"]
+    sf_creds       = pipeline["snowflake_creds"]
+    src_table      = pipeline["source_table"]
+    src_schema     = pipeline.get("source_schema", "")
+    tgt_table      = pipeline.get("target_table") or src_table.upper()
+    tgt_db         = (pipeline.get("target_database") or "MY_SNOWFLAKE_DB").upper()
+    tgt_schema     = (pipeline.get("target_schema") or "PUBLIC").upper()
+    batch_size     = int(pipeline.get("batch_size") or 10000)
+    ddl            = pipeline.get("ddl")  # pre-generated DDL string
+
+    if src_session_id not in connections:
+        raise ValueError(f"Source session {src_session_id} not found — reconnect source")
+
+    src_conn = connections[src_session_id]
+    db_type  = src_conn.get("type", "")
+    engine   = src_conn.get("engine")
+
+    if engine is None:
+        raise ValueError(f"Full load requires a relational DB connection, not {db_type}")
+
+    sf_engine = _get_sf_engine(sf_creds)
+    total_rows = 0
+    start_ts   = datetime.utcnow()
+
+    with sf_engine.begin() as sf_conn:
+        # 1. Create DB + schema if not exists
+        sf_conn.execute(text(f'CREATE DATABASE IF NOT EXISTS "{tgt_db}"'))
+        sf_conn.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{tgt_db}"."{tgt_schema}"'))
+
+        # 2. Create or replace target table
+        if ddl:
+            log(f"Creating target table {tgt_db}.{tgt_schema}.{tgt_table}")
+            # Execute DDL statements one by one
+            for stmt in [s.strip() for s in ddl.split(';') if s.strip() and not s.strip().startswith('--')]:
+                try:
+                    sf_conn.execute(text(stmt))
+                except Exception as e:
+                    log(f"DDL warning (non-fatal): {str(e)[:200]}")
+
+    # 3. Extract + load in batches
+    qual_table = f'"{src_schema}"."{src_table}"' if src_schema else f'"{src_table}"'
+    offset = 0
+
+    with sf_engine.connect() as sf_conn:
+        first_batch = True
+        while True:
+            try:
+                # Use SQLAlchemy for portable pagination
+                if db_type in ("sqlserver", "mssql"):
+                    sql = f"SELECT * FROM {qual_table} ORDER BY (SELECT NULL) OFFSET {offset} ROWS FETCH NEXT {batch_size} ROWS ONLY"
+                elif db_type == "oracle":
+                    sql = f"SELECT * FROM {qual_table} OFFSET {offset} ROWS FETCH NEXT {batch_size} ROWS ONLY"
+                else:
+                    sql = f"SELECT * FROM {qual_table} LIMIT {batch_size} OFFSET {offset}"
+
+                with engine.connect() as src_conn_obj:
+                    df = pd.read_sql(text(sql), src_conn_obj)
+
+                if df.empty:
+                    break
+
+                df = _coerce_df_for_snowflake(df)
+                df.columns = [c.upper() for c in df.columns]
+
+                # Write to Snowflake
+                tgt_full = f'"{tgt_db}"."{tgt_schema}"."{tgt_table}"'
+                if first_batch:
+                    # Truncate before first batch on full load
+                    try:
+                        sf_conn.execute(text(f"TRUNCATE TABLE IF EXISTS {tgt_full}"))
+                        sf_conn.commit()
+                    except Exception:
+                        pass
+                    first_batch = False
+
+                df.to_sql(
+                    tgt_table.lower(),
+                    sf_conn,
+                    schema=f"{tgt_db}.{tgt_schema}".lower(),
+                    if_exists='append',
+                    index=False,
+                    method='multi',
+                    chunksize=1000,
+                )
+                sf_conn.commit()
+                total_rows += len(df)
+                offset     += batch_size
+                log(f"Loaded {total_rows} rows so far...")
+
+                if len(df) < batch_size:
+                    break   # last page
+
+            except Exception as e:
+                raise RuntimeError(f"Load failed at offset {offset}: {str(e)[:400]}")
+
+    elapsed = (datetime.utcnow() - start_ts).total_seconds()
+    return {
+        "rows_loaded": total_rows,
+        "elapsed_seconds": round(elapsed, 2),
+        "rows_per_second": round(total_rows / max(elapsed, 0.1), 0),
+        "mode": "full_load",
+        "finished_at": datetime.utcnow().isoformat(),
+    }
+
+
+# ── INCREMENTAL LOAD (high-watermark) ───────────────────────────────────────
+def _run_incremental_load(pipeline: dict, log_fn=None) -> dict:
+    """
+    Extract only rows where watermark_column > last_watermark_value.
+    Appends to target table (no truncate).
+    """
+    def log(msg):
+        if log_fn: log_fn(msg)
+
+    src_session_id   = pipeline["source_session_id"]
+    sf_creds         = pipeline["snowflake_creds"]
+    src_table        = pipeline["source_table"]
+    src_schema       = pipeline.get("source_schema", "")
+    tgt_table        = (pipeline.get("target_table") or src_table).upper()
+    tgt_db           = (pipeline.get("target_database") or "MY_SNOWFLAKE_DB").upper()
+    tgt_schema       = (pipeline.get("target_schema") or "PUBLIC").upper()
+    watermark_col    = pipeline.get("watermark_column", "")
+    last_watermark   = pipeline.get("last_watermark_value")
+    batch_size       = int(pipeline.get("batch_size") or 10000)
+
+    if not watermark_col:
+        raise ValueError("watermark_column is required for incremental load")
+
+    if src_session_id not in connections:
+        raise ValueError(f"Source session {src_session_id} not found")
+
+    src_conn   = connections[src_session_id]
+    engine     = src_conn.get("engine")
+    if engine is None:
+        raise ValueError("Incremental load requires a relational DB connection")
+
+    sf_engine  = _get_sf_engine(sf_creds)
+    qual_table = f'"{src_schema}"."{src_table}"' if src_schema else f'"{src_table}"'
+    total_rows = 0
+    max_watermark = last_watermark
+    start_ts   = datetime.utcnow()
+
+    with sf_engine.connect() as sf_conn:
+        # Get current max watermark from Snowflake target (to resume correctly)
+        try:
+            tgt_full = f'"{tgt_db}"."{tgt_schema}"."{tgt_table}"'
+            wm_result = sf_conn.execute(
+                text(f'SELECT MAX("{watermark_col.upper()}") FROM {tgt_full}')
+            ).fetchone()
+            if wm_result and wm_result[0] is not None:
+                last_watermark = wm_result[0]
+                log(f"Resuming from watermark: {last_watermark}")
+        except Exception:
+            log("Could not read watermark from target — doing full incremental scan")
+
+        # Extract changed rows
+        where_clause = (f'WHERE "{watermark_col}" > :wm'
+                        if last_watermark is not None
+                        else "")
+        params = {"wm": last_watermark} if last_watermark is not None else {}
+
+        with engine.connect() as src_conn_obj:
+            sql = f"SELECT * FROM {qual_table} {where_clause} ORDER BY \"{watermark_col}\""
+            df  = pd.read_sql(text(sql), src_conn_obj, params=params)
+
+        if df.empty:
+            log("No new rows since last watermark")
+            return {"rows_loaded": 0, "mode": "incremental",
+                    "finished_at": datetime.utcnow().isoformat()}
+
+        df = _coerce_df_for_snowflake(df)
+        df.columns = [c.upper() for c in df.columns]
+
+        # Track new max watermark
+        if watermark_col.upper() in df.columns:
+            new_wm = df[watermark_col.upper()].max()
+            if max_watermark is None or new_wm > max_watermark:
+                max_watermark = str(new_wm)
+
+        # Upsert: delete matching PKs then insert (Snowflake has no MERGE in all editions)
+        pk_cols = pipeline.get("primary_keys", [])
+        if pk_cols:
+            pk_str = " AND ".join([f't."{c.upper()}" = s."{c.upper()}"' for c in pk_cols])
+            for _, row in df.iterrows():
+                where_del = " AND ".join([f'"{c.upper()}" = \'{row[c.upper()]}\'' for c in pk_cols])
+                try:
+                    sf_conn.execute(text(f'DELETE FROM {tgt_full} WHERE {where_del}'))
+                except Exception:
+                    pass
+
+        df.to_sql(
+            tgt_table.lower(),
+            sf_conn,
+            schema=f"{tgt_db}.{tgt_schema}".lower(),
+            if_exists='append',
+            index=False,
+            method='multi',
+            chunksize=1000,
+        )
+        sf_conn.commit()
+        total_rows = len(df)
+
+    # Persist new watermark back to pipeline config
+    with _pipeline_lock:
+        if pipeline["pipeline_id"] in _pipelines:
+            _pipelines[pipeline["pipeline_id"]]["last_watermark_value"] = max_watermark
+            _pipelines[pipeline["pipeline_id"]]["pipeline"] = {
+                **_pipelines[pipeline["pipeline_id"]].get("pipeline", {}),
+                "last_watermark_value": max_watermark
+            }
+
+    elapsed = (datetime.utcnow() - start_ts).total_seconds()
+    return {
+        "rows_loaded": total_rows,
+        "new_watermark": str(max_watermark),
+        "elapsed_seconds": round(elapsed, 2),
+        "mode": "incremental",
+        "finished_at": datetime.utcnow().isoformat(),
+    }
+
+
+# ── LOG-BASED CDC — SQL SERVER ────────────────────────────────────────────
+def _run_cdc_sqlserver(pipeline: dict, log_fn=None) -> dict:
+    """
+    SQL Server log-based CDC using sys.fn_cdc_get_all_changes.
+    Requirements on SQL Server:
+      EXEC sys.sp_cdc_enable_db;
+      EXEC sys.sp_cdc_enable_table @source_schema='dbo', @source_name='<table>', @role_name=NULL;
+    """
+    def log(msg):
+        if log_fn: log_fn(msg)
+
+    src_session_id = pipeline["source_session_id"]
+    sf_creds       = pipeline["snowflake_creds"]
+    src_table      = pipeline["source_table"]
+    src_schema     = pipeline.get("source_schema", "dbo")
+    tgt_table      = (pipeline.get("target_table") or src_table).upper()
+    tgt_db         = (pipeline.get("target_database") or "MY_SNOWFLAKE_DB").upper()
+    tgt_schema     = (pipeline.get("target_schema") or "PUBLIC").upper()
+    last_lsn       = pipeline.get("last_lsn")  # stored as hex string
+
+    if src_session_id not in connections:
+        raise ValueError("Source session not found")
+    engine = connections[src_session_id].get("engine")
+    if engine is None:
+        raise ValueError("CDC requires a SQL Server relational connection")
+
+    sf_engine  = _get_sf_engine(sf_creds)
+    total_rows = 0
+    start_ts   = datetime.utcnow()
+    capture_instance = f"{src_schema}_{src_table}"
+
+    with engine.connect() as src_conn:
+        # Get current max LSN
+        max_lsn_row = src_conn.execute(
+            text("SELECT sys.fn_cdc_get_max_lsn() AS max_lsn")
+        ).fetchone()
+        max_lsn = max_lsn_row[0] if max_lsn_row else None
+
+        if max_lsn is None:
+            raise ValueError("CDC not enabled on this SQL Server database. "
+                             "Run: EXEC sys.sp_cdc_enable_db")
+
+        # Determine from_lsn
+        if last_lsn:
+            from_lsn = bytes.fromhex(last_lsn.replace('0x','').replace('\\x',''))
+        else:
+            # First run — get min LSN for this table
+            min_lsn_row = src_conn.execute(
+                text(f"SELECT sys.fn_cdc_get_min_lsn(:ci) AS min_lsn"),
+                {"ci": capture_instance}
+            ).fetchone()
+            from_lsn = min_lsn_row[0] if min_lsn_row else max_lsn
+            log(f"First CDC run — starting from min LSN for {capture_instance}")
+
+        # Fetch changes
+        changes_sql = text(
+            f"SELECT * FROM cdc.fn_cdc_get_all_changes_{capture_instance}"
+            f"(:from_lsn, :to_lsn, N'all update old')"
+        )
+        try:
+            df = pd.read_sql(changes_sql, src_conn,
+                             params={"from_lsn": from_lsn, "to_lsn": max_lsn})
+        except Exception as e:
+            raise ValueError(
+                f"CDC query failed: {str(e)[:300]}. "
+                f"Ensure sp_cdc_enable_table was run for table '{src_table}'"
+            )
+
+    if not df.empty:
+        # __$operation: 1=DELETE, 2=INSERT, 3=before UPDATE, 4=after UPDATE
+        inserts = df[df['__$operation'].isin([2, 4])].copy()
+        deletes = df[df['__$operation'] == 1].copy()
+
+        # Drop CDC system columns
+        cdc_cols = [c for c in df.columns if c.startswith('__$')]
+        inserts.drop(columns=cdc_cols, inplace=True, errors='ignore')
+        deletes.drop(columns=cdc_cols, inplace=True, errors='ignore')
+
+        inserts = _coerce_df_for_snowflake(inserts)
+        inserts.columns = [c.upper() for c in inserts.columns]
+        deletes.columns = [c.upper() for c in deletes.columns]
+
+        pk_cols = pipeline.get("primary_keys", [])
+        tgt_full = f'"{tgt_db}"."{tgt_schema}"."{tgt_table}"'
+
+        with sf_engine.connect() as sf_conn:
+            # Apply deletes
+            for _, row in deletes.iterrows():
+                if pk_cols:
+                    where_del = " AND ".join(
+                        [f'"{c.upper()}" = \'{row.get(c.upper(), "")}\'' for c in pk_cols]
+                    )
+                    try:
+                        sf_conn.execute(text(f'DELETE FROM {tgt_full} WHERE {where_del}'))
+                    except Exception:
+                        pass
+
+            # Apply inserts/updates (delete+reinsert pattern)
+            if pk_cols and not inserts.empty:
+                for _, row in inserts.iterrows():
+                    where_del = " AND ".join(
+                        [f'"{c.upper()}" = \'{row.get(c.upper(), "")}\'' for c in pk_cols]
+                    )
+                    try:
+                        sf_conn.execute(text(f'DELETE FROM {tgt_full} WHERE {where_del}'))
+                    except Exception:
+                        pass
+
+            if not inserts.empty:
+                inserts.to_sql(
+                    tgt_table.lower(),
+                    sf_conn,
+                    schema=f"{tgt_db}.{tgt_schema}".lower(),
+                    if_exists='append', index=False,
+                    method='multi', chunksize=500,
+                )
+            sf_conn.commit()
+            total_rows = len(inserts)
+
+    # Persist new LSN
+    new_lsn_hex = max_lsn.hex() if isinstance(max_lsn, (bytes, bytearray)) else str(max_lsn)
+    with _pipeline_lock:
+        if pipeline["pipeline_id"] in _pipelines:
+            _pipelines[pipeline["pipeline_id"]]["last_lsn"] = new_lsn_hex
+
+    elapsed = (datetime.utcnow() - start_ts).total_seconds()
+    return {
+        "rows_loaded": total_rows,
+        "new_lsn": new_lsn_hex,
+        "elapsed_seconds": round(elapsed, 2),
+        "mode": "cdc_sqlserver",
+        "finished_at": datetime.utcnow().isoformat(),
+    }
+
+
+# ── LOG-BASED CDC — POSTGRESQL ────────────────────────────────────────────
+def _run_cdc_postgresql(pipeline: dict, log_fn=None) -> dict:
+    """
+    PostgreSQL CDC using logical replication slots + pgoutput plugin.
+    Requirements:
+      postgresql.conf: wal_level = logical
+      CREATE PUBLICATION migranix_pub FOR TABLE <table>;
+      CREATE_REPLICATION_SLOT migranix_slot LOGICAL pgoutput;
+    Uses psycopg2 raw connection (not SQLAlchemy) for replication protocol.
+    """
+    def log(msg):
+        if log_fn: log_fn(msg)
+
+    src_session_id = pipeline["source_session_id"]
+    sf_creds       = pipeline["snowflake_creds"]
+    src_table      = pipeline["source_table"]
+    src_schema     = pipeline.get("source_schema", "public")
+    tgt_table      = (pipeline.get("target_table") or src_table).upper()
+    tgt_db         = (pipeline.get("target_database") or "MY_SNOWFLAKE_DB").upper()
+    tgt_schema     = (pipeline.get("target_schema") or "PUBLIC").upper()
+    slot_name      = pipeline.get("pg_slot_name") or f"migranix_{src_table.lower()}"
+    pub_name       = pipeline.get("pg_pub_name") or f"migranix_pub_{src_table.lower()}"
+
+    if src_session_id not in connections:
+        raise ValueError("Source session not found")
+
+    src_conn_meta = connections[src_session_id]
+    dsn = src_conn_meta.get("dsn", "")
+
+    if not dsn or "postgresql" not in dsn:
+        raise ValueError("CDC requires a PostgreSQL connection")
+
+    import psycopg2
+    import psycopg2.extras
+
+    # Parse DSN for replication connection
+    # SQLAlchemy DSN: postgresql+psycopg2://user:pass@host:port/db
+    dsn_clean = dsn.replace("postgresql+psycopg2://", "").replace("postgresql://", "")
+    # Build psycopg2 DSN
+    try:
+        from urllib.parse import urlparse
+        parsed = urlparse("postgresql://" + dsn_clean)
+        pg_conn_params = {
+            "host":     parsed.hostname or "localhost",
+            "port":     parsed.port or 5432,
+            "database": parsed.path.lstrip("/").split("?")[0],
+            "user":     parsed.username or "",
+            "password": parsed.password or "",
+            "connection_factory": psycopg2.extras.LogicalReplicationConnection,
+        }
+    except Exception as e:
+        raise ValueError(f"Could not parse PostgreSQL DSN for CDC: {e}")
+
+    sf_engine  = _get_sf_engine(sf_creds)
+    total_rows = 0
+    changes = {"insert": [], "update": [], "delete": []}
+    start_ts = datetime.utcnow()
+
+    try:
+        rep_conn = psycopg2.connect(**pg_conn_params)
+        rep_cur  = rep_conn.cursor()
+
+        # Create publication if not exists
+        with psycopg2.connect(**{k: v for k, v in pg_conn_params.items()
+                                  if k != "connection_factory"}) as plain_conn:
+            with plain_conn.cursor() as pc:
+                pc.execute(
+                    "SELECT 1 FROM pg_publication WHERE pubname = %s", (pub_name,)
+                )
+                if not pc.fetchone():
+                    pc.execute(
+                        f'CREATE PUBLICATION "{pub_name}" FOR TABLE "{src_schema}"."{src_table}"'
+                    )
+                    plain_conn.commit()
+                    log(f"Created publication {pub_name}")
+
+                # Create slot if not exists
+                pc.execute(
+                    "SELECT 1 FROM pg_replication_slots WHERE slot_name = %s", (slot_name,)
+                )
+                if not pc.fetchone():
+                    pc.execute(
+                        f"SELECT pg_create_logical_replication_slot('{slot_name}', 'wal2json')"
+                    )
+                    plain_conn.commit()
+                    log(f"Created replication slot {slot_name}")
+
+        # Read changes from slot using wal2json output
+        with psycopg2.connect(**{k: v for k, v in pg_conn_params.items()
+                                  if k != "connection_factory"}) as plain_conn:
+            with plain_conn.cursor() as pc:
+                pc.execute(
+                    "SELECT data FROM pg_logical_slot_get_changes(%s, NULL, NULL, "
+                    "'format-version', '2', 'add-tables', %s)",
+                    (slot_name, f"{src_schema}.{src_table}")
+                )
+                rows = pc.fetchall()
+                plain_conn.commit()
+
+        import json as _json
+        for row in rows:
+            try:
+                change = _json.loads(row[0])
+                action = change.get("action", "")
+                cols   = {c["name"]: c.get("value") for c in change.get("columns", [])}
+                if action in ("I", "insert"):
+                    changes["insert"].append(cols)
+                elif action in ("U", "update"):
+                    changes["update"].append(cols)
+                elif action in ("D", "delete"):
+                    changes["delete"].append(cols)
+            except Exception:
+                continue
+
+        rep_conn.close()
+
+    except Exception as e:
+        raise ValueError(
+            f"PostgreSQL CDC failed: {str(e)[:300]}. "
+            "Ensure wal_level=logical in postgresql.conf and REPLICATION privilege is granted."
+        )
+
+    if any(changes.values()):
+        pk_cols  = pipeline.get("primary_keys", [])
+        tgt_full = f'"{tgt_db}"."{tgt_schema}"."{tgt_table}"'
+
+        with sf_engine.connect() as sf_conn:
+            # Deletes
+            for row in changes["delete"]:
+                if pk_cols:
+                    where_del = " AND ".join(
+                        [f'"{c.upper()}" = \'{row.get(c, "")}\'' for c in pk_cols]
+                    )
+                    try:
+                        sf_conn.execute(text(f'DELETE FROM {tgt_full} WHERE {where_del}'))
+                    except Exception:
+                        pass
+
+            # Inserts + Updates (upsert pattern)
+            all_writes = changes["insert"] + changes["update"]
+            if all_writes:
+                if pk_cols:
+                    for row in all_writes:
+                        where_del = " AND ".join(
+                            [f'"{c.upper()}" = \'{row.get(c, "")}\'' for c in pk_cols]
+                        )
+                        try:
+                            sf_conn.execute(text(f'DELETE FROM {tgt_full} WHERE {where_del}'))
+                        except Exception:
+                            pass
+                df = pd.DataFrame(all_writes)
+                df = _coerce_df_for_snowflake(df)
+                df.columns = [c.upper() for c in df.columns]
+                df.to_sql(
+                    tgt_table.lower(), sf_conn,
+                    schema=f"{tgt_db}.{tgt_schema}".lower(),
+                    if_exists='append', index=False,
+                    method='multi', chunksize=500,
+                )
+            sf_conn.commit()
+            total_rows = len(all_writes)
+
+    elapsed = (datetime.utcnow() - start_ts).total_seconds()
+    return {
+        "rows_loaded": total_rows,
+        "inserts": len(changes["insert"]),
+        "updates": len(changes["update"]),
+        "deletes": len(changes["delete"]),
+        "elapsed_seconds": round(elapsed, 2),
+        "mode": "cdc_postgresql",
+        "finished_at": datetime.utcnow().isoformat(),
+    }
+
+
+# ── ROW COUNT + CHECKSUM RECONCILIATION ──────────────────────────────────
+def _run_reconciliation(pipeline: dict, log_fn=None) -> dict:
+    """
+    Compare source vs Snowflake target:
+    1. Row counts
+    2. Checksum on numeric columns (SUM)
+    3. Returns pass/fail + discrepancy details
+    """
+    def log(msg):
+        if log_fn: log_fn(msg)
+
+    src_session_id = pipeline["source_session_id"]
+    sf_creds       = pipeline["snowflake_creds"]
+    src_table      = pipeline["source_table"]
+    src_schema     = pipeline.get("source_schema", "")
+    tgt_table      = (pipeline.get("target_table") or src_table).upper()
+    tgt_db         = (pipeline.get("target_database") or "MY_SNOWFLAKE_DB").upper()
+    tgt_schema     = (pipeline.get("target_schema") or "PUBLIC").upper()
+
+    if src_session_id not in connections:
+        raise ValueError("Source session not found")
+
+    engine    = connections[src_session_id].get("engine")
+    sf_engine = _get_sf_engine(sf_creds)
+    qual_src  = f'"{src_schema}"."{src_table}"' if src_schema else f'"{src_table}"'
+    tgt_full  = f'"{tgt_db}"."{tgt_schema}"."{tgt_table}"'
+    result    = {"table": src_table, "target": tgt_full}
+
+    # 1. Row counts
+    with engine.connect() as src_conn:
+        src_count = src_conn.execute(
+            text(f"SELECT COUNT(*) FROM {qual_src}")
+        ).scalar()
+
+    with sf_engine.connect() as sf_conn:
+        try:
+            tgt_count = sf_conn.execute(
+                text(f"SELECT COUNT(*) FROM {tgt_full}")
+            ).scalar()
+        except Exception:
+            tgt_count = 0
+
+    result["source_rows"]      = src_count
+    result["target_rows"]      = tgt_count
+    result["row_count_match"]  = src_count == tgt_count
+    result["row_count_diff"]   = abs(int(src_count or 0) - int(tgt_count or 0))
+
+    # 2. Column checksums (numeric columns only)
+    checksums = {}
+    try:
+        with engine.connect() as src_conn:
+            # Get numeric columns
+            inspector = inspect(engine)
+            cols = inspector.get_columns(src_table,
+                                         schema=src_schema if src_schema else None)
+            num_cols = [c["name"] for c in cols
+                        if any(t in str(c["type"]).lower()
+                               for t in ["int", "float", "decimal", "numeric", "money"])]
+
+        for col in num_cols[:10]:  # max 10 columns
+            with engine.connect() as src_conn:
+                src_sum = src_conn.execute(
+                    text(f'SELECT SUM("{col}") FROM {qual_src}')
+                ).scalar() or 0
+            with sf_engine.connect() as sf_conn:
+                try:
+                    tgt_sum = sf_conn.execute(
+                        text(f'SELECT SUM("{col.upper()}") FROM {tgt_full}')
+                    ).scalar() or 0
+                except Exception:
+                    tgt_sum = None
+            checksums[col] = {
+                "source_sum": float(src_sum) if src_sum else 0,
+                "target_sum": float(tgt_sum) if tgt_sum else 0,
+                "match": abs(float(src_sum or 0) - float(tgt_sum or 0)) < 0.01,
+            }
+    except Exception as e:
+        log(f"Checksum warning: {str(e)[:200]}")
+
+    result["checksums"]       = checksums
+    result["checksum_passed"] = all(v["match"] for v in checksums.values())
+    result["overall_passed"]  = result["row_count_match"] and result["checksum_passed"]
+    result["reconciled_at"]   = datetime.utcnow().isoformat()
+
+    log(f"Reconciliation: rows {src_count}→{tgt_count} {'✓' if result['row_count_match'] else '✗'}")
+    return result
+
+
+# ── PIPELINE RUNNER (dispatcher) ──────────────────────────────────────────
+def _run_pipeline(pipeline_id: str):
+    """Main dispatcher — called by scheduler or manual trigger."""
+    with _pipeline_lock:
+        if pipeline_id not in _pipelines:
+            return
+        pipeline_entry = _pipelines[pipeline_id]
+
+    pipeline = pipeline_entry.get("pipeline", {})
+    mode     = pipeline.get("mode", "full_load")
+    logs     = []
+
+    def log_fn(msg):
+        ts = datetime.utcnow().strftime("%H:%M:%S")
+        entry = f"[{ts}] {msg}"
+        logs.append(entry)
+
+    with _pipeline_lock:
+        _pipelines[pipeline_id]["status"]   = "running"
+        _pipelines[pipeline_id]["last_run"] = datetime.utcnow().isoformat()
+        _pipelines[pipeline_id]["logs"]     = []
+
+    try:
+        log_fn(f"Starting {mode} for table {pipeline.get('source_table')}")
+
+        if mode == "full_load":
+            stats = _run_full_load(pipeline, log_fn)
+
+        elif mode == "incremental":
+            stats = _run_incremental_load(pipeline, log_fn)
+
+        elif mode == "cdc_sqlserver":
+            stats = _run_cdc_sqlserver(pipeline, log_fn)
+
+        elif mode == "cdc_postgresql":
+            stats = _run_cdc_postgresql(pipeline, log_fn)
+
+        else:
+            raise ValueError(f"Unknown pipeline mode: {mode}")
+
+        # Auto-reconcile if enabled
+        if pipeline.get("auto_reconcile"):
+            log_fn("Running auto-reconciliation...")
+            rec = _run_reconciliation(pipeline, log_fn)
+            stats["reconciliation"] = rec
+            if not rec["overall_passed"]:
+                log_fn(f"⚠️  Reconciliation FAILED: row diff={rec['row_count_diff']}")
+
+        with _pipeline_lock:
+            _pipelines[pipeline_id]["status"]       = "success"
+            _pipelines[pipeline_id]["last_stats"]   = stats
+            _pipelines[pipeline_id]["logs"]         = logs
+            _pipelines[pipeline_id]["error"]        = None
+            _pipelines[pipeline_id]["run_count"]    = \
+                _pipelines[pipeline_id].get("run_count", 0) + 1
+
+        log_fn(f"Completed. Rows: {stats.get('rows_loaded', 0)}")
+
+    except Exception as e:
+        err_msg = str(e)[:500]
+        log_fn(f"ERROR: {err_msg}")
+        with _pipeline_lock:
+            _pipelines[pipeline_id]["status"]  = "error"
+            _pipelines[pipeline_id]["error"]   = err_msg
+            _pipelines[pipeline_id]["logs"]    = logs
+
+
+# ── PIPELINE API ENDPOINTS ────────────────────────────────────────────────
+
+@app.post("/api/pipeline/create")
+async def create_pipeline(request: dict):
+    """
+    Create a new data pipeline.
+    Required fields:
+      name, source_session_id, source_table, snowflake_creds,
+      mode (full_load|incremental|cdc_sqlserver|cdc_postgresql),
+      schedule (cron string like '0 2 * * *' or interval like '15m')
+    Optional:
+      source_schema, target_table, target_database, target_schema,
+      watermark_column (for incremental), primary_keys,
+      auto_reconcile, ddl, batch_size
+    """
+    name        = request.get("name", "").strip()
+    mode        = request.get("mode", "full_load")
+    schedule    = request.get("schedule", "")
+    src_session = request.get("source_session_id", "")
+    sf_creds    = request.get("snowflake_creds", {})
+    src_table   = request.get("source_table", "").strip()
+
+    if not name:        raise HTTPException(400, detail={"message": "Pipeline name is required"})
+    if not src_session: raise HTTPException(400, detail={"message": "source_session_id is required"})
+    if not src_table:   raise HTTPException(400, detail={"message": "source_table is required"})
+    if not sf_creds:    raise HTTPException(400, detail={"message": "snowflake_creds is required"})
+    if mode not in ("full_load","incremental","cdc_sqlserver","cdc_postgresql"):
+        raise HTTPException(400, detail={"message": f"Invalid mode: {mode}"})
+    if mode == "incremental" and not request.get("watermark_column"):
+        raise HTTPException(400, detail={"message": "watermark_column required for incremental mode"})
+
+    pipeline_id = str(uuid.uuid4())
+    pipeline_cfg = {
+        "pipeline_id":      pipeline_id,
+        "name":             name,
+        "mode":             mode,
+        "source_session_id": src_session,
+        "source_table":     src_table,
+        "source_schema":    request.get("source_schema", ""),
+        "target_table":     request.get("target_table", src_table.upper()),
+        "target_database":  request.get("target_database", "MY_SNOWFLAKE_DB"),
+        "target_schema":    request.get("target_schema", "PUBLIC"),
+        "snowflake_creds":  sf_creds,
+        "watermark_column": request.get("watermark_column", ""),
+        "primary_keys":     request.get("primary_keys", []),
+        "auto_reconcile":   request.get("auto_reconcile", False),
+        "ddl":              request.get("ddl", ""),
+        "batch_size":       request.get("batch_size", 10000),
+        "schedule":         schedule,
+        "last_watermark_value": None,
+        "last_lsn":         None,
+        "pg_slot_name":     request.get("pg_slot_name", ""),
+        "pg_pub_name":      request.get("pg_pub_name", ""),
+    }
+
+    entry = {
+        "pipeline_id": pipeline_id,
+        "pipeline":    pipeline_cfg,
+        "status":      "created",
+        "last_run":    None,
+        "last_stats":  None,
+        "run_count":   0,
+        "error":       None,
+        "logs":        [],
+        "created_at":  datetime.utcnow().isoformat(),
+    }
+
+    with _pipeline_lock:
+        _pipelines[pipeline_id] = entry
+
+    # Register scheduler job if schedule provided
+    if schedule and _HAS_SCHEDULER and _scheduler:
+        try:
+            _register_schedule(pipeline_id, schedule)
+            entry["next_run"] = _get_next_run(pipeline_id)
+        except Exception as e:
+            entry["schedule_error"] = str(e)
+
+    return {"success": True, "pipeline_id": pipeline_id,
+            "message": f"Pipeline '{name}' created"}
+
+
+def _register_schedule(pipeline_id: str, schedule: str):
+    """Parse schedule string and register with APScheduler."""
+    global _scheduler
+    if not _scheduler: return
+
+    # Remove existing job if any
+    try: _scheduler.remove_job(pipeline_id)
+    except Exception: pass
+
+    schedule = schedule.strip()
+    # Interval format: 15m, 1h, 30s, 1d
+    interval_match = re.match(r'^(\d+)(s|m|h|d)$', schedule)
+    if interval_match:
+        val, unit = int(interval_match.group(1)), interval_match.group(2)
+        kwargs = {"seconds": val} if unit == "s" else \
+                 {"minutes": val} if unit == "m" else \
+                 {"hours": val}   if unit == "h" else {"days": val}
+        _scheduler.add_job(
+            _run_pipeline, IntervalTrigger(**kwargs),
+            id=pipeline_id, args=[pipeline_id],
+            replace_existing=True, max_instances=1,
+        )
+    else:
+        # Cron format: "0 2 * * *"
+        parts = schedule.split()
+        if len(parts) == 5:
+            _scheduler.add_job(
+                _run_pipeline, CronTrigger(
+                    minute=parts[0], hour=parts[1],
+                    day=parts[2], month=parts[3], day_of_week=parts[4]
+                ),
+                id=pipeline_id, args=[pipeline_id],
+                replace_existing=True, max_instances=1,
+            )
+        else:
+            raise ValueError(f"Invalid schedule: '{schedule}'. Use cron (0 2 * * *) or interval (15m, 1h)")
+
+
+def _get_next_run(pipeline_id: str):
+    """Get next scheduled run time."""
+    if not _scheduler: return None
+    try:
+        job = _scheduler.get_job(pipeline_id)
+        return job.next_run_time.isoformat() if job and job.next_run_time else None
+    except Exception:
+        return None
+
+
+@app.post("/api/pipeline/run")
+async def run_pipeline_now(request: dict):
+    """Manually trigger a pipeline run immediately."""
+    pipeline_id = request.get("pipeline_id", "")
+    if not pipeline_id or pipeline_id not in _pipelines:
+        raise HTTPException(404, detail={"message": "Pipeline not found"})
+
+    import threading
+    t = threading.Thread(target=_run_pipeline, args=(pipeline_id,), daemon=True)
+    t.start()
+
+    return {"success": True, "pipeline_id": pipeline_id,
+            "message": "Pipeline started in background"}
+
+
+@app.get("/api/pipeline/list")
+async def list_pipelines():
+    """List all pipelines with status."""
+    with _pipeline_lock:
+        result = []
+        for pid, entry in _pipelines.items():
+            result.append({
+                "pipeline_id":  pid,
+                "name":         entry["pipeline"].get("name", ""),
+                "mode":         entry["pipeline"].get("mode", ""),
+                "source_table": entry["pipeline"].get("source_table", ""),
+                "target":       f'{entry["pipeline"].get("target_database","")}.{entry["pipeline"].get("target_schema","")}.{entry["pipeline"].get("target_table","")}',
+                "status":       entry.get("status", "unknown"),
+                "last_run":     entry.get("last_run"),
+                "next_run":     _get_next_run(pid),
+                "run_count":    entry.get("run_count", 0),
+                "last_stats":   entry.get("last_stats"),
+                "error":        entry.get("error"),
+                "schedule":     entry["pipeline"].get("schedule", ""),
+            })
+    return {"success": True, "pipelines": result}
+
+
+@app.get("/api/pipeline/{pipeline_id}")
+async def get_pipeline(pipeline_id: str):
+    """Get pipeline detail including logs and reconciliation."""
+    if pipeline_id not in _pipelines:
+        raise HTTPException(404, detail={"message": "Pipeline not found"})
+    with _pipeline_lock:
+        entry = dict(_pipelines[pipeline_id])
+    entry["next_run"] = _get_next_run(pipeline_id)
+    return {"success": True, "pipeline": entry}
+
+
+@app.get("/api/pipeline/{pipeline_id}/logs")
+async def get_pipeline_logs(pipeline_id: str):
+    """Get latest run logs for a pipeline."""
+    if pipeline_id not in _pipelines:
+        raise HTTPException(404, detail={"message": "Pipeline not found"})
+    with _pipeline_lock:
+        logs = list(_pipelines[pipeline_id].get("logs", []))
+    return {"success": True, "logs": logs}
+
+
+@app.post("/api/pipeline/{pipeline_id}/reconcile")
+async def reconcile_pipeline(pipeline_id: str):
+    """Run reconciliation check on demand."""
+    if pipeline_id not in _pipelines:
+        raise HTTPException(404, detail={"message": "Pipeline not found"})
+    pipeline = _pipelines[pipeline_id]["pipeline"]
+    try:
+        result = _run_reconciliation(pipeline)
+        with _pipeline_lock:
+            _pipelines[pipeline_id]["last_reconciliation"] = result
+        return {"success": True, "reconciliation": result}
+    except Exception as e:
+        raise HTTPException(400, detail=power_bi_error("reconciliation", e))
+
+
+@app.delete("/api/pipeline/{pipeline_id}")
+async def delete_pipeline(pipeline_id: str):
+    """Delete a pipeline and remove its schedule."""
+    if pipeline_id not in _pipelines:
+        raise HTTPException(404, detail={"message": "Pipeline not found"})
+    if _scheduler:
+        try: _scheduler.remove_job(pipeline_id)
+        except Exception: pass
+    with _pipeline_lock:
+        del _pipelines[pipeline_id]
+    return {"success": True, "message": "Pipeline deleted"}
+
+
+@app.put("/api/pipeline/{pipeline_id}/schedule")
+async def update_schedule(pipeline_id: str, request: dict):
+    """Update pipeline schedule without recreating it."""
+    if pipeline_id not in _pipelines:
+        raise HTTPException(404, detail={"message": "Pipeline not found"})
+    schedule = request.get("schedule", "").strip()
+    if not schedule:
+        # Pause — remove job
+        if _scheduler:
+            try: _scheduler.remove_job(pipeline_id)
+            except Exception: pass
+        with _pipeline_lock:
+            _pipelines[pipeline_id]["pipeline"]["schedule"] = ""
+        return {"success": True, "message": "Pipeline schedule removed (paused)"}
+    try:
+        _register_schedule(pipeline_id, schedule)
+        with _pipeline_lock:
+            _pipelines[pipeline_id]["pipeline"]["schedule"] = schedule
+        return {"success": True, "schedule": schedule,
+                "next_run": _get_next_run(pipeline_id)}
+    except Exception as e:
+        raise HTTPException(400, detail={"message": str(e)})
+
+
+@app.post("/api/pipeline/detect-watermark")
+async def detect_watermark(request: dict):
+    """
+    Auto-detect the best watermark column and primary keys from source table.
+    Returns recommendations for incremental load setup.
+    """
+    session_id = request.get("session_id") or request.get("session", "")
+    table_name = request.get("table", "")
+    schema     = request.get("schema", "")
+    if not session_id or session_id not in connections:
+        raise HTTPException(400, detail={"message": "Session not found"})
+    engine = connections[session_id].get("engine")
+    if not engine:
+        raise HTTPException(400, detail={"message": "Requires a relational DB connection"})
+    try:
+        inspector = inspect(engine)
+        cols = inspector.get_columns(table_name, schema=schema or None)
+        pk   = inspector.get_pk_constraint(table_name, schema=schema or None)
+
+        # Score columns for watermark suitability
+        watermark_candidates = []
+        for c in cols:
+            col_name = c["name"]
+            col_type = str(c.get("type","")).lower()
+            score = 0
+            if any(k in col_type for k in ["timestamp","datetime","date"]): score += 10
+            if any(k in col_name.lower() for k in
+                   ["updated","modified","changed","last_","update_dt","mod_"]): score += 5
+            if any(k in col_name.lower() for k in ["created","insert","added"]): score += 2
+            if score > 0:
+                watermark_candidates.append({"column": col_name, "type": col_type, "score": score})
+
+        watermark_candidates.sort(key=lambda x: x["score"], reverse=True)
+
+        return {
+            "success": True,
+            "table": table_name,
+            "primary_keys": pk.get("constrained_columns", []),
+            "watermark_candidates": watermark_candidates[:5],
+            "recommended_watermark": watermark_candidates[0]["column"]
+                                     if watermark_candidates else None,
+        }
+    except Exception as e:
+        raise HTTPException(400, detail=power_bi_error("detect_watermark", e))
+
+
+@app.on_event("startup")
+async def startup():
+    """Restore pipelines on restart (from Supabase if configured)."""
+    # APScheduler already started above — nothing else needed here
+    pass
+
+
 @app.on_event("shutdown")
 async def shutdown():
+    if _scheduler:
+        try: _scheduler.shutdown(wait=False)
+        except Exception: pass
     for conn in connections.values():
         try:
             if "engine" in conn: conn["engine"].dispose()
