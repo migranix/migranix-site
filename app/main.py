@@ -1128,8 +1128,8 @@ _SAP_HANA_TYPE_MAP = {
     'blob': 'BINARY', 'varbinary': 'BINARY', 'bintext': 'BINARY',
     'st_geometry': 'VARIANT', 'st_point': 'VARIANT',
 }
-_TYPE_MAPS['sap_hana'] = _SAP_HANA_TYPE_MAP
-_TYPE_MAPS['sap_bw']   = _SAP_HANA_TYPE_MAP   # BW4HANA also runs on HANA
+# _SAP_HANA_TYPE_MAP is registered into _TYPE_MAPS below after _TYPE_MAPS is defined
+
 
 
 # ========== SAP SCHEMA READER ==========
@@ -2884,12 +2884,15 @@ _ORACLE_TYPE_MAP = {
 
 _TYPE_MAPS = {
     'sqlserver': _SQLSERVER_TYPE_MAP,
-    'mssql': _SQLSERVER_TYPE_MAP,
+    'mssql':     _SQLSERVER_TYPE_MAP,
     'postgresql': _POSTGRES_TYPE_MAP,
-    'postgres': _POSTGRES_TYPE_MAP,
-    'mysql': _MYSQL_TYPE_MAP,
-    'mariadb': _MYSQL_TYPE_MAP,
-    'oracle': _ORACLE_TYPE_MAP,
+    'postgres':  _POSTGRES_TYPE_MAP,
+    'mysql':     _MYSQL_TYPE_MAP,
+    'mariadb':   _MYSQL_TYPE_MAP,
+    'oracle':    _ORACLE_TYPE_MAP,
+    # SAP — defined earlier in file, registered here after _TYPE_MAPS exists
+    'sap_hana':  _SAP_HANA_TYPE_MAP,
+    'sap_bw':    _SAP_HANA_TYPE_MAP,   # BW4HANA runs on HANA
 }
 
 
