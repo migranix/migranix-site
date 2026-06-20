@@ -67,7 +67,7 @@ except ImportError: BlobServiceClient = None
 try: from azure.cosmos import CosmosClient
 except ImportError: CosmosClient = None
 
-try: import oracledb as cx_Oracle   # python-oracledb thin mode — no Oracle Client needed
+try: import oracledb as cx_Oracle   # package name: oracledb (pip install oracledb)
 except ImportError: cx_Oracle = None
 
 try: import ibm_db, ibm_db_sa
@@ -293,7 +293,7 @@ class ConnectionManager:
     @staticmethod
     def create_oracle(creds: dict):
         if cx_Oracle is None:
-            raise ImportError("python-oracledb not installed")
+            raise ImportError("oracledb not installed. Run: pip install oracledb")
         host = _get(creds, 'host')
         if not host: raise ValueError("Host is required")
         port = _get(creds, 'port', default=1521)
@@ -712,10 +712,10 @@ class ConnectionManager:
     def create_oracle_ebs(creds: dict):
         """Oracle E-Business Suite — direct Oracle DB connection.
         EBS stores everything in its Oracle schema (APPS, AR, AP, GL, etc.).
-        Uses python-oracledb thin mode — no Instant Client needed.
+        Uses oracledb thin mode — no Oracle Instant Client needed.
         """
         if cx_Oracle is None:
-            raise ImportError("python-oracledb not installed. Run: pip install python-oracledb")
+            raise ImportError("oracledb not installed. Run: pip install oracledb")
         host = _get(creds, 'host')
         if not host: raise ValueError("EBS Database Host is required")
         port         = _get(creds, 'port', default=1521)
