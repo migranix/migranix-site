@@ -243,6 +243,50 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
 .ddl-code-pre{flex:1;overflow:auto;padding:16px 20px;margin:0;font-family:var(--font-mono);font-size:0.82rem;line-height:1.6;color:var(--text);background:var(--bg);white-space:pre}
 .ddl-footer{padding:12px 24px;border-top:1px solid var(--border);display:flex;gap:10px;align-items:center;flex-shrink:0}
 .ddl-summary{font-size:0.8rem;color:var(--text-muted);margin-left:auto}
+/* ===== PIPELINE MANAGER ===== */
+.pipeline-panel{position:fixed;top:0;right:0;width:780px;height:100%;background:var(--bg-elevated);border-left:1px solid var(--border);z-index:202;transform:translateX(100%);transition:transform 0.35s cubic-bezier(0.16,1,0.3,1);display:flex;flex-direction:column;box-shadow:-10px 0 40px rgba(0,0,0,0.4)}
+.pipeline-panel.active{transform:translateX(0)}
+.pipeline-header{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.pipeline-header h2{font-size:1rem;font-weight:700}
+.pipeline-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);flex-shrink:0}
+.pipeline-tab{padding:10px 20px;font-size:0.82rem;font-weight:600;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;transition:var(--transition)}
+.pipeline-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
+.pipeline-body{flex:1;overflow-y:auto;padding:20px 24px}
+/* Pipeline list */
+.pipeline-card{border:1px solid var(--border);border-radius:var(--radius-lg);margin-bottom:14px;overflow:hidden;transition:var(--transition)}
+.pipeline-card:hover{border-color:var(--border-light)}
+.pipeline-card-header{padding:14px 16px;display:flex;align-items:center;gap:12px;background:var(--bg)}
+.pipeline-card-title{flex:1}
+.pipeline-card-title h4{font-size:0.88rem;font-weight:700;margin:0}
+.pipeline-card-title p{font-size:0.75rem;color:var(--text-dim);margin:2px 0 0}
+.pipeline-status{font-size:0.7rem;font-weight:700;padding:3px 10px;border-radius:99px}
+.pipeline-status.success{background:rgba(16,185,129,0.15);color:#10b981}
+.pipeline-status.running{background:rgba(59,130,246,0.15);color:var(--primary)}
+.pipeline-status.error{background:rgba(239,68,68,0.15);color:var(--danger)}
+.pipeline-status.created{background:rgba(100,116,139,0.15);color:var(--text-muted)}
+.pipeline-card-actions{display:flex;gap:6px}
+.pipeline-card-meta{padding:10px 16px;border-top:1px solid var(--border);display:flex;gap:20px;flex-wrap:wrap;background:var(--bg)}
+.pipeline-meta-item{font-size:0.75rem;color:var(--text-dim)}
+.pipeline-meta-item strong{color:var(--text)}
+/* Create form */
+.pipe-form{display:flex;flex-direction:column;gap:14px}
+.pipe-form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pipe-form-row.full{grid-template-columns:1fr}
+.pipe-section{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:var(--text-dim);margin:6px 0 2px;padding-top:8px;border-top:1px solid var(--border)}
+.pipe-label{font-size:0.78rem;color:var(--text-muted);font-weight:600;display:block;margin-bottom:4px}
+.pipe-input{width:100%;padding:8px 11px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:0.84rem;font-family:inherit;outline:none;box-sizing:border-box}
+.pipe-input:focus{border-color:var(--primary)}
+.pipe-select{width:100%;padding:8px 11px;background:var(--bg);border:1.5px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:0.84rem;font-family:inherit;outline:none;cursor:pointer}
+.pipe-checkbox-row{display:flex;align-items:center;gap:8px;font-size:0.82rem;cursor:pointer}
+/* Logs */
+.pipeline-log-box{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-family:var(--font-mono);font-size:0.78rem;max-height:300px;overflow-y:auto;white-space:pre-wrap;color:var(--text-dim)}
+/* Reconciliation */
+.recon-badge{font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:99px}
+.recon-badge.pass{background:rgba(16,185,129,0.15);color:#10b981}
+.recon-badge.fail{background:rgba(239,68,68,0.15);color:var(--danger)}
+.recon-table{width:100%;border-collapse:collapse;font-size:0.8rem;margin-top:10px}
+.recon-table th{text-align:left;padding:6px 10px;color:var(--text-dim);font-weight:600;border-bottom:1px solid var(--border)}
+.recon-table td{padding:6px 10px;border-bottom:1px solid var(--border-light)}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
 </head>
@@ -289,6 +333,11 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
       <button class="btn btn-ghost btn-sm" onclick="openDdlPanel()" id="ddlBtn" title="Generate Snowflake DDLs from connected source">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
         Generate DDLs &#10052;
+      </button>
+      <div class="toolbar-sep"></div>
+      <button class="btn btn-ghost btn-sm" onclick="openPipelinePanel()" title="Data Pipeline Manager — Full Load, Incremental, CDC">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        Pipelines
       </button>
       <div style="margin-left:auto;display:flex;align-items:center;gap:8px;font-size:0.8rem;color:var(--text-dim)"><span id="queryTime"></span><span id="rowCount"></span></div>
     </div>
@@ -517,6 +566,164 @@ html,body{height:100%;font-family:var(--font-sans);background:var(--bg);color:va
       </div>
     </div>
     <pre class="ddl-code-pre" id="ddlCodeContent"></pre>
+  </div>
+</div>
+
+<!-- ===== PIPELINE MANAGER PANEL ===== -->
+<div class="overlay" id="pipelineOverlay" onclick="closePipelinePanel()"></div>
+<div class="pipeline-panel" id="pipelinePanel">
+  <div class="pipeline-header">
+    <h2>&#9654; Data Pipeline Manager</h2>
+    <button class="close-btn" onclick="closePipelinePanel()">&#10005;</button>
+  </div>
+  <div class="pipeline-tabs">
+    <div class="pipeline-tab active" onclick="switchPipelineTab('list',this)">&#128196; Pipelines</div>
+    <div class="pipeline-tab" onclick="switchPipelineTab('create',this)">&#43; Create</div>
+    <div class="pipeline-tab" onclick="switchPipelineTab('monitor',this)">&#128200; Monitor</div>
+  </div>
+  <div class="pipeline-body">
+
+    <!-- LIST TAB -->
+    <div id="pipelineTabList">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <p style="font-size:0.82rem;color:var(--text-dim)">Active data pipelines from source to Snowflake</p>
+        <button class="btn btn-ghost btn-sm" onclick="loadPipelineList()">&#8635; Refresh</button>
+      </div>
+      <div id="pipelineListBody">
+        <div style="text-align:center;padding:40px;color:var(--text-dim)">
+          <div style="font-size:2rem;margin-bottom:8px">&#9654;</div>
+          <p>No pipelines yet. Click <strong>Create</strong> to build your first pipeline.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- CREATE TAB -->
+    <div id="pipelineTabCreate" style="display:none">
+      <div class="pipe-form">
+        <div class="pipe-section">Pipeline Identity</div>
+        <div class="pipe-form-row">
+          <div><label class="pipe-label">Pipeline Name *</label>
+            <input class="pipe-input" id="pipeName" placeholder="e.g. Orders to Snowflake"></div>
+          <div><label class="pipe-label">Mode *</label>
+            <select class="pipe-select" id="pipeMode" onchange="onPipeModeChange()">
+              <option value="full_load">Full Load (replace all)</option>
+              <option value="incremental">Incremental (watermark)</option>
+              <option value="cdc_sqlserver">CDC — SQL Server (log-based)</option>
+              <option value="cdc_postgresql">CDC — PostgreSQL (log-based)</option>
+            </select></div>
+        </div>
+
+        <div class="pipe-section">Source</div>
+        <div class="pipe-form-row">
+          <div><label class="pipe-label">Source Table *</label>
+            <input class="pipe-input" id="pipeSrcTable" placeholder="e.g. Orders"></div>
+          <div><label class="pipe-label">Source Schema</label>
+            <input class="pipe-input" id="pipeSrcSchema" placeholder="e.g. dbo (optional)"></div>
+        </div>
+        <div style="font-size:0.78rem;color:var(--text-dim);margin-top:-6px">
+          &#128274; Uses your current active connection as source.
+          <span id="pipeSrcConnLabel" style="color:var(--primary)"></span>
+        </div>
+
+        <!-- Incremental only -->
+        <div id="pipeWatermarkSection" style="display:none">
+          <div class="pipe-section">Incremental Settings</div>
+          <div class="pipe-form-row">
+            <div><label class="pipe-label">Watermark Column *</label>
+              <input class="pipe-input" id="pipeWatermark" placeholder="e.g. updated_at, modified_date">
+            </div>
+            <div><label class="pipe-label">Primary Key Columns</label>
+              <input class="pipe-input" id="pipePKCols" placeholder="id,order_id (comma-separated)">
+            </div>
+          </div>
+          <button class="btn btn-ghost btn-sm" style="margin-top:4px" onclick="autoDetectWatermark()">
+            &#128270; Auto-detect watermark &amp; PK
+          </button>
+          <div id="pipeWatermarkDetected" style="display:none;margin-top:8px;font-size:0.78rem;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px"></div>
+        </div>
+
+        <!-- CDC only -->
+        <div id="pipeCdcSection" style="display:none">
+          <div class="pipe-section">CDC Settings</div>
+          <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.3);border-radius:var(--radius);padding:10px;font-size:0.78rem;color:var(--text-muted)">
+            &#9888; SQL Server CDC requires: <code>EXEC sys.sp_cdc_enable_db</code> and <code>sp_cdc_enable_table</code><br>
+            PostgreSQL CDC requires: <code>wal_level=logical</code> in postgresql.conf and REPLICATION privilege.
+          </div>
+          <div class="pipe-form-row" style="margin-top:10px">
+            <div><label class="pipe-label">Primary Key Columns *</label>
+              <input class="pipe-input" id="pipeCdcPK" placeholder="id (required for CDC)"></div>
+            <div><label class="pipe-label">Replication Slot (PG only)</label>
+              <input class="pipe-input" id="pipePgSlot" placeholder="Auto-generated if blank"></div>
+          </div>
+        </div>
+
+        <div class="pipe-section">Target (Snowflake)</div>
+        <div class="pipe-form-row">
+          <div><label class="pipe-label">Account Identifier *</label>
+            <input class="pipe-input" id="pipeSnowAccount" placeholder="abc12345.us-east-1"></div>
+          <div><label class="pipe-label">Username *</label>
+            <input class="pipe-input" id="pipeSnowUser" placeholder="MIGRANIX_USER"></div>
+        </div>
+        <div class="pipe-form-row">
+          <div><label class="pipe-label">Password *</label>
+            <input class="pipe-input" type="password" id="pipeSnowPass" placeholder="••••••••"></div>
+          <div><label class="pipe-label">Warehouse</label>
+            <input class="pipe-input" id="pipeSnowWH" placeholder="COMPUTE_WH"></div>
+        </div>
+        <div class="pipe-form-row">
+          <div><label class="pipe-label">Target Database</label>
+            <input class="pipe-input" id="pipeSnowDB" placeholder="MY_SNOWFLAKE_DB" value="MY_SNOWFLAKE_DB"></div>
+          <div><label class="pipe-label">Target Schema</label>
+            <input class="pipe-input" id="pipeSnowSchema" placeholder="PUBLIC" value="PUBLIC"></div>
+        </div>
+        <div class="pipe-form-row">
+          <div><label class="pipe-label">Target Table (optional)</label>
+            <input class="pipe-input" id="pipeSnowTable" placeholder="Same as source if blank"></div>
+          <div><label class="pipe-label">Role</label>
+            <input class="pipe-input" id="pipeSnowRole" placeholder="SYSADMIN (optional)"></div>
+        </div>
+
+        <div class="pipe-section">Schedule &amp; Options</div>
+        <div class="pipe-form-row">
+          <div><label class="pipe-label">Schedule</label>
+            <input class="pipe-input" id="pipeSchedule" placeholder="15m · 1h · 0 2 * * * (cron)"></div>
+          <div><label class="pipe-label">Batch Size</label>
+            <input class="pipe-input" id="pipeBatchSize" placeholder="10000" value="10000" type="number"></div>
+        </div>
+        <div style="margin-top:4px">
+          <label class="pipe-checkbox-row">
+            <input type="checkbox" id="pipeAutoRecon" style="accent-color:var(--primary)">
+            Auto-run reconciliation after each load (row count + checksum)
+          </label>
+        </div>
+        <div style="margin-top:4px">
+          <label class="pipe-checkbox-row">
+            <input type="checkbox" id="pipeUseDdl">
+            Auto-create target table from generated DDL before first load
+          </label>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:8px">
+          <button class="btn btn-primary" onclick="createPipeline()">&#9654; Create &amp; Run Now</button>
+          <button class="btn btn-ghost" onclick="createPipeline(false)">Save (no run)</button>
+        </div>
+        <div id="pipeCreateStatus" style="margin-top:8px;font-size:0.82rem;display:none"></div>
+      </div>
+    </div>
+
+    <!-- MONITOR TAB -->
+    <div id="pipelineTabMonitor" style="display:none">
+      <div style="margin-bottom:12px;display:flex;gap:10px;align-items:center">
+        <select class="pipe-select" id="monitorPipeSelect" style="flex:1" onchange="loadPipelineDetail()">
+          <option value="">Select a pipeline...</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="loadPipelineDetail()">&#8635;</button>
+      </div>
+      <div id="monitorBody">
+        <p style="color:var(--text-dim);font-size:0.82rem">Select a pipeline above to view logs and reconciliation.</p>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -1575,7 +1782,362 @@ function toggleDdlDb(headerEl){
   list.style.display = list.style.display === 'none' ? '' : 'none';
 }
 
-// ===== SAP TABLE CATALOGUE =====
+// ===== PIPELINE MANAGER =====
+var _allPipelines = [];
+
+function openPipelinePanel(){
+  document.getElementById('pipelineOverlay').classList.add('active');
+  document.getElementById('pipelinePanel').classList.add('active');
+  // Pre-fill source connection label
+  var lbl = document.getElementById('pipeSrcConnLabel');
+  if(lbl && currentConnection){
+    lbl.textContent = 'Connected: ' + (currentConnection.type || '') +
+                      (currentConnection.session_id ? ' ✓' : '');
+  }
+  loadPipelineList();
+}
+function closePipelinePanel(){
+  document.getElementById('pipelineOverlay').classList.remove('active');
+  document.getElementById('pipelinePanel').classList.remove('active');
+}
+
+function switchPipelineTab(tab, el){
+  ['list','create','monitor'].forEach(function(t){
+    document.getElementById('pipelineTab' + t.charAt(0).toUpperCase() + t.slice(1)).style.display = t===tab ? '' : 'none';
+  });
+  document.querySelectorAll('.pipeline-tab').forEach(function(e){ e.classList.remove('active'); });
+  el.classList.add('active');
+  if(tab === 'monitor') populateMonitorSelect();
+}
+
+function onPipeModeChange(){
+  var mode = document.getElementById('pipeMode').value;
+  var isIncremental = mode === 'incremental';
+  var isCdc = mode.startsWith('cdc_');
+  document.getElementById('pipeWatermarkSection').style.display = isIncremental ? '' : 'none';
+  document.getElementById('pipeCdcSection').style.display = isCdc ? '' : 'none';
+}
+
+async function autoDetectWatermark(){
+  if(!currentConnection){ showToast('No connection','Connect to source first','error'); return; }
+  var tbl = document.getElementById('pipeSrcTable').value.trim();
+  var sch = document.getElementById('pipeSrcSchema').value.trim();
+  if(!tbl){ showToast('Table required','Enter source table name first','error'); return; }
+  var btn = event.target;
+  btn.textContent = '⏳ Detecting...'; btn.disabled = true;
+  try{
+    var res = await fetch(API_BASE + '/api/pipeline/detect-watermark', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        session_id: currentConnection.session_id || currentConnection.session,
+        table: tbl, schema: sch
+      })
+    });
+    var data = await res.json();
+    if(data.success){
+      var det = document.getElementById('pipeWatermarkDetected');
+      det.style.display = '';
+      det.innerHTML = '<strong>Recommended watermark:</strong> <code style="color:var(--primary)">' +
+        escapeHtml(data.recommended_watermark || 'None found') + '</code><br>' +
+        '<strong>Primary keys:</strong> <code>' + escapeHtml((data.primary_keys||[]).join(', ') || 'None') + '</code><br>' +
+        '<strong>Other candidates:</strong> ' +
+        (data.watermark_candidates||[]).map(function(c){
+          return '<code>' + escapeHtml(c.column) + '</code> (' + escapeHtml(c.type) + ')';
+        }).join(', ');
+      if(data.recommended_watermark)
+        document.getElementById('pipeWatermark').value = data.recommended_watermark;
+      if(data.primary_keys && data.primary_keys.length)
+        document.getElementById('pipePKCols').value = data.primary_keys.join(',');
+    }
+  } catch(e){ showToast('Detection failed', e.message, 'error'); }
+  finally{ btn.textContent = '🔍 Auto-detect watermark & PK'; btn.disabled = false; }
+}
+
+async function createPipeline(runNow){
+  if(runNow === undefined) runNow = true;
+  if(!currentConnection){ showToast('No source','Connect to a source database first','error'); return; }
+
+  var mode = document.getElementById('pipeMode').value;
+  var name = document.getElementById('pipeName').value.trim();
+  var srcTable = document.getElementById('pipeSrcTable').value.trim();
+  var srcSchema = document.getElementById('pipeSrcSchema').value.trim();
+  var watermark = document.getElementById('pipeWatermark').value.trim();
+  var pkCols = document.getElementById('pipePKCols').value.trim();
+  var cdcPK = document.getElementById('pipeCdcPK').value.trim();
+  var pgSlot = document.getElementById('pipePgSlot').value.trim();
+  var sfAccount = document.getElementById('pipeSnowAccount').value.trim();
+  var sfUser = document.getElementById('pipeSnowUser').value.trim();
+  var sfPass = document.getElementById('pipeSnowPass').value.trim();
+  var sfWH = document.getElementById('pipeSnowWH').value.trim();
+  var sfDB = document.getElementById('pipeSnowDB').value.trim() || 'MY_SNOWFLAKE_DB';
+  var sfSchema = document.getElementById('pipeSnowSchema').value.trim() || 'PUBLIC';
+  var sfTable = document.getElementById('pipeSnowTable').value.trim();
+  var schedule = document.getElementById('pipeSchedule').value.trim();
+  var batchSize = parseInt(document.getElementById('pipeBatchSize').value) || 10000;
+  var autoRecon = document.getElementById('pipeAutoRecon').checked;
+  var useDdl = document.getElementById('pipeUseDdl').checked;
+
+  if(!name){ showToast('Required','Pipeline name is required','error'); return; }
+  if(!srcTable){ showToast('Required','Source table is required','error'); return; }
+  if(!sfAccount||!sfUser||!sfPass){ showToast('Required','Snowflake account, user and password are required','error'); return; }
+  if(mode === 'incremental' && !watermark){ showToast('Required','Watermark column required for incremental mode','error'); return; }
+
+  var status = document.getElementById('pipeCreateStatus');
+  status.style.display = 'block';
+  status.innerHTML = '<span class="spinner"></span> Creating pipeline...';
+  status.style.color = 'var(--text-muted)';
+
+  var primaryKeys = [];
+  if(mode === 'incremental' && pkCols) primaryKeys = pkCols.split(',').map(function(s){return s.trim();});
+  if(mode.startsWith('cdc_') && cdcPK) primaryKeys = cdcPK.split(',').map(function(s){return s.trim();});
+
+  var ddl = '';
+  if(useDdl && ddlData){
+    // Find DDL for this table from last generated DDL
+    for(var db in (ddlData.databases||{})){
+      var tbls = ddlData.databases[db];
+      var match = (tbls||[]).find(function(t){ return t.table.toLowerCase() === srcTable.toLowerCase(); });
+      if(match){ ddl = match.ddl; break; }
+    }
+  }
+
+  try{
+    var res = await fetch(API_BASE + '/api/pipeline/create', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        name: name, mode: mode,
+        source_session_id: currentConnection.session_id || currentConnection.session,
+        source_table: srcTable, source_schema: srcSchema,
+        target_table: sfTable, target_database: sfDB, target_schema: sfSchema,
+        snowflake_creds: {
+          account: sfAccount, username: sfUser, password: sfPass,
+          warehouse: sfWH, database: sfDB, schema: sfSchema, role: document.getElementById('pipeSnowRole').value.trim()
+        },
+        watermark_column: watermark, primary_keys: primaryKeys,
+        auto_reconcile: autoRecon, ddl: ddl, batch_size: batchSize,
+        schedule: schedule, pg_slot_name: pgSlot,
+      })
+    });
+    var data = await res.json();
+    if(!res.ok){
+      var err = data.detail || data;
+      status.innerHTML = '❌ ' + escapeHtml(typeof err === 'object' ? err.message : String(err));
+      status.style.color = 'var(--danger)';
+      return;
+    }
+    var pid = data.pipeline_id;
+    status.innerHTML = '✅ Pipeline created: ' + escapeHtml(data.message);
+    status.style.color = '#10b981';
+
+    if(runNow){
+      status.innerHTML += '<br><span class="spinner"></span> Running...';
+      await fetch(API_BASE + '/api/pipeline/run', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({pipeline_id: pid})
+      });
+      status.innerHTML += ' Started in background!';
+    }
+    setTimeout(function(){
+      switchPipelineTab('list', document.querySelectorAll('.pipeline-tab')[0]);
+      loadPipelineList();
+    }, 1500);
+  } catch(e){
+    status.innerHTML = '❌ ' + escapeHtml(e.message);
+    status.style.color = 'var(--danger)';
+  }
+}
+
+async function loadPipelineList(){
+  var body = document.getElementById('pipelineListBody');
+  if(!body) return;
+  body.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text-dim)"><span class="spinner"></span> Loading...</div>';
+  try{
+    var res = await fetch(API_BASE + '/api/pipeline/list');
+    var data = await res.json();
+    _allPipelines = data.pipelines || [];
+    if(!_allPipelines.length){
+      body.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-dim)"><div style="font-size:2rem">&#9654;</div><p>No pipelines. Click <strong>Create</strong>.</p></div>';
+      return;
+    }
+    body.innerHTML = _allPipelines.map(function(p){
+      var statusClass = p.status || 'created';
+      var lastRun = p.last_run ? new Date(p.last_run).toLocaleString() : 'Never';
+      var nextRun = p.next_run ? new Date(p.next_run).toLocaleString() : '—';
+      var rows = p.last_stats ? (p.last_stats.rows_loaded || 0) : '—';
+      var modeIcon = {'full_load':'🔄','incremental':'⬆️','cdc_sqlserver':'📡','cdc_postgresql':'📡'}[p.mode] || '▶';
+      return '<div class="pipeline-card">' +
+        '<div class="pipeline-card-header">' +
+        '<div style="font-size:1.2rem">' + modeIcon + '</div>' +
+        '<div class="pipeline-card-title">' +
+          '<h4>' + escapeHtml(p.name) + '</h4>' +
+          '<p>' + escapeHtml(p.source_table) + ' → ' + escapeHtml(p.target) + ' · ' + escapeHtml(p.mode) + '</p>' +
+        '</div>' +
+        '<span class="pipeline-status ' + statusClass + '">' + statusClass.toUpperCase() + '</span>' +
+        '<div class="pipeline-card-actions">' +
+          '<button class="btn btn-ghost btn-sm" onclick="runPipelineNow(\'' + p.pipeline_id + '\')" title="Run now">&#9654;</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="viewPipelineMonitor(\'' + p.pipeline_id + '\')" title="Logs">&#128200;</button>' +
+          '<button class="btn btn-ghost btn-sm" onclick="runReconciliation(\'' + p.pipeline_id + '\')" title="Reconcile">&#9745;</button>' +
+          '<button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="deletePipeline(\'' + p.pipeline_id + '\')" title="Delete">&#128465;</button>' +
+        '</div></div>' +
+        '<div class="pipeline-card-meta">' +
+          '<div class="pipeline-meta-item">&#128197; Last run: <strong>' + lastRun + '</strong></div>' +
+          '<div class="pipeline-meta-item">&#9201; Next run: <strong>' + nextRun + '</strong></div>' +
+          '<div class="pipeline-meta-item">&#128202; Rows: <strong>' + rows + '</strong></div>' +
+          '<div class="pipeline-meta-item">&#128260; Runs: <strong>' + (p.run_count||0) + '</strong></div>' +
+          (p.schedule ? '<div class="pipeline-meta-item">&#128336; Schedule: <strong>' + escapeHtml(p.schedule) + '</strong></div>' : '') +
+          (p.error ? '<div class="pipeline-meta-item" style="color:var(--danger)">&#9888; ' + escapeHtml(p.error.substring(0,80)) + '</div>' : '') +
+        '</div></div>';
+    }).join('');
+  } catch(e){
+    body.innerHTML = '<div style="color:var(--danger);padding:16px">Failed to load pipelines: ' + escapeHtml(e.message) + '</div>';
+  }
+}
+
+async function runPipelineNow(pid){
+  showToast('Pipeline started','Running in background...','info');
+  try{
+    await fetch(API_BASE + '/api/pipeline/run', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({pipeline_id: pid})
+    });
+    setTimeout(loadPipelineList, 1500);
+  } catch(e){ showToast('Error', e.message, 'error'); }
+}
+
+async function deletePipeline(pid){
+  if(!confirm('Delete this pipeline? This cannot be undone.')) return;
+  try{
+    await fetch(API_BASE + '/api/pipeline/' + pid, {method:'DELETE'});
+    showToast('Deleted','Pipeline removed','success');
+    loadPipelineList();
+  } catch(e){ showToast('Error', e.message, 'error'); }
+}
+
+async function runReconciliation(pid){
+  showToast('Reconciliation','Running row count + checksum check...','info');
+  try{
+    var res = await fetch(API_BASE + '/api/pipeline/' + pid + '/reconcile', {method:'POST'});
+    var data = await res.json();
+    if(data.success){
+      var r = data.reconciliation;
+      var msg = 'Rows: ' + r.source_rows + '→' + r.target_rows +
+                (r.row_count_match ? ' ✅' : ' ❌ diff=' + r.row_count_diff);
+      showToast('Reconciliation ' + (r.overall_passed ? 'PASSED ✅' : 'FAILED ❌'), msg,
+                r.overall_passed ? 'success' : 'error');
+    }
+  } catch(e){ showToast('Error', e.message, 'error'); }
+}
+
+function populateMonitorSelect(){
+  var sel = document.getElementById('monitorPipeSelect');
+  if(!sel) return;
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">Select a pipeline...</option>' +
+    _allPipelines.map(function(p){
+      return '<option value="' + p.pipeline_id + '" ' + (p.pipeline_id===cur?'selected':'') + '>' +
+             escapeHtml(p.name) + ' [' + p.status + ']</option>';
+    }).join('');
+}
+
+function viewPipelineMonitor(pid){
+  switchPipelineTab('monitor', document.querySelectorAll('.pipeline-tab')[2]);
+  populateMonitorSelect();
+  document.getElementById('monitorPipeSelect').value = pid;
+  loadPipelineDetail();
+}
+
+async function loadPipelineDetail(){
+  var pid = document.getElementById('monitorPipeSelect').value;
+  var body = document.getElementById('monitorBody');
+  if(!pid){ body.innerHTML = '<p style="color:var(--text-dim);font-size:0.82rem">Select a pipeline above.</p>'; return; }
+  body.innerHTML = '<div class="spinner" style="margin:20px auto"></div>';
+  try{
+    var [detRes, logRes] = await Promise.all([
+      fetch(API_BASE + '/api/pipeline/' + pid),
+      fetch(API_BASE + '/api/pipeline/' + pid + '/logs'),
+    ]);
+    var det = await detRes.json();
+    var logs = await logRes.json();
+    var p = det.pipeline || {};
+    var pipe = p.pipeline || {};
+    var stats = p.last_stats || {};
+    var recon = p.last_reconciliation;
+
+    var statusClass = p.status || 'created';
+    var html = '<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">' +
+      '<h3 style="font-size:0.95rem;font-weight:700;flex:1">' + escapeHtml(pipe.name || '') + '</h3>' +
+      '<span class="pipeline-status ' + statusClass + '">' + statusClass.toUpperCase() + '</span>' +
+      '<button class="btn btn-primary btn-sm" onclick="runPipelineNow(\'' + pid + '\')">&#9654; Run</button>' +
+      '</div>';
+
+    // Stats
+    if(Object.keys(stats).length){
+      html += '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px">' +
+        _statCard('Rows Loaded', stats.rows_loaded || 0) +
+        _statCard('Duration', (stats.elapsed_seconds || 0) + 's') +
+        _statCard('Speed', (stats.rows_per_second || '—') + ' rows/s') +
+        '</div>';
+    }
+
+    // Reconciliation
+    if(recon){
+      var passClass = recon.overall_passed ? 'pass' : 'fail';
+      html += '<div style="border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:16px">' +
+        '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">' +
+        '<strong style="font-size:0.85rem">Reconciliation</strong>' +
+        '<span class="recon-badge ' + passClass + '">' + (recon.overall_passed?'PASSED':'FAILED') + '</span></div>' +
+        '<table class="recon-table"><tr><th>Metric</th><th>Source</th><th>Target</th><th>Match</th></tr>' +
+        '<tr><td>Row Count</td><td>' + recon.source_rows + '</td><td>' + recon.target_rows + '</td>' +
+        '<td>' + (recon.row_count_match?'✅':'❌ diff='+recon.row_count_diff) + '</td></tr>' +
+        Object.entries(recon.checksums||{}).map(function(e){
+          return '<tr><td>SUM(' + escapeHtml(e[0]) + ')</td><td>' + e[1].source_sum + '</td><td>' + e[1].target_sum + '</td><td>' + (e[1].match?'✅':'❌') + '</td></tr>';
+        }).join('') +
+        '</table></div>';
+    }
+
+    // Logs
+    var logLines = (logs.logs || []).join('\n') || 'No logs yet for this pipeline.';
+    html += '<div style="margin-bottom:6px;font-size:0.78rem;font-weight:600;color:var(--text-dim)">&#128196; Run Logs</div>' +
+      '<div class="pipeline-log-box">' + escapeHtml(logLines) + '</div>';
+
+    // Schedule editor
+    html += '<div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px">' +
+      '<div style="font-size:0.78rem;font-weight:600;color:var(--text-dim);margin-bottom:8px">&#128336; Update Schedule</div>' +
+      '<div style="display:flex;gap:8px">' +
+      '<input class="pipe-input" id="updateScheduleInput" placeholder="15m · 1h · 0 2 * * *" value="' +
+      escapeHtml(pipe.schedule || '') + '" style="flex:1">' +
+      '<button class="btn btn-ghost btn-sm" onclick="updatePipelineSchedule(\'' + pid + '\')">Update</button>' +
+      '<button class="btn btn-ghost btn-sm" style="color:var(--danger)" onclick="updatePipelineSchedule(\'' + pid + '\', true)">Pause</button>' +
+      '</div></div>';
+
+    body.innerHTML = html;
+  } catch(e){
+    body.innerHTML = '<div style="color:var(--danger)">Failed to load: ' + escapeHtml(e.message) + '</div>';
+  }
+}
+
+function _statCard(label, value){
+  return '<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center">' +
+    '<div style="font-size:1.2rem;font-weight:700">' + escapeHtml(String(value)) + '</div>' +
+    '<div style="font-size:0.72rem;color:var(--text-dim);margin-top:2px">' + escapeHtml(label) + '</div></div>';
+}
+
+async function updatePipelineSchedule(pid, pause){
+  var schedule = pause ? '' : (document.getElementById('updateScheduleInput').value || '').trim();
+  try{
+    var res = await fetch(API_BASE + '/api/pipeline/' + pid + '/schedule', {
+      method:'PUT', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({schedule: schedule})
+    });
+    var data = await res.json();
+    if(data.success){
+      showToast(pause?'Paused':'Schedule updated',
+                pause ? 'Pipeline paused' : 'Next run: ' + (data.next_run||'—'), 'success');
+      loadPipelineDetail();
+    }
+  } catch(e){ showToast('Error', e.message, 'error'); }
+}
+
 var sapCatalogue = [];       // full list from backend
 var sapSelectedTables = {};  // {TABLE_NAME: true}
 var sapActiveModule = 'ALL'; // currently filtered module
